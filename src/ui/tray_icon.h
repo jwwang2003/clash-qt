@@ -15,6 +15,7 @@ class TrayIcon : public QSystemTrayIcon {
 
 public:
     explicit TrayIcon(MainWindow *window, QObject *parent = nullptr);
+    ~TrayIcon() override;
 
     void setTraffic(quint64 up, quint64 down);
 

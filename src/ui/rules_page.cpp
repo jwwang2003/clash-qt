@@ -3,6 +3,8 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLineEdit>
+#include <QPushButton>
+#include <QMenu>
 #include <QSortFilterProxyModel>
 #include <QTableView>
 #include <QVBoxLayout>
@@ -29,7 +31,8 @@ int RuleModel::columnCount(const QModelIndex &parent) const {
 }
 
 QVariant RuleModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || role != Qt::DisplayRole) return {};
+    if (!index.isValid() || index.row() >= rules_.size() ||
+        (role != Qt::DisplayRole && role != Qt::ToolTipRole)) return {};
 
     const core::Rule &rule = rules_.at(index.row());
     switch (index.column()) {
@@ -64,17 +67,19 @@ RulesPage::RulesPage(core::MihomoClient *client, QWidget *parent)
       model_(new RuleModel(this)),
       proxy_(new QSortFilterProxyModel(this)) {
     proxy_->setSourceModel(model_);
-    proxy_->setFilterKeyColumn(RuleModel::Payload);
+    proxy_->setFilterKeyColumn(-1);
     proxy_->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
     auto *filterEdit = new QLineEdit(this);
-    filterEdit->setPlaceholderText(tr("Filter payload…"));
+    filterEdit->setPlaceholderText(tr("Filter type, payload or proxy…"));
     filterEdit->setClearButtonEnabled(true);
     connect(filterEdit, &QLineEdit::textChanged, proxy_,
             &QSortFilterProxyModel::setFilterFixedString);
 
     view_ = new QTableView(this);
     view_->setModel(proxy_);
+    // Routing rules are first-match; keep the controller order until the user sorts.
+    view_->sortByColumn(-1, Qt::AscendingOrder);
     view_->setSortingEnabled(true);
     view_->setAlternatingRowColors(true);
     view_->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -88,7 +93,9 @@ RulesPage::RulesPage(core::MihomoClient *client, QWidget *parent)
     auto *controls = new QHBoxLayout;
     controls->setSpacing(theme::kPageSpacing);
     controls->addWidget(filterEdit, 1);
-
+    auto *refreshButton = new QPushButton(tr("Refresh"), this);
+    connect(refreshButton, &QPushButton::clicked, client_, &core::MihomoClient::fetchRules);
+    controls->addWidget(refreshButton);
     auto *layout = theme::pageLayout(this);
     layout->addLayout(controls);
     layout->addWidget(view_, 1);

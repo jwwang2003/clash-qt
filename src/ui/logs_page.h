@@ -1,10 +1,12 @@
 #pragma once
 
 #include <QWidget>
+#include <QList>
 
 #include "core/types.h"
 
 class QComboBox;
+class QLineEdit;
 class QPlainTextEdit;
 class QPushButton;
 
@@ -28,10 +30,17 @@ private slots:
     void onLogReceived(const core::LogEntry &entry);
 
 private:
+    void appendEntry(const core::LogEntry &entry);
+    void renderEntries();
+    bool matchesFilter(const core::LogEntry &entry) const;
+    QString entryHtml(const core::LogEntry &entry) const;
+
     core::MihomoClient *client_;
     QPlainTextEdit *view_;
     QComboBox *levelBox_;
     QPushButton *pauseButton_;
+    QLineEdit *filterEdit_;
+    QList<core::LogEntry> entries_;
 };
 
 }  // namespace ui

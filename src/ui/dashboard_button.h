@@ -2,29 +2,33 @@
 
 #include <QToolButton>
 
-#include "core/process/core_process.h"
+#include "core/mihomo_client.h"
+#include "platform/browser_launcher.h"
 
 class QMenu;
 
 namespace ui {
 
-/// Opens the core's bundled web dashboard. Only a core started from here
-/// serves /ui, so the button follows CoreProcess's state.
+/// Opens the connected controller's web dashboard.
 class DashboardButton : public QToolButton {
     Q_OBJECT
 
 public:
-    explicit DashboardButton(core::CoreProcess *coreProcess, QWidget *parent = nullptr);
+    explicit DashboardButton(core::MihomoClient *client, QWidget *parent = nullptr);
 
 private:
     void openDashboard();
     void chooseBrowser(const QString &browserId);
     void rebuildMenu();
-    void applyCoreState(core::CoreState state);
+    void refreshBrowsers();
+    void applyConnectionState(bool connected);
 
-    core::CoreProcess *coreProcess_;
+    core::MihomoClient *client_;
     QMenu *menu_;
     QString browserId_;
+    QVector<platform::Browser> browsers_;
+    bool browsersLoading_ = false;
+    bool opening_ = false;
 };
 
 }  // namespace ui

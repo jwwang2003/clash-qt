@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=clash-qt
+Comment=Manage mihomo proxy profiles and connections
+Exec=clash-qt
+Icon=clash-qt
+Terminal=false
+Categories=Network;Qt;
+StartupNotify=true
+StartupWMClass=clash-qt

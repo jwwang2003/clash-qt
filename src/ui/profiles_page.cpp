@@ -2,6 +2,14 @@
 
 #include <QClipboard>
 #include <QComboBox>
+#include "ui/combo_box.h"
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFile>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
+#include <QFontDatabase>
+#include <QPlainTextEdit>
 #include <QFileDialog>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -95,7 +103,7 @@ QVariant ProfileModel::data(const QModelIndex &index, int role) const {
         case Qt::DisplayRole:
             return profile.name;
         case Qt::ToolTipRole:
-            return profile.remote ? profile.url : profile.filePath;
+            return profile.remote ? redactUrl(profile.url) : profile.filePath;
         case ProfileRole:
             return QVariant::fromValue(profile);
         case CurrentRole:
@@ -180,15 +188,18 @@ void ProfileDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
     QRect line(content.left(), content.top(), content.width() - reserved,
                nameMetrics.height() + 2);
 
-    const QString name =
-        nameMetrics.elidedText(profile.name, Qt::ElideRight, qMax(80, line.width() - 160));
+    const QFontMetrics chipMetrics(chipFont);
+    const int chipSpace = chipMetrics.horizontalAdvance(profile.remote ? tr("REMOTE") : tr("LOCAL")) + 28 +
+        (current ? chipMetrics.horizontalAdvance(tr("SELECTED")) + 18 : 0);
+    const QString name = nameMetrics.elidedText(profile.name, Qt::ElideRight,
+                                               qMax(0, line.width() - chipSpace));
     painter->setFont(nameFont);
     painter->setPen(text);
     painter->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, name);
 
     int chipX = line.left() + nameMetrics.horizontalAdvance(name) + 10;
     if (current) {
-        chipX = drawChip(painter, chipX, line, tr("ACTIVE"), chipFont, t.accentText, accent);
+        chipX = drawChip(painter, chipX, line, tr("SELECTED"), chipFont, t.accentText, accent);
     }
     drawChip(painter, chipX, line, profile.remote ? tr("REMOTE") : tr("LOCAL"), chipFont, dim,
              theme::blend(base, text, 0.12));
@@ -259,7 +270,7 @@ QSize ProfileDelegate::sizeHint(const QStyleOptionViewItem &option,
 
 QWidget *ProfileDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &,
                                        const QModelIndex &) const {
-    auto *box = new QComboBox(parent);
+    auto *box = new ComboBox(parent);
     box->setToolTip(tr("How often this subscription is refreshed"));
     for (int minutes : intervalPresets()) box->addItem(intervalLabel(minutes), minutes);
 
@@ -313,6 +324,7 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     errorLabel_->setObjectName("errorBanner");
     errorLabel_->setWordWrap(true);
     errorLabel_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    errorLabel_->setTextFormat(Qt::PlainText);
     errorLabel_->hide();
 
     view_ = new QListView(this);
@@ -337,8 +349,50 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     auto *layout = theme::pageLayout(this);
     layout->addLayout(controls);
     layout->addWidget(errorLabel_);
+    emptyLabel_ = new QLabel(tr("No profiles yet. Import a subscription URL or a local YAML file to get started."), this);
+    emptyLabel_->setObjectName("noticeBanner");
+    emptyLabel_->setWordWrap(true);
+    layout->addWidget(emptyLabel_);
+    auto *actions = new QHBoxLayout;
+    auto *select = new QPushButton(tr("Select Profile"), this);
+    auto *edit = new QPushButton(tr("Edit YAML…"), this);
+    auto *updateAll = new QPushButton(tr("Update All"), this);
+    auto *create = new QPushButton(tr("New Local…"), this);
+    select->setEnabled(false);
+    edit->setEnabled(false);
+    connect(view_->selectionModel(), &QItemSelectionModel::currentChanged, this,
+            [select, edit](const QModelIndex &current) {
+                select->setEnabled(current.isValid());
+                edit->setEnabled(current.isValid());
+            });
+    connect(select, &QPushButton::clicked, this, [this] {
+        store_->selectProfile(model_->profileAt(view_->currentIndex()).uid);
+    });
+    connect(edit, &QPushButton::clicked, this, [this] {
+        editProfile(model_->profileAt(view_->currentIndex()));
+    });
+    connect(updateAll, &QPushButton::clicked, this, [this] {
+        for (const auto &profile : store_->profiles())
+            if (profile.remote) store_->updateProfile(profile.uid);
+    });
+    connect(create, &QPushButton::clicked, this, [this] {
+        bool accepted = false;
+        const QString name = QInputDialog::getText(this, tr("New Local Profile"), tr("Name:"),
+            QLineEdit::Normal, tr("Local profile"), &accepted).trimmed();
+        if (!accepted || name.isEmpty()) return;
+        store_->createLocalProfileAsync(name, "proxies: []\nproxy-groups: []\nrules:\n  - MATCH,DIRECT\n");
+    });
+    actions->addWidget(create);
+    actions->addWidget(select);
+    actions->addWidget(edit);
+    actions->addStretch();
+    actions->addWidget(updateAll);
+    layout->addLayout(actions);
     layout->addWidget(view_, 1);
 
+    connect(store_, &core::ProfileStore::profileCreated, this, [this](const QString &uid) {
+        for (const auto &profile : store_->profiles()) if (profile.uid == uid) { editProfile(profile); break; }
+    }, Qt::QueuedConnection);
     connect(store_, &core::ProfileStore::profilesChanged, this, &ProfilesPage::onProfilesChanged);
     connect(store_, &core::ProfileStore::profileUpdated, this,
             [this] { onProfilesChanged(store_->profiles(), store_->currentUid()); });
@@ -358,13 +412,14 @@ void ProfilesPage::onProfilesChanged(const QVector<core::Profile> &profiles,
                                      const QString &currentUid) {
     const QString selected = model_->profileAt(view_->currentIndex()).uid;
     model_->setProfiles(profiles, currentUid);
+    emptyLabel_->setVisible(profiles.isEmpty());
     errorLabel_->hide();
 
     for (int row = 0; row < model_->rowCount(); ++row) {
         const QModelIndex index = model_->index(row);
         const core::Profile profile = model_->profileAt(index);
         if (profile.remote) view_->openPersistentEditor(index);
-        if (profile.uid == selected) view_->setCurrentIndex(index);
+        if (profile.uid == (selected.isEmpty() ? currentUid : selected)) view_->setCurrentIndex(index);
     }
 }
 
@@ -385,6 +440,9 @@ void ProfilesPage::showContextMenu(const QPoint &pos) {
     QAction *update = menu.addAction(tr("Update"));
     update->setEnabled(profile.remote);
     QAction *rename = menu.addAction(tr("Rename…"));
+    QAction *edit = menu.addAction(tr("Edit YAML…"));
+    QAction *editUrl = menu.addAction(tr("Edit Subscription URL…"));
+    editUrl->setEnabled(profile.remote);
     QAction *copyUrl = menu.addAction(tr("Copy Subscription URL"));
     copyUrl->setEnabled(profile.remote);
     menu.addSeparator();
@@ -395,8 +453,17 @@ void ProfilesPage::showContextMenu(const QPoint &pos) {
         store_->selectProfile(profile.uid);
     } else if (chosen == update) {
         store_->updateProfile(profile.uid);
+    } else if (chosen == editUrl) {
+        bool accepted = false;
+        const QString url = QInputDialog::getText(
+            this, tr("Edit Subscription URL"),
+            tr("Subscription URL:\nThe cached configuration is kept until the next update."),
+            QLineEdit::Normal, profile.url, &accepted);
+        if (accepted) store_->setSubscriptionUrl(profile.uid, url);
     } else if (chosen == copyUrl) {
         QGuiApplication::clipboard()->setText(profile.url);
+    } else if (chosen == edit) {
+        editProfile(profile);
     } else if (chosen == rename) {
         bool accepted = false;
         const QString name = QInputDialog::getText(this, tr("Rename Profile"), tr("Name:"),
@@ -425,7 +492,78 @@ void ProfilesPage::importFile() {
     const QString path =
         QFileDialog::getOpenFileName(this, tr("Import Profile"), QString(),
                                      tr("Clash config (*.yaml *.yml);;All files (*)"));
-    if (!path.isEmpty()) store_->importFromFile(path);
+    if (!path.isEmpty()) store_->importFromFileAsync(path);
+}
+
+void ProfilesPage::editProfile(const core::Profile &profile) {
+    if (profile.uid.isEmpty()) return;
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Edit %1").arg(profile.name));
+    dialog.resize(760, 560);
+    auto *layout = new QVBoxLayout(&dialog);
+    if (profile.remote) {
+        auto *hint = new QLabel(tr("Subscription updates replace this file. Use an enhancement step for changes that should survive updates."), &dialog);
+        hint->setWordWrap(true);
+        layout->addWidget(hint);
+    }
+    auto *editor = new QPlainTextEdit(&dialog);
+    QFont editorFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    editorFont.setPointSizeF(qMax(editorFont.pointSizeF(), font().pointSizeF()));
+    editor->setFont(editorFont);
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    layout->addWidget(editor);
+    auto *error = new QLabel(&dialog);
+    error->setObjectName("fieldError");
+    error->setTextFormat(Qt::PlainText);
+    error->setWordWrap(true);
+    layout->addWidget(error);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttons);
+    connect(store_, &core::ProfileStore::errorOccurred, &dialog, [error](const QString &message) { error->setText(message); });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    connect(store_, &core::ProfileStore::reloaded, &dialog, &QDialog::reject);
+    bool saving = false;
+    connect(store_, &core::ProfileStore::profileContentSaved, &dialog, [&](const QString &uid, bool success) {
+        if (!saving || uid != profile.uid) return;
+        saving = false;
+        if (success) { dialog.accept(); return; }
+        editor->setEnabled(true);
+        buttons->button(QDialogButtonBox::Save)->setEnabled(true);
+        buttons->button(QDialogButtonBox::Cancel)->setEnabled(true);
+        if (error->text() == tr("Saving…")) error->setText(tr("Save was canceled or the profile is no longer available."));
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&, this] {
+        saving = true;
+        editor->setEnabled(false);
+        buttons->button(QDialogButtonBox::Save)->setEnabled(false);
+        buttons->button(QDialogButtonBox::Cancel)->setEnabled(false);
+        error->setText(tr("Saving…"));
+        store_->saveProfileContentAsync(profile.uid, editor->toPlainText());
+    });
+    editor->setEnabled(false);
+    buttons->button(QDialogButtonBox::Save)->setEnabled(false);
+    error->setText(tr("Loading…"));
+    using ReadResult = QPair<QString, QString>;
+    auto *reader = new QFutureWatcher<ReadResult>(&dialog);
+    connect(reader, &QFutureWatcher<ReadResult>::finished, &dialog, [reader, editor, buttons, error] {
+        const auto result = reader->result();
+        reader->deleteLater();
+        error->setText(result.second);
+        if (!result.second.isEmpty()) return;
+        editor->setPlainText(result.first);
+        editor->setEnabled(true);
+        buttons->button(QDialogButtonBox::Save)->setEnabled(true);
+    });
+    reader->setFuture(QtConcurrent::run([path = profile.filePath]() -> ReadResult {
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly)) return {{}, file.errorString()};
+        const auto contents = file.read(2 * 1024 * 1024 + 1);
+        if (contents.size() > 2 * 1024 * 1024 || contents.count('\n') > 20000)
+            return {{}, ProfilesPage::tr("This file is too large for the inline editor (2 MiB / 20,000 lines).")};
+        if (file.error() != QFileDevice::NoError) return {{}, file.errorString()};
+        return {QString::fromUtf8(contents), {}};
+    }));
+    dialog.exec();
 }
 
 }  // namespace ui

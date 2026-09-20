@@ -25,6 +25,7 @@ private:
     void updateActions();
     void addStep(bool script);
     void importStep();
+    void editStep();
     void renameStep();
     void removeStep();
     void move(int delta);
@@ -34,6 +35,7 @@ private:
     QTreeWidget *list_;
     QLabel *emptyLabel_;
     QPushButton *renameButton_;
+    QPushButton *editButton_;
     QPushButton *removeButton_;
     QPushButton *upButton_;
     QPushButton *downButton_;

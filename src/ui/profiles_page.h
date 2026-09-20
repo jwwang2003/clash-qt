@@ -75,12 +75,14 @@ private slots:
 private:
     void importUrl();
     void importFile();
+    void editProfile(const core::Profile &profile);
 
     core::ProfileStore *store_;
     ProfileModel *model_;
     QListView *view_;
     QLineEdit *urlEdit_;
     QLabel *errorLabel_;
+    QLabel *emptyLabel_;
 };
 
 }  // namespace ui

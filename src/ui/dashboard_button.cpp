@@ -1,6 +1,10 @@
 #include "ui/dashboard_button.h"
 
 #include <QMenu>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
+#include <QTimer>
+#include <QMessageBox>
 #include <QSettings>
 #include <QUrl>
 #include <QUrlQuery>
@@ -34,24 +38,51 @@ QSettings settings() { return QSettings("clash-qt", "clash-qt"); }
 
 }  // namespace
 
-DashboardButton::DashboardButton(core::CoreProcess *coreProcess, QWidget *parent)
-    : QToolButton(parent), coreProcess_(coreProcess), menu_(new QMenu(this)) {
+DashboardButton::DashboardButton(core::MihomoClient *client, QWidget *parent)
+    : QToolButton(parent), client_(client), menu_(new QMenu(this)) {
     setText(tr("Dashboard"));
     setPopupMode(QToolButton::MenuButtonPopup);
     setMenu(menu_);
     browserId_ = settings().value(kBrowserKey).toString();
 
     connect(this, &QToolButton::clicked, this, &DashboardButton::openDashboard);
-    connect(menu_, &QMenu::aboutToShow, this, &DashboardButton::rebuildMenu);
-    connect(coreProcess_, &core::CoreProcess::stateChanged, this,
-            &DashboardButton::applyCoreState);
-    applyCoreState(coreProcess_->state());
+    connect(menu_, &QMenu::aboutToShow, this, [this] {
+        rebuildMenu();
+        refreshBrowsers();
+    });
+    connect(client_, &core::MihomoClient::connectedChanged, this,
+            &DashboardButton::applyConnectionState);
+    connect(client_, &core::MihomoClient::endpointChanged, this, [this] {
+        applyConnectionState(client_->isConnected());
+    });
+    applyConnectionState(client_->isConnected());
+    QTimer::singleShot(0, this, &DashboardButton::refreshBrowsers);
 }
 
 void DashboardButton::openDashboard() {
-    const core::Endpoint endpoint = coreProcess_->endpoint();
+    const core::Endpoint endpoint = client_->endpoint();
     if (!endpoint.isValid()) return;
-    platform::BrowserLauncher::open(dashboardUrl(endpoint), browserId_);
+    if (opening_ || !client_->isConnected()) return;
+    opening_ = true;
+    applyConnectionState(true);
+    const QUrl url = dashboardUrl(endpoint);
+    const QString browser = browserId_;
+    auto *watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher] {
+        const bool opened = watcher->result();
+        watcher->deleteLater();
+        opening_ = false;
+        applyConnectionState(client_->isConnected());
+        if (!opened) {
+            auto *message = new QMessageBox(QMessageBox::Warning, tr("Dashboard"),
+                tr("No browser could open the dashboard."), QMessageBox::Ok, this);
+            message->setAttribute(Qt::WA_DeleteOnClose);
+            message->open();
+        }
+    });
+    watcher->setFuture(QtConcurrent::run([url, browser] {
+        return platform::BrowserLauncher::open(url, browser);
+    }));
 }
 
 void DashboardButton::chooseBrowser(const QString &browserId) {
@@ -70,10 +101,11 @@ void DashboardButton::rebuildMenu() {
 
     // Enumeration can come back empty; the system-default entry then stands
     // alone rather than the menu opening blank.
-    const QVector<platform::Browser> browsers = platform::BrowserLauncher::available();
-    if (!browsers.isEmpty()) menu_->addSeparator();
+    if (browsersLoading_ && browsers_.isEmpty())
+        menu_->addAction(tr("Finding browsers…"))->setEnabled(false);
+    if (!browsers_.isEmpty()) menu_->addSeparator();
 
-    for (const platform::Browser &browser : browsers) {
+    for (const platform::Browser &browser : browsers_) {
         QAction *action = menu_->addAction(
             browser.isDefault ? tr("%1 (default)").arg(browser.name) : browser.name);
         action->setCheckable(true);
@@ -83,12 +115,26 @@ void DashboardButton::rebuildMenu() {
     }
 }
 
-void DashboardButton::applyCoreState(core::CoreState state) {
-    const bool running = state == core::CoreState::Running;
-    setEnabled(running);
-    setToolTip(running ? tr("Open %1/ui/").arg(coreProcess_->endpoint().httpBase())
-                       : tr("The web dashboard is served by a core started from here. A core "
-                            "running outside this app does not serve /ui."));
+void DashboardButton::refreshBrowsers() {
+    if (browsersLoading_) return;
+    browsersLoading_ = true;
+    auto *watcher = new QFutureWatcher<QVector<platform::Browser>>(this);
+    connect(watcher, &QFutureWatcher<QVector<platform::Browser>>::finished, this, [this, watcher] {
+        browsers_ = watcher->result();
+        watcher->deleteLater();
+        browsersLoading_ = false;
+        // Updating only after discovery completes keeps opening the menu immediate.
+        rebuildMenu();
+    });
+    watcher->setFuture(QtConcurrent::run([] { return platform::BrowserLauncher::available(); }));
+}
+
+void DashboardButton::applyConnectionState(bool connected) {
+    setEnabled(connected && !opening_);
+    setText(opening_ ? tr("Opening…") : tr("Dashboard"));
+    setToolTip(connected ? tr("Open %1/ui/ (requires a dashboard installed on the core)")
+                              .arg(client_->endpoint().httpBase())
+                         : tr("Connect to a core to open its dashboard."));
 }
 
 }  // namespace ui

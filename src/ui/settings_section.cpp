@@ -14,6 +14,7 @@ QLabel *banner(const char *objectName, QWidget *parent) {
     auto *label = new QLabel(parent);
     label->setObjectName(QString::fromLatin1(objectName));
     label->setWordWrap(true);
+    label->setTextFormat(Qt::PlainText);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
     label->hide();
     return label;

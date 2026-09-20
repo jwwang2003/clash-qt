@@ -34,8 +34,20 @@ QToolBar QToolButton {
 QToolBar QToolButton:hover { background: {{hover}}; border-color: {{border}}; }
 QToolBar QToolButton:pressed { background: {{accentSoft}}; border-color: {{accent}}; }
 QToolBar QToolButton:disabled { color: {{textFaint}}; }
-QToolBar QToolButton[popupMode="1"] { padding-right: 22px; }
-QToolBar QToolButton::menu-button { width: 16px; border-left: 1px solid {{border}}; }
+/* Reserve the 24px arrow segment plus the same 10px gap as the left edge. */
+QToolBar QToolButton[popupMode="1"] { padding-right: 34px; }
+QToolBar QToolButton::menu-button {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    background: transparent;
+    border: none;
+    border-left: 1px solid {{border}};
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+QToolBar QToolButton::menu-arrow { image: url({{comboArrow}}); width: 12px; height: 12px; }
+QToolBar QToolButton:on { background: {{accentSoft}}; border-color: {{accent}}; }
 QToolBar::separator { width: 1px; background: {{border}}; margin: 3px 6px; }
 QLabel#toolbarLabel { color: {{textDim}}; padding-left: 4px; }
 
@@ -130,14 +142,22 @@ QComboBox {
     color: {{text}};
     border: 1px solid {{border}};
     border-radius: 6px;
-    /* The base style keeps drawing the arrow over the right edge, so the text
-       is padded clear of it. */
-    padding: 4px 22px 4px 8px;
+    padding: 5px 8px 5px 10px;
     min-height: 18px;
 }
 QComboBox:hover { background: {{hover}}; }
-QComboBox:focus { border-color: {{accent}}; }
-QComboBox QAbstractItemView { padding: 4px; }
+QComboBox:focus, QComboBox:on, QComboBox[menuOpen="true"] { border-color: {{accent}}; }
+QComboBox:disabled { background: {{surfaceAlt}}; color: {{textFaint}}; }
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border: none;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background: transparent;
+}
+QComboBox::down-arrow { image: url({{comboArrow}}); width: 12px; height: 12px; }
 
 QPlainTextEdit {
     background: {{surface}};
@@ -202,7 +222,9 @@ Tokens makeTokens() {
     t.surface = dark ? QColor("#1f1f22") : QColor("#ffffff");
     t.text = dark ? QColor("#ededf0") : QColor("#1b1b1d");
     t.accent = palette.color(QPalette::Highlight);
+    if (dark && t.accent.lightnessF() < 0.6) t.accent = QColor("#66b3ff");
     t.accentText = palette.color(QPalette::HighlightedText);
+    if (dark && t.accent.lightnessF() >= 0.6) t.accentText = QColor("#102238");
     t.success = dark ? QColor("#32d158") : QColor("#1c8c4a");
     t.warning = dark ? QColor("#ff9f0a") : QColor("#b06f00");
     t.danger = dark ? QColor("#ff453a") : QColor("#c62d24");
@@ -226,6 +248,8 @@ Tokens &cache() {
 
 QString expand(const Tokens &t) {
     QString qss = QString::fromLatin1(kStyleSheet);
+    qss.replace("{{comboArrow}}", darkScheme() ? ":/ui/chevron-down-dark.png"
+                                             : ":/ui/chevron-down-light.png");
     const std::pair<const char *, QColor> map[] = {
         {"{{surfaceAlt}}", t.surfaceAlt},     {"{{surface}}", t.surface},
         {"{{border}}", t.border},             {"{{hover}}", t.hover},
@@ -245,6 +269,22 @@ QString expand(const Tokens &t) {
 /// Strokes are laid out on the kNavIconSize grid.
 void drawGlyph(QPainter *painter, Glyph glyph) {
     switch (glyph) {
+        case Glyph::Home:
+            painter->drawPolyline(QPolygonF({{2.5, 8}, {9, 2.5}, {15.5, 8}}));
+            painter->drawPolyline(QPolygonF({{4.5, 7}, {4.5, 15.5}, {13.5, 15.5}, {13.5, 7}}));
+            painter->drawRect(QRectF(7.5, 10.5, 3, 5));
+            break;
+        case Glyph::Providers:
+            painter->drawRoundedRect(QRectF(2.5, 3, 13, 5), 1, 1);
+            painter->drawRoundedRect(QRectF(2.5, 10, 13, 5), 1, 1);
+            painter->drawPoint(QPointF(5, 5.5));
+            painter->drawPoint(QPointF(5, 12.5));
+            break;
+        case Glyph::Backups:
+            painter->drawRect(QRectF(3.5, 6, 11, 9.5));
+            painter->drawRect(QRectF(2.5, 2.5, 13, 3.5));
+            painter->drawLine(QPointF(7, 9), QPointF(11, 9));
+            break;
         case Glyph::Profiles:
             painter->drawRoundedRect(QRectF(3.5, 2.5, 11, 13), 2, 2);
             painter->drawLine(QPointF(6, 6.5), QPointF(13, 6.5));

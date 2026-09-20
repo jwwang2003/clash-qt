@@ -6,7 +6,7 @@
 namespace ui {
 
 QString formatRate(quint64 bytesPerSecond) {
-    static const char *units[] = {"B/s", "KB/s", "MB/s", "GB/s"};
+    static const char *units[] = {"B/s", "KiB/s", "MiB/s", "GiB/s"};
     double value = static_cast<double>(bytesPerSecond);
     int unit = 0;
     while (value >= 1024.0 && unit < 3) {

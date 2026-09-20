@@ -22,15 +22,23 @@ namespace ui {
 class LogsPage;
 class ProxiesPage;
 class SettingsPage;
+class RoutingControls;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(const app::Context &context, QWidget *parent = nullptr);
+    const app::Context &context() const { return context_; }
+    void startCore();
+    void stopCore();
+    void toggleSystemProxy();
+    RoutingControls *routingControls() const { return routingControls_; }
+    void refreshRoutingState();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 private:
     void buildUi();
@@ -38,7 +46,6 @@ private:
     void addPage(theme::Glyph glyph, const QString &title, QWidget *page);
     void applyNavIcons();
     void onHotkey(const QString &id);
-    void startCore();
     void updateCoreState(core::CoreState state);
 
     app::Context context_;
@@ -48,6 +55,7 @@ private:
     ProxiesPage *proxiesPage_;
     LogsPage *logsPage_;
     SettingsPage *settingsPage_;
+    RoutingControls *routingControls_ = nullptr;
     QComboBox *modeBox_;
     QAction *startCoreAction_;
     QAction *stopCoreAction_;

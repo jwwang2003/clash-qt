@@ -42,7 +42,7 @@ const Tokens &tokens();
 
 QColor blend(const QColor &base, const QColor &over, qreal ratio);
 
-enum class Glyph { Profiles, Proxies, Connections, Logs, Rules, Settings };
+enum class Glyph { Home, Profiles, Proxies, Connections, Logs, Rules, Providers, Backups, Settings };
 
 /// Sidebar glyph, carrying both the resting and the selected tint.
 QIcon navIcon(Glyph glyph);
