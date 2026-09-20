@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include <QAreaSeries>
 #include <QAbstractScrollArea>
@@ -35,6 +36,16 @@ QString rateText(double bytesPerSecond) {
     int unit = 0;
     while (value >= 1024 && unit < units.size() - 1) { value /= 1024; ++unit; }
     return QString::number(value, 'f', value < 10 ? 1 : 0) + ' ' + units.at(unit);
+}
+
+double areaCoordinate(double rate, double divisor) {
+    // Qt Graphs 6.11 AreaRenderer starts a new subpath at consecutive exact
+    // zeros, then closes the final subpath back to the first sample. When that
+    // sample is nonzero this paints a diagonal band above later zero traffic.
+    // A positive sentinel keeps a single path and still rounds to the exact
+    // baseline in pixel coordinates. Only render geometry uses this value;
+    // observed samples, statistics, and hover readouts retain their true zeros.
+    return rate == 0 ? std::numeric_limits<double>::min() : rate / divisor;
 }
 
 QColor areaFill(QColor color) {
@@ -309,12 +320,12 @@ void TrafficGraph::renderFrame() {
             const double previousSeconds = (previous->timestampMs - renderedAtMs_) / 1000.0;
             if (previousSeconds < left && sample.timestampMs - previous->timestampMs <= 2000) {
                 const double fraction = (left - previousSeconds) / (seconds - previousSeconds);
-                downloads.append(QPointF(left, std::lerp(previous->downloadBps, sample.downloadBps, fraction) / renderScale_.divisor));
-                uploads.append(QPointF(left, std::lerp(previous->uploadBps, sample.uploadBps, fraction) / renderScale_.divisor));
+                downloads.append(QPointF(left, areaCoordinate(std::lerp(previous->downloadBps, sample.downloadBps, fraction), renderScale_.divisor)));
+                uploads.append(QPointF(left, areaCoordinate(std::lerp(previous->uploadBps, sample.uploadBps, fraction), renderScale_.divisor)));
             }
         }
-        downloads.append(QPointF(seconds, sample.downloadBps / renderScale_.divisor));
-        uploads.append(QPointF(seconds, sample.uploadBps / renderScale_.divisor));
+        downloads.append(QPointF(seconds, areaCoordinate(sample.downloadBps, renderScale_.divisor)));
+        uploads.append(QPointF(seconds, areaCoordinate(sample.uploadBps, renderScale_.divisor)));
     }
     // Both areas are committed in the same GUI/scene-graph animation turn.
     // Never clear then append: that exposes empty/intermediate polygons.

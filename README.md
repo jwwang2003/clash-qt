@@ -58,6 +58,16 @@ system load can change the result. Headless CTest checks behavior, not refresh r
 For a display-move check, repeat on each monitor or move the test window while it
 runs. No refresh rate is cached or hardcoded in the application.
 
+The native GPU regression test below checks successive frames for colored fill
+above zero-traffic segments. It covers a Qt Graphs path-closing issue that could
+produce flashing diagonal bands when consecutive samples were zero. Render-only
+baseline coordinates avoid the issue; recorded rates and readouts remain exact.
+
+```sh
+QT_QPA_PLATFORM=cocoa CLASH_QT_VERIFY_GRAPH_FRAMES=1 \
+  ./build/data-pages-tests trafficNativeFillStaysBelowOutline
+```
+
 ## Running
 
 Import a local YAML file or HTTP(S) subscription, select it, then choose
