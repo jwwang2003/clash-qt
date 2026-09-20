@@ -37,6 +37,7 @@ QColor coreStateColor(core::CoreState state) {
         case core::CoreState::Running:
             return t.success;
         case core::CoreState::Starting:
+        case core::CoreState::Stopping:
             return t.warning;
         case core::CoreState::Failed:
             return t.danger;
@@ -226,6 +227,9 @@ void MainWindow::updateCoreState(core::CoreState state) {
         case core::CoreState::Starting:
             text = tr("core starting…");
             break;
+        case core::CoreState::Stopping:
+            text = tr("core stopping…");
+            break;
         case core::CoreState::Running:
             text = tr("core running");
             break;
@@ -238,7 +242,7 @@ void MainWindow::updateCoreState(core::CoreState state) {
     if (state != core::CoreState::Failed) coreLabel_->setToolTip(QString());
 
     const bool live = state == core::CoreState::Starting || state == core::CoreState::Running;
-    startCoreAction_->setEnabled(!live);
+    startCoreAction_->setEnabled(!live && state != core::CoreState::Stopping);
     stopCoreAction_->setEnabled(live);
     restartCoreAction_->setEnabled(live);
 }

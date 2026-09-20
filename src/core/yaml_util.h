@@ -18,8 +18,8 @@ QJsonValue plainToJson(const QString &text);
 ///
 /// yaml-cpp's own emitter writes every scalar plain, so a string like "0123"
 /// comes back as a number to the next reader and mihomo then refuses to
-/// unmarshal it. Scalars the parser tagged as strings are re-quoted here when
-/// their text would otherwise read as something else.
+/// unmarshal it. Preserve explicit string tags with quotes, including values
+/// such as hexadecimal numbers that different YAML readers infer differently.
 std::string dump(const YAML::Node &node);
 
 }  // namespace core::yamlutil

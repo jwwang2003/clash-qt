@@ -5,26 +5,28 @@
 namespace core::yamlutil {
 namespace {
 
-void emitNode(YAML::Emitter &emitter, const YAML::Node &node) {
+void emitNode(YAML::Emitter &emitter, const YAML::Node &node, int depth = 0) {
+    if (depth > 128) throw YAML::BadConversion(node.Mark());
     switch (node.Type()) {
         case YAML::NodeType::Map:
             emitter << YAML::BeginMap;
             for (const auto &entry : node) {
                 emitter << YAML::Key;
-                emitNode(emitter, entry.first);
+                emitNode(emitter, entry.first, depth + 1);
                 emitter << YAML::Value;
-                emitNode(emitter, entry.second);
+                emitNode(emitter, entry.second, depth + 1);
             }
             emitter << YAML::EndMap;
             return;
         case YAML::NodeType::Sequence:
             emitter << YAML::BeginSeq;
-            for (const auto &item : node) emitNode(emitter, item);
+            for (const auto &item : node) emitNode(emitter, item, depth + 1);
             emitter << YAML::EndSeq;
             return;
         case YAML::NodeType::Scalar: {
-            const QString text = QString::fromStdString(node.Scalar());
-            if (node.Tag() == "!" && !plainToJson(text).isString()) emitter << YAML::DoubleQuoted;
+            if (node.Tag() == "!" || node.Tag() == "tag:yaml.org,2002:str") {
+                emitter << YAML::DoubleQuoted;
+            }
             emitter << node.Scalar();
             return;
         }
@@ -53,8 +55,12 @@ QJsonValue plainToJson(const QString &text) {
 
 std::string dump(const YAML::Node &node) {
     YAML::Emitter emitter;
-    emitNode(emitter, node);
-    return emitter.c_str();
+    try {
+        emitNode(emitter, node);
+    } catch (const YAML::Exception &) {
+        return {};
+    }
+    return emitter.good() ? std::string(emitter.c_str()) : std::string();
 }
 
 }  // namespace core::yamlutil

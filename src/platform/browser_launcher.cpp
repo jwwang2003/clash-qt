@@ -1,6 +1,5 @@
 #include "platform/browser_launcher.h"
 
-#include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
@@ -10,9 +9,34 @@
 #ifdef Q_OS_MACOS
 #include <CoreServices/CoreServices.h>
 #endif
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#include <shellapi.h>
+#include <objbase.h>
+#endif
 
 namespace platform {
 namespace {
+
+bool openDefault(const QUrl &url) {
+    // Called from the browser worker: use OS launch facilities directly rather
+    // than a GUI platform plugin whose thread affinity is unspecified.
+#ifdef Q_OS_MACOS
+    return QProcess::startDetached(QStringLiteral("/usr/bin/open"), {url.toString()});
+#elif defined(Q_OS_LINUX)
+    return QProcess::startDetached(QStringLiteral("xdg-open"), {url.toString()});
+#elif defined(Q_OS_WIN)
+    const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const QString target = url.toString(QUrl::FullyEncoded);
+    const auto result = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open",
+        reinterpret_cast<LPCWSTR>(target.utf16()), nullptr, nullptr, SW_SHOWNORMAL));
+    if (SUCCEEDED(initialized)) CoUninitialize();
+    return result > 32;
+#else
+    Q_UNUSED(url)
+    return false;
+#endif
+}
 
 void appendUnique(QVector<Browser> &browsers, const Browser &browser) {
     for (const Browser &known : browsers) {
@@ -231,6 +255,9 @@ QVector<Browser> linuxBrowsers() {
     QString defaultId;
     if (xdgSettings.waitForFinished(2000)) {
         defaultId = QString::fromUtf8(xdgSettings.readAllStandardOutput()).trimmed();
+    } else {
+        xdgSettings.kill();
+        xdgSettings.waitForFinished(1000);
     }
 
     QVector<Browser> browsers;
@@ -308,17 +335,16 @@ QVector<Browser> BrowserLauncher::available() {
 
 bool BrowserLauncher::open(const QUrl &url, const QString &browserId) {
     if (browserId.isEmpty()) {
-        return QDesktopServices::openUrl(url);
+        return openDefault(url);
     }
 #if defined(Q_OS_MACOS)
-    return macOpen(url, browserId);
+    if (macOpen(url, browserId)) return true;
 #elif defined(Q_OS_WIN)
-    return windowsOpen(url, browserId);
+    if (windowsOpen(url, browserId)) return true;
 #elif defined(Q_OS_LINUX)
-    return linuxOpen(url, browserId);
-#else
-    return QDesktopServices::openUrl(url);
+    if (linuxOpen(url, browserId)) return true;
 #endif
+    return openDefault(url);
 }
 
 }  // namespace platform

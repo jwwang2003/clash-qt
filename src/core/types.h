@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QString>
 #include <QStringList>
+#include <QUrl>
 
 namespace core {
 
@@ -17,8 +18,9 @@ struct ProxyGroup {
     QString type;   // Selector, URLTest, Fallback, ...
     QString now;    // currently selected member
     QStringList all;
+    QString fixed;
 
-    bool selectable() const { return type == "Selector"; }
+    bool selectable() const { return type == "Selector" || type == "URLTest" || type == "Fallback"; }
 };
 
 struct Connection {
@@ -30,11 +32,17 @@ struct Connection {
     QString rule;
     QString rulePayload;
     QString sourceIp;
+    QString sourcePort;
+    QString destinationIp;
     QString destinationPort;
     QString process;
+    QString processPath;
     quint64 upload = 0;
     quint64 download = 0;
+    double uploadRate = 0;
+    double downloadRate = 0;
     QDateTime start;
+    QDateTime end;
 };
 
 struct LogEntry {
@@ -68,8 +76,18 @@ struct Endpoint {
     quint16 port = 9090;
     QString secret;
 
-    QString httpBase() const { return QString("http://%1:%2").arg(host).arg(port); }
-    QString wsBase() const { return QString("ws://%1:%2").arg(host).arg(port); }
+    QString baseUrl(const QString &scheme) const {
+        QUrl url;
+        url.setScheme(scheme);
+        QString address = host.trimmed();
+        if (address.startsWith('[') && address.endsWith(']'))
+            address = address.mid(1, address.size() - 2);
+        url.setHost(address);
+        url.setPort(port);
+        return url.toString(QUrl::FullyEncoded);
+    }
+    QString httpBase() const { return baseUrl("http"); }
+    QString wsBase() const { return baseUrl("ws"); }
     bool isValid() const { return port != 0 && !host.isEmpty(); }
 };
 

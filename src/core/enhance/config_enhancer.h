@@ -3,6 +3,9 @@
 #include <QObject>
 #include <QString>
 #include <QVector>
+#include <QQueue>
+#include <atomic>
+#include <memory>
 
 namespace core {
 
@@ -33,15 +36,22 @@ class ConfigEnhancer : public QObject {
 
 public:
     explicit ConfigEnhancer(QObject *parent = nullptr);
+    ~ConfigEnhancer() override;
 
     QString chainDir() const;
 
     void load();
+    void setMaintenanceMode(bool enabled);
+    void beginShutdown();
     QVector<ChainItem> chain() const;
 
     void addMerge(const QString &name);
     void addScript(const QString &name);
     void importItem(const QString &path, ChainKind kind);
+    bool saveItemContent(const QString &uid, const QString &contents);
+    void importItemAsync(const QString &path, ChainKind kind);
+    void saveItemContentAsync(const QString &uid, const QString &contents);
+    bool isFileBusy() const;
     void removeItem(const QString &uid);
     void setEnabled(const QString &uid, bool enabled);
     void moveItem(const QString &uid, int toIndex);
@@ -49,18 +59,35 @@ public:
 
     /// Runs the enabled chain over `baseYaml`. Never throws: a failing step is
     /// reported in the result and leaves the config as it was.
-    EnhanceResult apply(const QString &baseYaml) const;
+    EnhanceResult apply(const QString &baseYaml, const QString &profileName = {}) const;
+    static EnhanceResult applyChain(const QString &baseYaml, const QString &profileName,
+                                   const QVector<ChainItem> &chain,
+                                   const std::shared_ptr<std::atomic_bool> &cancelled = {});
 
 signals:
+    void reloaded();
     void chainChanged(const QVector<ChainItem> &chain);
     void errorOccurred(const QString &message);
+    void fileBusyChanged(bool busy);
+    void itemContentSaved(const QString &uid, bool success);
 
 private:
+    struct ItemWrite { ChainItem item; QByteArray contents; QString sourcePath; bool create = false; };
+    void enqueueWrite(ItemWrite request);
+    void startNextWrite();
+    void cancelFileOperations();
     int indexOf(const QString &uid) const;
-    void save();
+    bool acceptsChanges();
+    bool save();
     void addItem(const QString &name, ChainKind kind, const QByteArray &contents);
 
     QVector<ChainItem> chain_;
+    bool maintenance_ = false;
+    bool shuttingDown_ = false;
+    bool fileRunning_ = false;
+    quint64 fileGeneration_ = 0;
+    std::shared_ptr<std::atomic_bool> fileCancellation_;
+    QQueue<ItemWrite> fileQueue_;
 };
 
 }  // namespace core

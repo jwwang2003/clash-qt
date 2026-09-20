@@ -25,6 +25,7 @@ std::optional<Endpoint> fromEnvironment() {
     endpoint.port = controller.mid(colon + 1).toUShort();
     endpoint.secret = env.value("CLASH_QT_SECRET");
     if (endpoint.host.isEmpty() || endpoint.host == "0.0.0.0") endpoint.host = "127.0.0.1";
+    if (endpoint.host == "::" || endpoint.host == "[::]") endpoint.host = "::1";
     return endpoint.isValid() ? std::optional(endpoint) : std::nullopt;
 }
 
@@ -34,10 +35,9 @@ QString vergeConfigPath() {
 #ifdef Q_OS_MACOS
     const QString root = QDir::homePath() + "/Library/Application Support/" + kVergeAppId;
 #elif defined(Q_OS_WIN)
-    const QString root =
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + kVergeAppId;
+    const QString root = qEnvironmentVariable("APPDATA", QDir::homePath() + "/AppData/Roaming") + "/" + kVergeAppId;
 #else
-    const QString root = QDir::homePath() + "/.local/share/" + kVergeAppId;
+    const QString root = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/" + kVergeAppId;
 #endif
     return root + "/config.yaml";
 }
@@ -59,6 +59,7 @@ std::optional<Endpoint> endpointFromConfigFile(const QString &path) {
         endpoint.port = value.mid(colon + 1).toUShort();
         // mihomo binds 0.0.0.0 to listen everywhere; we still dial it locally.
         if (endpoint.host.isEmpty() || endpoint.host == "0.0.0.0") endpoint.host = "127.0.0.1";
+        if (endpoint.host == "::" || endpoint.host == "[::]") endpoint.host = "::1";
 
         if (const YAML::Node secret = root["secret"]; secret && secret.IsScalar()) {
             endpoint.secret = QString::fromStdString(secret.as<std::string>());

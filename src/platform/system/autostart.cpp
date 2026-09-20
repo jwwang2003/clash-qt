@@ -3,6 +3,8 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QSaveFile>
+#include <QMutex>
 #include <QFileInfo>
 #include <QSettings>
 #include <QStandardPaths>
@@ -14,7 +16,8 @@
 namespace platform {
 namespace {
 
-QString g_lastError;
+thread_local QString g_lastError;
+QRecursiveMutex g_autostartMutex;
 
 QString executablePath() { return QCoreApplication::applicationFilePath(); }
 
@@ -49,18 +52,20 @@ QString agentPlist() {
 </dict>
 </plist>
 )")
-        .arg(agentLabel(), executablePath());
+        .arg(agentLabel().toHtmlEscaped(), executablePath().toHtmlEscaped());
 }
 
 bool readsAsEnabled() {
     QFile file(agentPath());
+    if (!file.exists()) return false;
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        g_lastError = file.errorString();
         return false;
     }
     // A stale entry left by a moved binary would never launch this build, so it
     // reads as disabled rather than as a silently broken "on".
     return QString::fromUtf8(file.readAll())
-        .contains(QStringLiteral("<string>%1</string>").arg(executablePath()));
+        .contains(QStringLiteral("<string>%1</string>").arg(executablePath().toHtmlEscaped()));
 }
 
 bool write(bool enabled) {
@@ -72,13 +77,20 @@ bool write(bool enabled) {
         }
         return true;
     }
-    QDir().mkpath(QDir::homePath() + QStringLiteral("/Library/LaunchAgents"));
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        g_lastError = QStringLiteral("Cannot create %1").arg(QFileInfo(path).absolutePath());
+        return false;
+    }
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         g_lastError = file.errorString();
         return false;
     }
-    file.write(agentPlist().toUtf8());
+    const QByteArray contents = agentPlist().toUtf8();
+    if (file.write(contents) != contents.size() || !file.commit()) {
+        g_lastError = file.errorString();
+        return false;
+    }
     return true;
 }
 
@@ -93,7 +105,12 @@ QSettings runKey() {
 }
 
 bool readsAsEnabled() {
-    const QString value = runKey().value(QCoreApplication::applicationName()).toString();
+    QSettings settings = runKey();
+    QString value = settings.value(QCoreApplication::applicationName()).toString();
+    if (settings.status() != QSettings::NoError) {
+        g_lastError = QStringLiteral("Cannot read the Run registry key");
+        return false;
+    }
     return value.remove(QLatin1Char('"')).compare(QDir::toNativeSeparators(executablePath()),
                                                   Qt::CaseInsensitive) == 0;
 }
@@ -126,19 +143,22 @@ QString desktopPath() {
 }
 
 QString desktopEntry() {
+    QString quoted = executablePath();
+    quoted.replace('\\', "\\\\\\\\").replace('"', "\\\\\"").replace('`', "\\\\`").replace('$', "\\\\$").replace('%', "%%");
     return QStringLiteral("[Desktop Entry]\n"
                           "Type=Application\n"
                           "Name=%1\n"
-                          "Exec=%2\n"
+                          "Exec=\"%2\"\n"
                           "Terminal=false\n"
                           "X-GNOME-Autostart-enabled=true\n")
-        .arg(QCoreApplication::applicationName(), executablePath());
+        .arg(QCoreApplication::applicationName(), quoted);
 }
 
 bool readsAsEnabled() {
-    QSettings entry(desktopPath(), QSettings::IniFormat);
-    entry.beginGroup(QStringLiteral("Desktop Entry"));
-    return entry.value(QStringLiteral("Exec")).toString() == executablePath();
+    QFile file(desktopPath());
+    if (!file.exists()) return false;
+    if (!file.open(QIODevice::ReadOnly)) { g_lastError = file.errorString(); return false; }
+    return QString::fromUtf8(file.readAll()) == desktopEntry();
 }
 
 bool write(bool enabled) {
@@ -150,13 +170,20 @@ bool write(bool enabled) {
         }
         return true;
     }
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        g_lastError = QStringLiteral("Cannot create %1").arg(QFileInfo(path).absolutePath());
+        return false;
+    }
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         g_lastError = file.errorString();
         return false;
     }
-    file.write(desktopEntry().toUtf8());
+    const QByteArray contents = desktopEntry().toUtf8();
+    if (file.write(contents) != contents.size() || !file.commit()) {
+        g_lastError = file.errorString();
+        return false;
+    }
     return true;
 }
 
@@ -173,6 +200,8 @@ bool Autostart::isSupported() {
 }
 
 bool Autostart::isEnabled() {
+    const QMutexLocker lock(&g_autostartMutex);
+    g_lastError.clear();
 #if defined(Q_OS_MACOS) || defined(Q_OS_WIN) || defined(Q_OS_LINUX)
     return readsAsEnabled();
 #else
@@ -181,6 +210,7 @@ bool Autostart::isEnabled() {
 }
 
 bool Autostart::setEnabled(bool enabled) {
+    const QMutexLocker lock(&g_autostartMutex);
     g_lastError.clear();
 #if defined(Q_OS_MACOS) || defined(Q_OS_WIN) || defined(Q_OS_LINUX)
     return write(enabled);
