@@ -4,6 +4,9 @@
 #include <cmath>
 
 #include <QAreaSeries>
+#include <QAbstractScrollArea>
+#include <QCoreApplication>
+#include <QWheelEvent>
 #include <QCheckBox>
 #include <QGraphsTheme>
 #include <QHBoxLayout>
@@ -13,7 +16,7 @@
 #include <QQmlEngine>
 #include <QQmlError>
 #include <QQuickItem>
-#include <QQuickWidget>
+#include <QQuickView>
 #include <QTimer>
 #include <QSurfaceFormat>
 #include <QShowEvent>
@@ -104,18 +107,25 @@ TrafficGraph::TrafficGraph(QWidget *parent) : QWidget(parent) {
     for (QObject *object : QList<QObject *>{timeAxis_, rateAxis_, graphTheme_, downloadArea_, uploadArea_})
         QQmlEngine::setObjectOwnership(object, QQmlEngine::CppOwnership);
 
-    quick_ = new QQuickWidget(this);
+    quick_ = new QQuickView;
     quick_->setObjectName("trafficGraphsView");
-    // Antialias area boundaries in the GPU render target before compositing.
+    // A native Quick window retains threaded, display-synchronized rendering.
+    // Do not replace this with QQuickWidget: it disables that render loop.
     QSurfaceFormat surfaceFormat = quick_->format();
     surfaceFormat.setSamples(4);
+    surfaceFormat.setSwapInterval(1);
     quick_->setFormat(surfaceFormat);
-    quick_->setResizeMode(QQuickWidget::SizeRootObjectToView);
-    quick_->setMinimumHeight(220);
-    quick_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    quick_->setAccessibleName(tr("Traffic area graph"));
-    quick_->setAccessibleDescription(tr("Download and upload throughput over the selected time window; averages and peaks are shown below."));
-    layout->addWidget(quick_, 1);
+    quick_->setResizeMode(QQuickView::SizeRootObjectToView);
+    viewContainer_ = QWidget::createWindowContainer(quick_, this);
+    viewContainer_->setObjectName("trafficGraphsContainer");
+    quick_->installEventFilter(this);
+    viewContainer_->setMinimumHeight(220);
+    viewContainer_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // The plot is hover-only; keep keyboard navigation on the widget controls.
+    viewContainer_->setFocusPolicy(Qt::NoFocus);
+    viewContainer_->setAccessibleName(tr("Traffic area graph"));
+    viewContainer_->setAccessibleDescription(tr("Download and upload throughput over the selected time window; averages and peaks are shown below."));
+    layout->addWidget(viewContainer_, 1);
     errorLabel_ = new QLabel(this);
     errorLabel_->setObjectName("errorBanner");
     errorLabel_->setWordWrap(true);
@@ -146,13 +156,13 @@ TrafficGraph::TrafficGraph(QWidget *parent) : QWidget(parent) {
         {"hintColor", theme::tokens().textDim},
         {"hoverColor", theme::tokens().textDim}
     });
-    connect(quick_, &QQuickWidget::statusChanged, this, [this](QQuickWidget::Status status) {
-        if (status == QQuickWidget::Error) {
+    connect(quick_, &QQuickView::statusChanged, this, [this](QQuickView::Status status) {
+        if (status == QQuickView::Error) {
             QStringList reasons;
             for (const auto &error : quick_->errors()) reasons.append(error.toString());
             errorLabel_->setText(tr("Traffic graph could not load: %1").arg(reasons.join('\n')));
             errorLabel_->show();
-        } else if (status == QQuickWidget::Ready) {
+        } else if (status == QQuickView::Ready) {
             errorLabel_->hide();
             connect(quick_->rootObject(), SIGNAL(sampleHovered(double)), this, SLOT(showSampleAt(double)));
             connect(quick_->rootObject(), SIGNAL(hoverEnded()), this, SLOT(clearHover()));
@@ -161,10 +171,10 @@ TrafficGraph::TrafficGraph(QWidget *parent) : QWidget(parent) {
             refresh();
         }
     });
-    connect(quick_, &QQuickWidget::sceneGraphError, this, [this](QQuickWindow::SceneGraphError, const QString &message) {
+    connect(quick_, &QQuickView::sceneGraphError, this, [this](QQuickWindow::SceneGraphError, const QString &message) {
         errorLabel_->setText(tr("Traffic graph rendering failed: %1").arg(message));
         errorLabel_->show();
-    });
+    }, Qt::QueuedConnection);
     quick_->loadFromModule("ClashQt", "TrafficGraph");
     connect(theme::notifier(), &theme::Notifier::changed, this, &TrafficGraph::applyTheme);
     connect(windowBox_, &QComboBox::currentIndexChanged, this, [this] { clearHover(); refresh(true); });
@@ -189,8 +199,30 @@ TrafficGraph::TrafficGraph(QWidget *parent) : QWidget(parent) {
 
 TrafficGraph::~TrafficGraph() {
     // Destroy the QML view before the externally owned axes, theme, and series.
-    delete quick_;
+    // The container owns the QQuickView and shuts down its render thread.
+    quick_->removeEventFilter(this);
+    delete viewContainer_;
     quick_ = nullptr;
+}
+
+bool TrafficGraph::eventFilter(QObject *object, QEvent *event) {
+    if (object == quick_ && event->type() == QEvent::Wheel) {
+        // Native child windows do not propagate wheel input through QWidget
+        // parents. The hover-only plot should scroll the surrounding Home page.
+        for (auto *ancestor = parentWidget(); ancestor; ancestor = ancestor->parentWidget()) {
+            auto *scroll = qobject_cast<QAbstractScrollArea *>(ancestor);
+            if (!scroll) continue;
+            const auto *wheel = static_cast<QWheelEvent *>(event);
+            QWheelEvent forwarded(scroll->viewport()->mapFromGlobal(wheel->globalPosition()),
+                                  wheel->globalPosition(), wheel->pixelDelta(), wheel->angleDelta(),
+                                  wheel->buttons(), wheel->modifiers(), wheel->phase(),
+                                  wheel->inverted(), wheel->source(), wheel->pointingDevice());
+            QCoreApplication::sendEvent(scroll->viewport(), &forwarded);
+            event->setAccepted(forwarded.isAccepted());
+            return true;
+        }
+    }
+    return QWidget::eventFilter(object, event);
 }
 
 void TrafficGraph::append(quint64 up, quint64 down) {
@@ -381,7 +413,7 @@ void TrafficGraph::applyTheme() {
     uploadArea_->setBorderColor(uploadColor);
     downloadToggle_->setStyleSheet(QString("QCheckBox { color: %1; }").arg(t.accent.name()));
     uploadToggle_->setStyleSheet(QString("QCheckBox { color: %1; }").arg(uploadColor.name()));
-    quick_->setClearColor(t.surface);
+    quick_->setColor(t.surface);
     if (auto *root = quick_->rootObject()) {
         root->setProperty("hintColor", t.textDim);
         root->setProperty("hoverColor", t.textDim);

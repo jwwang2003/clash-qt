@@ -10,8 +10,18 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTableView>
-#include <QQuickWidget>
+#include <QQuickView>
 #include <QQuickItem>
+#include <QScreen>
+#include <QStackedWidget>
+#include <QMenu>
+#include <QMutex>
+#include <QPointer>
+#include <QPainter>
+#include <QWheelEvent>
+#include <QEventLoop>
+#include <QTimer>
+#include <memory>
 #include <QLineSeries>
 #include <QValueAxis>
 #include "ui/traffic_graph.h"
@@ -106,9 +116,9 @@ private slots:
         auto *flushFake = page.findChild<QPushButton *>("flushFakeIpButton");
         QVERIFY(chart && rates && totals && result && flush && flushFake);
         QVERIFY(chart->height() >= 280);
-        auto *graphView = chart->findChild<QQuickWidget *>("trafficGraphsView");
+        auto *graphView = page.windowHandle()->findChild<QQuickView *>("trafficGraphsView");
         QVERIFY(graphView);
-        QTRY_COMPARE(graphView->status(), QQuickWidget::Ready);
+        QTRY_COMPARE(graphView->status(), QQuickView::Ready);
         QCOMPARE(chart->findChildren<QAreaSeries *>().size(), 2);
         QVERIFY(rates->geometry().bottom() < chart->geometry().top());
         QVERIFY(chart->geometry().bottom() < totals->geometry().top());
@@ -126,6 +136,23 @@ private slots:
             QImage image(widget->size(), QImage::Format_ARGB32_Premultiplied);
             image.fill(widget->palette().color(QPalette::Window));
             widget->render(&image);
+            // QWidget::render does not include native child windows. Composite
+            // the Quick scene explicitly; this still captures only our fixture.
+            const QImage plotImage = graphView->grabWindow();
+            if (!plotImage.isNull()) {
+                auto *container = chart->findChild<QWidget *>("trafficGraphsContainer");
+                QPainter painter(&image);
+                const QPoint origin = widget->mapFromGlobal(container->mapToGlobal(QPoint()));
+                QRect target(origin, container->size());
+                QRect clip = target;
+                for (QWidget *parent = container->parentWidget(); parent && parent != widget;
+                     parent = parent->parentWidget()) {
+                    if (!widget->isAncestorOf(parent)) break;
+                    clip &= QRect(widget->mapFromGlobal(parent->mapToGlobal(QPoint())), parent->size());
+                }
+                painter.setClipRect(clip);
+                painter.drawImage(target, plotImage);
+            }
             return image.save(QDir(output).filePath(QString("home-synthetic-%1-%2.png")
                                   .arg(QString::fromLatin1(QTest::currentDataTag()), suffix)));
         };
@@ -142,8 +169,9 @@ private slots:
         ui::TrafficGraph graph;
         graph.resize(700, 340);
         graph.show();
-        auto *quick = graph.findChild<QQuickWidget *>("trafficGraphsView");
-        QTRY_COMPARE(quick->status(), QQuickWidget::Ready);
+        auto *quick = graph.windowHandle()->findChild<QQuickView *>("trafficGraphsView");
+        QVERIFY(quick);
+        QTRY_COMPARE(quick->status(), QQuickView::Ready);
         graph.append(1000, 2000);
         QTest::qWait(25);
         graph.append(1200, 2400);
@@ -152,6 +180,9 @@ private slots:
         QVERIFY(line && pause);
         QTRY_COMPARE(line->count(), 2);
         QSignalSpy frames(line, &QLineSeries::pointsReplaced);
+        // Native windows need exposure and pipeline startup before steady frames.
+        QTRY_VERIFY(frames.count() >= 3);
+        frames.clear();
         const auto initial = line->points();
         QTest::qWait(180);
         // More than a statistics timer tick: traffic must move between samples.
@@ -181,6 +212,133 @@ private slots:
         graph.clear();
         QCOMPARE(line->count(), 0);
         QVERIFY(!quick->rootObject()->property("animate").toBool());
+    }
+
+    void trafficNativeWindowFollowsLayoutAndPageVisibility() {
+        QStackedWidget pages;
+        auto *graph = new ui::TrafficGraph;
+        pages.addWidget(graph);
+        pages.addWidget(new QWidget);
+        pages.resize(700, 380);
+        pages.show();
+        auto *quick = pages.windowHandle()->findChild<QQuickView *>("trafficGraphsView");
+        auto *container = graph->findChild<QWidget *>("trafficGraphsContainer");
+        QVERIFY(quick && container);
+        QPointer<QQuickView> lifetime(quick);
+        QTRY_COMPARE(quick->status(), QQuickView::Ready);
+        QSignalSpy errors(quick, &QQuickWindow::sceneGraphError);
+        QTRY_COMPARE(quick->size(), container->size());
+        pages.resize(850, 480);
+        QTRY_COMPARE(quick->size(), container->size());
+        QTRY_COMPARE(quick->rootObject()->size(), QSizeF(container->size()));
+        QCOMPARE(container->focusPolicy(), Qt::NoFocus);
+        graph->append(1000, 2000);
+        QTest::qWait(200);
+        graph->append(1200, 2400);
+        auto *inspection = graph->findChild<QLabel *>("trafficInspection");
+        auto *plot = quick->rootObject()->findChild<QQuickItem *>("trafficGraphsPlot");
+        QVERIFY(inspection && plot);
+        const QRectF plotArea = plot->property("plotArea").toRectF();
+        QVERIFY(!plotArea.isEmpty());
+        QTest::mouseMove(quick, QPoint(qRound(plotArea.right() - 1), qRound(plotArea.center().y())));
+        QTRY_VERIFY(inspection->text().contains("ago"));
+        QTest::mouseMove(quick, QPoint(1, 1));
+        QTRY_VERIFY(inspection->text().contains("Hover to inspect"));
+        auto *windowBox = graph->findChild<QComboBox *>("trafficTimeWindow");
+        QVERIFY(windowBox);
+        pages.activateWindow();
+        windowBox->setFocus();
+        QTest::keyClick(windowBox, Qt::Key_Tab);
+        QTRY_VERIFY(graph->findChild<QPushButton *>("trafficPause")->hasFocus());
+        windowBox->showPopup();
+        auto *menu = windowBox->findChild<QMenu *>("comboPopupMenu");
+        QVERIFY(menu);
+        QTRY_VERIFY(menu->isVisible());
+        menu->actions().at(1)->trigger();
+        windowBox->hidePopup();
+        QCOMPARE(windowBox->currentIndex(), 1);
+        QCOMPARE(graph->findChild<QValueAxis *>("trafficTimeAxis")->min(), -300.0);
+        pages.setCurrentIndex(1);
+        QTRY_VERIFY(!quick->isVisible());
+        QVERIFY(!quick->rootObject()->property("animate").toBool());
+        pages.setCurrentIndex(0);
+        QTRY_VERIFY(quick->isVisible());
+        QVERIFY(quick->rootObject()->property("animate").toBool());
+        QCOMPARE(errors.count(), 0);
+        delete graph;
+        QVERIFY(lifetime.isNull());
+    }
+
+    void trafficWheelScrollsHomePage() {
+        core::MihomoClient client;
+        ui::HomePage page(&client);
+        page.resize(700, 500);
+        page.show();
+        auto *quick = page.windowHandle()->findChild<QQuickView *>("trafficGraphsView");
+        auto *scroll = page.findChild<QScrollArea *>();
+        QVERIFY(quick && scroll);
+        QTRY_COMPARE(quick->status(), QQuickView::Ready);
+        auto *bar = scroll->verticalScrollBar();
+        QVERIFY(bar->maximum() > 0);
+        const QPointF position(quick->width() / 2.0, quick->height() / 2.0);
+        QWheelEvent wheel(position, quick->mapToGlobal(position), QPoint(), QPoint(0, -120),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(quick, &wheel);
+        QTRY_VERIFY(bar->value() > 0);
+    }
+
+    void trafficNativeFrameTiming() {
+        if (!qEnvironmentVariableIsSet("CLASH_QT_MEASURE_FRAMES"))
+            QSKIP("Set CLASH_QT_MEASURE_FRAMES=1 on a native display to measure frame pacing");
+        QVERIFY2(QGuiApplication::platformName() != "offscreen",
+                 "Frame pacing must be measured on a native display, outside CTest");
+        // Shared state also survives an in-flight render-thread callback at teardown.
+        struct Timing {
+            QMutex mutex;
+            QElapsedTimer clock;
+            QList<qint64> timestamps;
+        };
+        auto timing = std::make_shared<Timing>();
+        ui::TrafficGraph graph;
+        graph.resize(800, 380);
+        graph.show();
+        graph.raise();
+        graph.activateWindow();
+        auto *quick = graph.windowHandle()->findChild<QQuickView *>("trafficGraphsView");
+        QVERIFY(quick);
+        QTRY_VERIFY(quick->isExposed());
+        graph.append(1000, 2000);
+        QTest::qWait(100);
+        graph.append(1200, 2400);
+        QTest::qWait(500); // Warm up pipeline creation and the animation driver.
+        timing->clock.start();
+        const auto connection = connect(quick, &QQuickWindow::frameSwapped, &graph, [timing] {
+            QMutexLocker lock(&timing->mutex);
+            timing->timestamps.append(timing->clock.nsecsElapsed());
+        }, Qt::DirectConnection);
+        // A real event loop avoids QtTest's polling sleeps limiting GUI frames.
+        QEventLoop measurement;
+        QTimer::singleShot(5000, &measurement, &QEventLoop::quit);
+        measurement.exec();
+        disconnect(connection);
+        QList<qint64> timestamps;
+        {
+            QMutexLocker lock(&timing->mutex);
+            timestamps = timing->timestamps;
+        }
+        QVERIFY(timestamps.size() > 2);
+        QList<double> intervals;
+        for (qsizetype i = 1; i < timestamps.size(); ++i)
+            intervals.append((timestamps[i] - timestamps[i - 1]) / 1e6);
+        std::sort(intervals.begin(), intervals.end());
+        const double mean = (timestamps.last() - timestamps.first()) / 1e6 / intervals.size();
+        qInfo().nospace() << "Screen: " << quick->screen()->name()
+            << ", reported refresh: " << quick->screen()->refreshRate()
+            << " Hz, frameSwapped: " << 1000.0 / mean << " FPS, mean: " << mean
+            << " ms, median: " << intervals[intervals.size() / 2]
+            << " ms, p95: " << intervals[intervals.size() * 95 / 100] << " ms";
+        // Deliberately no 120 FPS assertion: display modes, ProMotion, and power
+        // policy vary. frameSwapped measures submissions, not physical scanout.
     }
 
     void emptyProxySnapshotClearsMembersAndAction() {

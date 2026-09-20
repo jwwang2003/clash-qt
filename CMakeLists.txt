@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.9 REQUIRED COMPONENTS Widgets Network WebSockets Qml QuickWidgets Graphs Concurrent)
+find_package(Qt6 6.9 REQUIRED COMPONENTS Widgets Network WebSockets Qml Quick Graphs Concurrent)
 find_package(yaml-cpp REQUIRED)
 
 
@@ -14,7 +14,7 @@ set(CMAKE_AUTORCC ON)
 
 set_source_files_properties(src/ui/qml/TrafficGraph.qml PROPERTIES QT_RESOURCE_ALIAS TrafficGraph.qml)
 function(add_traffic_graph_module target)
-    target_link_libraries(${target} PRIVATE Qt6::QuickWidgets Qt6::Graphs)
+    target_link_libraries(${target} PRIVATE Qt6::Quick Qt6::Graphs)
     qt_add_qml_module(${target}
         URI ClashQt
         VERSION 1.0

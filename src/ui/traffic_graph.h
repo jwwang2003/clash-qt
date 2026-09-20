@@ -11,7 +11,7 @@ class QGraphsTheme;
 class QLabel;
 class QLineSeries;
 class QPushButton;
-class QQuickWidget;
+class QQuickView;
 class QValueAxis;
 
 namespace ui {
@@ -33,6 +33,7 @@ private slots:
     void renderFrame();
 
 private:
+    bool eventFilter(QObject *object, QEvent *event) override;
     void refresh(bool resetScale = false);
     void updateAnimationState();
     void showEvent(QShowEvent *event) override;
@@ -58,7 +59,8 @@ private:
     QLabel *statistics_;
     QLabel *inspection_;
     QLabel *errorLabel_;
-    QQuickWidget *quick_;
+    QQuickView *quick_;
+    QWidget *viewContainer_;
     QValueAxis *timeAxis_;
     QValueAxis *rateAxis_;
     QGraphsTheme *graphTheme_;

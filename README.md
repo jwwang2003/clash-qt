@@ -2,8 +2,8 @@
 
 A Qt 6 / C++ desktop manager for the [mihomo](https://github.com/MetaCubeX/mihomo)
 proxy core. The app uses Qt Widgets, with a native Qt Graphs 2D area graph
-embedded through QQuickWidget. There is no WebView. Profile enhancement scripts
-run in Qt's JavaScript engine.
+embedded through QQuickView and a native window container. There is no WebView.
+Profile enhancement scripts run in Qt's JavaScript engine.
 
 Clash Verge Rev is the feature reference. **This is an independent client with
 partial feature parity, not a complete replacement.** Implemented workflows and
@@ -12,7 +12,7 @@ an additional native Qt reference.
 
 ## Build and test
 
-Requires Qt 6.9+ with Widgets, Network, WebSockets, Qml, QuickWidgets, Graphs and Concurrent,
+Requires Qt 6.9+ with Widgets, Network, WebSockets, Qml, Quick, Graphs and Concurrent,
 CMake 3.21+, a C++20 compiler and yaml-cpp.
 
 ```sh
@@ -33,6 +33,30 @@ Windows, installation also runs Qt’s runtime deployment tool. Linux uses syste
 runtime dependencies. The mihomo executable is still supplied separately.
 The macOS bundle is a development artifact; mihomo distribution, release signing
 and installers still need a release pipeline.
+
+### Display refresh rate
+
+The traffic graph uses a native `QQuickView` in a widget window container, with
+vsync enabled. On macOS, Qt Quick uses Metal and its threaded render loop by
+default, allowing animation to follow a 120 Hz display without a fixed FPS timer.
+Scrolling uses elapsed time, so its speed stays the same on other refresh rates.
+Statistics update separately every 250 ms; paused, hidden, or empty graphs stop
+animating. The rest of the Qt Widgets interface continues to repaint on demand.
+
+To measure the graph on a native macOS display using synthetic traffic:
+
+```sh
+QT_QPA_PLATFORM=cocoa QSG_INFO=1 CLASH_QT_MEASURE_FRAMES=1 \
+  ./build/data-pages-tests trafficNativeFrameTiming
+```
+
+Keep the test window visible. The output reports the render loop, graphics API,
+screen refresh rate, and five seconds of `frameSwapped` timing (FPS, mean, median,
+and p95 interval). At 120 Hz the target mean is about 8.33 ms. This measures frame
+submissions, not physical scanout; ProMotion, display settings, power policy, and
+system load can change the result. Headless CTest checks behavior, not refresh rate.
+For a display-move check, repeat on each monitor or move the test window while it
+runs. No refresh rate is cached or hardcoded in the application.
 
 ## Running
 
