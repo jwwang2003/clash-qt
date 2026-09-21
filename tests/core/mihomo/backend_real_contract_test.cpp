@@ -1,5 +1,5 @@
 // The MihomoBackend contract, run against the REAL backend.
-// Specification: .refactor/BACKEND_CONTRACT.md revision backend-r2, section 10.
+// Specification: .refactor/BACKEND_CONTRACT.md revision backend-r3, section 10.
 //
 // WHY THIS FILE EXISTS ALONGSIDE tests/contracts/backend/backend_contract_test.cpp
 //
@@ -14,7 +14,14 @@
 // process and a real socket without either editing the frozen suite or building
 // the hazard into the shipping code. So the frozen suite is NOT run verbatim
 // here; this file asserts the same eleven behaviours section 10 names, against
-// the real engine, with real child processes and a real loopback controller.
+// the real BACKEND, with real child processes and a real loopback controller.
+//
+// It does NOT drive the real mihomo: the controller is a loopback fixture and
+// the child is clash-qt-fake-core. That is deliberate - the hazards below need
+// gates the engine has no way to offer - but it is also why backend-r3 B4
+// refuses to let section 10's "additionally passes against the locally built
+// mihomo" rest on this file's name. That claim is carried by
+// backend_real_core_test.cpp, which names the bullets the engine cannot drive.
 //
 // The one case with no honest real-engine equivalent is the negative arm of
 // "generation is bumped before in-flight work is aborted": proving the hazard
@@ -590,6 +597,273 @@ class BackendRealContractTest : public QObject {
         backend.removeObserver(&observer);
     }
 
+    // --- 5, second half. The hard cap is ABSOLUTE.
+    //
+    // backend-r3 names this a weak-coverage item: the case above asserts only
+    // that the core outlived the hard cap, so making readyHardDeadlineMs_
+    // refreshable survives it. What follows bounds the run from ABOVE while log
+    // output never stops, so a refreshable hard cap has nowhere to hide.
+
+    void theReadinessHardCapIsNotRefreshedByLogOutput() {
+        testsupport::LoopbackServer controller;
+        QVERIFY(controller.listen(QString()));
+        // Never becomes ready: only a deadline can end this run.
+        controller.route("GET", "/version",
+                         testsupport::LoopbackServer::Reply::failure(503, "{}"));
+
+        testsupport::FakeCore core(environment_->dataDir());
+        QVERIFY2(core.isValid(), qPrintable(core.errorString()));
+        core.validationSucceeds();
+        // Enough gated lines to keep talking for 3.6 s - six times the hard cap.
+        for (int index = 0; index < kChatteringLines; ++index) {
+            core.printsLine(QStringLiteral("[INFO] still downloading geodata %1").arg(index));
+            core.waitsFor(QStringLiteral("line%1").arg(index));
+        }
+        QVERIFY(core.runsForever().commit());
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+        backend.setBinaryPath(core.binaryPath());
+        core::CoreTimings timings;
+        timings.probeIntervalMs = 25;
+        timings.probeTimeoutMs = 200;
+        // The idle deadline is set far beyond anything this case spans, so it
+        // CANNOT be what ends the run. Only the hard cap can.
+        timings.idleDeadlineMs = 5000;
+        timings.hardCapMs = 600;
+        timings.terminateWaitMs = 200;
+        backend.setTimings(timings);
+
+        QElapsedTimer elapsed;
+        elapsed.start();
+        backend.start(writeConfig(controller.port()), environment_->dataDir());
+        QTRY_COMPARE(backend.state(), cb::CoreState::Starting);
+
+        // A log line every 150 ms, without a pause, for as long as the core
+        // lives. Every one of them refreshes the idle deadline; none of them may
+        // touch the hard cap.
+        int released = 0;
+        while (released < kChatteringLines && backend.state() == cb::CoreState::Starting) {
+            QTest::qWait(150);
+            if (backend.state() != cb::CoreState::Starting) break;
+            QVERIFY(core.release(QStringLiteral("line%1").arg(released)));
+            ++released;
+        }
+        const qint64 lifetime = elapsed.elapsed();
+
+        QVERIFY2(released >= 3,
+                 qPrintable(QStringLiteral("only %1 log lines were released before the core "
+                                           "died: it was never given the chance to refresh "
+                                           "anything and this case proves nothing")
+                                .arg(released)));
+        QVERIFY2(backend.state() != cb::CoreState::Starting,
+                 qPrintable(QStringLiteral("the core was still Starting after %1 ms of "
+                                           "uninterrupted log output, %2 times its %3 ms hard "
+                                           "cap: the hard cap was refreshed by log output and "
+                                           "is not absolute")
+                                .arg(lifetime)
+                                .arg(lifetime / timings.hardCapMs)
+                                .arg(timings.hardCapMs)));
+        QVERIFY2(lifetime >= timings.hardCapMs,
+                 "the core died before its own hard cap expired");
+        QVERIFY2(lifetime < timings.idleDeadlineMs,
+                 qPrintable(QStringLiteral("the run lasted %1 ms, past the %2 ms idle deadline, "
+                                           "so the deadline that ended it cannot be shown to be "
+                                           "the hard cap")
+                                .arg(lifetime)
+                                .arg(timings.idleDeadlineMs)));
+
+        QTRY_VERIFY_WITH_TIMEOUT(backend.state() == cb::CoreState::Failed ||
+                                     backend.state() == cb::CoreState::Stopped,
+                                 5000);
+        QVERIFY(backend.drainPendingEvents());
+        QVERIFY(!observer.coreFailures.empty());
+        QCOMPARE(observer.coreFailures.front().error.code, cb::ErrorCode::ReadyTimeout);
+        backend.removeObserver(&observer);
+    }
+
+    // --- 1, second half. Stop terminates ONLY a managed core.
+    //
+    // backend-r3 names this a weak-coverage item too: no case in this suite ever
+    // had a managed core and an external controller alive at the same moment, so
+    // the word "only" was never under test. Here both are live, and the external
+    // one has to still be serving after the managed child has been terminated.
+
+    void stopTerminatesOnlyTheManagedCoreAndLeavesAnExternalControllerAlive() {
+        testsupport::LoopbackServer managed;   // what the managed child listens on
+        testsupport::LoopbackServer external;  // a controller nobody here started
+        QVERIFY(managed.listen(QString()));
+        QVERIFY(external.listen());
+        scriptController(managed, R"({"version":"managed-core"})");
+        scriptController(external, R"({"version":"external-core"})");
+
+        testsupport::FakeCore core(environment_->dataDir());
+        QVERIFY2(core.isValid(), qPrintable(core.errorString()));
+        QVERIFY(core.validationSucceeds().printsLine(QStringLiteral("[INFO] up")).runsForever().commit());
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+        backend.setBinaryPath(core.binaryPath());
+        backend.start(writeConfig(managed.port()), environment_->dataDir());
+        QTRY_COMPARE(backend.state(), cb::CoreState::Running);
+        const int childInvocations = core.invocationCount();
+
+        // Both alive, and independently observable - which is what section 1
+        // says the contract must answer directly instead of making a consumer
+        // compare endpoints by hand.
+        backend.attach(endpointOf(external));
+        QVERIFY(external.waitFor([&] { return backend.isConnected(); }));
+        QCOMPARE(backend.ownership(), cb::Ownership::Managed);
+        QCOMPARE(backend.attachmentOwnership(), cb::Ownership::Attached);
+        QVERIFY(backend.isExternalControllerConnected());
+        QCOMPARE(backend.managedEndpoint().port, managed.port());
+        QCOMPARE(backend.currentEndpoint().port, external.port());
+        const int externalVersionsBefore = external.requestCount("GET", "/version");
+
+        const cb::RequestId stopRequest = backend.stop();
+        QVERIFY(stopRequest != cb::RequestId::Invalid);
+
+        // The managed child is gone. Stopped is reached only when its exit is
+        // observed, so this is the child's death, not a state flag.
+        QTRY_COMPARE(backend.state(), cb::CoreState::Stopped);
+        QVERIFY(backend.drainPendingEvents());
+        QCOMPARE(static_cast<int>(observer.stops.size()), 1);
+        QCOMPARE(observer.stops.front().request, stopRequest);
+        QVERIFY(observer.stops.front().confirmed);
+        QVERIFY(!cb::isValid(backend.managedEndpoint()));
+        QCOMPARE(backend.ownership(), cb::Ownership::None);
+        QCOMPARE(core.invocationCount(), childInvocations);  // nothing relaunched
+
+        // And the external controller was not touched by any of it: still
+        // attached, still connected, and still answering. Re-issuing against it
+        // proves that rather than assuming it.
+        QVERIFY2(backend.isAttached(),
+                 "stop() detached a controller this component never started");
+        QCOMPARE(backend.currentEndpoint().port, external.port());
+        QCOMPARE(backend.attachmentOwnership(), cb::Ownership::Attached);
+        const cb::RequestId probe = backend.refreshVersion();
+        QVERIFY(probe != cb::RequestId::Invalid);
+        QVERIFY2(external.waitFor([&] {
+                     const auto *event = observer.find(QStringLiteral("version"), probe);
+                     return event && event->completion.isOk();
+                 }),
+                 "the external controller stopped answering after a stop that was "
+                 "supposed to reach only the managed core");
+        QCOMPARE(observer.find(QStringLiteral("version"), probe)->payload,
+                 QStringLiteral("external-core"));
+        QVERIFY(external.requestCount("GET", "/version") > externalVersionsBefore);
+        QVERIFY(!external.sawUnexpectedRequest());
+        backend.removeObserver(&observer);
+    }
+
+    // --- section 5.2. The probe disconnects BEFORE it aborts.
+    //
+    // The third weak-coverage item backend-r3 names. Inverting the two
+    // statements in cancelProbe() used to change nothing observable, because the
+    // handler's own identity guard swallowed the late completion. CoreProcess
+    // now counts what that guard swallows, so the ordering is a fact a test can
+    // assert instead of a comment.
+
+    void aCancelledReadinessProbeDisconnectsBeforeItAborts() {
+        testsupport::LoopbackServer controller;
+        QVERIFY(controller.listen(QString()));
+        scriptController(controller);
+        // The probe is parked on the wire: sent, unanswered, and abortable.
+        auto *held = controller.hold("GET", "/version");
+
+        testsupport::FakeCore core(environment_->dataDir());
+        QVERIFY2(core.isValid(), qPrintable(core.errorString()));
+        QVERIFY(core.validationSucceeds().printsLine(QStringLiteral("[INFO] up")).runsForever().commit());
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+        backend.setBinaryPath(core.binaryPath());
+        core::CoreTimings timings;
+        timings.probeIntervalMs = 25;
+        // Nothing here may expire: the cancellation is the only thing that ends
+        // the held probe.
+        timings.probeTimeoutMs = 30000;
+        timings.idleDeadlineMs = 30000;
+        timings.hardCapMs = 60000;
+        timings.terminateWaitMs = 200;
+        backend.setTimings(timings);
+
+        backend.start(writeConfig(controller.port()), environment_->dataDir());
+        QVERIFY2(held->waitForPending(1), qPrintable(controller.pendingReport()));
+        QCOMPARE(backend.state(), cb::CoreState::Starting);
+        QCOMPARE(backend.probeCompletionsAfterCancel(), 0);
+
+        // Section 6: stop cancels the readiness probe. QNetworkReply::abort()
+        // emits finished() synchronously, so by the time it runs the handler
+        // must already be disconnected.
+        backend.stop();
+        QTRY_VERIFY(backend.state() == cb::CoreState::Stopped ||
+                    backend.state() == cb::CoreState::Failed);
+
+        QVERIFY2(backend.probeCompletionsAfterCancel() == 0,
+                 "a cancelled readiness probe delivered a completion into a handler "
+                 "that was being torn down: the abort ran before the disconnect "
+                 "(contract section 5.2)");
+        QVERIFY(backend.drainPendingEvents());
+        QVERIFY2(observer.readyEndpoints.empty(),
+                 "a cancelled probe still reported the core ready");
+        QVERIFY(!cb::isValid(backend.managedEndpoint()));
+        held->release();
+        backend.removeObserver(&observer);
+    }
+
+    // --- backend-r3 B2. A cancelled TUN change is a SUPERSESSION.
+
+    void aTunChangeCancelledByAnEndpointChangeIsSupersededNotAProtocolError() {
+        testsupport::LoopbackServer first;
+        testsupport::LoopbackServer second;
+        QVERIFY(first.listen());
+        QVERIFY(second.listen());
+        scriptController(first);
+        scriptController(second);
+        // /version is left free, so the client still reaches "connected"; only
+        // the TUN change's own /configs read is parked.
+        auto *configs = first.hold("GET", "/configs");
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+        backend.attach(endpointOf(first));
+        QVERIFY(first.waitFor([&] { return backend.isConnected(); }));
+        const int parkedByAttach = configs->pending();
+
+        const cb::RequestId change = backend.setTunEnabled(true);
+        QVERIFY(change != cb::RequestId::Invalid);
+        QVERIFY(backend.isTunChangePending());
+        QVERIFY2(configs->waitForPending(parkedByAttach + 1),
+                 qPrintable(first.pendingReport()));
+
+        // The controller changes underneath the outstanding change. MihomoClient
+        // cancels it; that is not the controller answering unusably.
+        backend.attach(endpointOf(second));
+        QVERIFY(backend.drainPendingEvents());
+        QVERIFY(second.waitFor([&] { return !observer.tunChanges.empty(); }));
+
+        const cb::TunChangeCompleted &result = observer.tunChanges.front();
+        QCOMPARE(result.request, change);
+        QVERIFY2(result.status == cb::CompletionStatus::Superseded,
+                 "a TUN change cancelled by an endpoint change was not MARKED "
+                 "superseded (backend-r2 A2, backend-r3 B2)");
+        QVERIFY2(result.error.code != cb::ErrorCode::Protocol,
+                 "a supersession was reported as a protocol error (backend-r3 B2)");
+        QCOMPARE(result.error.code, cb::ErrorCode::Superseded);
+        // The generation comparison stays the consumer's second line of defence.
+        QVERIFY2(cb::isSuperseded(result.generation, observer.lastObserved()),
+                 "the superseded TUN completion did not compare older than the "
+                 "newest observed generation");
+        QVERIFY(!backend.isTunChangePending());
+        configs->release();
+        backend.removeObserver(&observer);
+    }
+
     // --- 6. a validation failure leaves the running configuration intact
 
     void aValidationFailureLeavesTheRunningConfigurationIntact() {
@@ -758,6 +1032,32 @@ class BackendRealContractTest : public QObject {
         QVERIFY(!result.reason.message.isEmpty());
         QCOMPARE(backend.state(), cb::CoreState::Failed);
         QCOMPARE(observer.stoppedCount, 0);
+
+        // backend-r3 B2: stated, not inferred from a bool. An unconfirmed stop
+        // is a Failed completion; it is emphatically not Ok.
+        QCOMPARE(result.status, cb::CompletionStatus::Failed);
+
+        // backend-r3 B1, and the whole point of this arm.
+        //
+        // CoreProcess emits failed() BEFORE stopFinished() here
+        // (core_process.cpp:486-491) and the failed handler bumps the
+        // generation, so the delivered order is coreFailed(N+1) then
+        // stopCompleted(N). Until the fix, this stop therefore compared OLDER
+        // than an event already delivered, and a consumer applying section 2's
+        // mandatory rejection rule dropped the unconfirmed stop - the shutdown
+        // warning that blocks quit simply never appeared.
+        QVERIFY2(!observer.coreFailures.empty(),
+                 "no coreFailed preceded the unconfirmed stop: this arm proves nothing");
+        const cb::Generation failedGeneration = observer.coreFailures.back().generation;
+        qInfo().noquote() << "stopGen=" << cb::number(result.generation)
+                          << " coreFailedGen=" << cb::number(failedGeneration)
+                          << " lastObserved=" << cb::number(observer.lastObserved());
+        QVERIFY2(!cb::isSuperseded(result.generation, failedGeneration),
+                 "the stop completion was stamped older than the coreFailed its own "
+                 "teardown produced (backend-r3 B1)");
+        QVERIFY2(!cb::isSuperseded(result.generation, observer.lastObserved()),
+                 "a consumer applying section 2's rejection rule would have DROPPED "
+                 "this unconfirmed stop (backend-r3 B1)");
         backend.removeObserver(&observer);
     }
 
@@ -785,6 +1085,10 @@ class BackendRealContractTest : public QObject {
         QVERIFY(observer.stops.front().confirmed);
         QVERIFY(!observer.stops.front().reason.isFailure());
         QCOMPARE(observer.stoppedCount, 1);
+        QCOMPARE(observer.stops.front().status, cb::CompletionStatus::Ok);
+        // The same B1 obligation on the path that does confirm.
+        QVERIFY2(!cb::isSuperseded(observer.stops.front().generation, observer.lastObserved()),
+                 "a confirmed stop compared older than the newest observed generation");
         backend.removeObserver(&observer);
     }
 
@@ -1061,6 +1365,10 @@ class BackendRealContractTest : public QObject {
     }
 
   private:
+    // Log lines the chattering core emits, one per 150 ms: 3.6 s of continuous
+    // output against a 600 ms hard cap.
+    static constexpr int kChatteringLines = 24;
+
     QString writeConfig(quint16 port, const QString &name = QStringLiteral("config.yaml")) {
         const QString path = environment_->filePath(name);
         QFile file(path);

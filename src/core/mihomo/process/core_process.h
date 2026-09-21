@@ -119,6 +119,18 @@ public:
     Endpoint endpoint() const;
     QStringList activeConfigPaths() const;
     bool isRestartPending() const;
+    /// How many readiness-probe completions reached this object AFTER the probe
+    /// that produced them was cancelled.
+    ///
+    /// BACKEND_CONTRACT.md section 5.2 requires the probe to disconnect its
+    /// signals BEFORE aborting, precisely so an abort cannot deliver a
+    /// completion into a torn-down handler - QNetworkReply::abort() emits
+    /// finished() synchronously. Without this counter that ordering is
+    /// unobservable from outside: the handler's own `probeReply_ != reply` guard
+    /// swallows the late completion, so inverting the two statements changes
+    /// nothing a test can see and the acceptance bullet passes vacuously
+    /// (backend-r3, "known weak coverage"). It must always read 0.
+    int probeCompletionsAfterCancel() const;
 
 signals:
     void stateChanged(CoreState state);
@@ -204,7 +216,11 @@ private:
     QString logBuffer_;
     QStringList logTail_;
     qint64 readyDeadlineMs_ = 0;
+    // ABSOLUTE, and deliberately never refreshed: publishLine() moves
+    // readyDeadlineMs_ only. Contract section 3 - a core that keeps logging
+    // keeps its IDLE deadline alive, and the hard cap still ends it.
     qint64 readyHardDeadlineMs_ = 0;
+    int probeCompletionsAfterCancel_ = 0;
 };
 
 }  // namespace core

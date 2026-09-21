@@ -1,5 +1,5 @@
 // An in-process, deterministic implementation of core::backend::MihomoBackend.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
 //
 // WHAT MAKES IT DETERMINISTIC
 //   * No sleeps and no wall clock. Time is a counter the test advances, and
@@ -46,6 +46,25 @@ enum class AbortOrdering : std::uint8_t {
     // generation still looks current, so it is delivered as live data stamped
     // with the very generation it was meant to invalidate.
     AbortThenBump,
+};
+
+// The second hazard exposed as a knob, for the same reason as AbortOrdering:
+// backend-r3 B1 records a defect the REAL backend has, and a double that cannot
+// reproduce a real failure mode cannot prove the suite would catch it.
+//
+// An unconfirmed stop is the terminal outcome of an operation that itself bumps
+// the generation, so backend-r2 A1 requires it to carry the POST-bump value.
+// The real backend's `failed` handler bumps while `stopFinished` stamps the
+// generation captured at submit, so the delivered pair is coreFailed(N+1) then
+// stopCompleted(N) - and a consumer applying the MANDATORY section 2 rejection
+// rule drops the stop it has to act on.
+enum class StopStamping : std::uint8_t {
+    // The contract (A1, restated by B1): the stop completion carries the
+    // generation current after any bump its own operation caused.
+    PostBump,
+    // The defect (B1): the stop completion carries the generation captured when
+    // stop() was submitted, which a later bump has already superseded.
+    SubmitGeneration,
 };
 
 // What GET /version answers. Readiness requires 200 AND a JSON object whose
@@ -118,6 +137,11 @@ class FakeBackend final : public cb::MihomoBackend {
 
     // ---- the request gate (attachment, control, telemetry, capabilities)
     void setRequestGate(Gate gate) noexcept { requestGate_ = gate; }
+    // How many requests of this kind have ever been ISSUED. A coalesced
+    // duplicate is not a second issue. This is the fake's counterpart of the
+    // real suite counting GET /rules and GET /configs at the loopback server,
+    // and it is what makes the re-issue obligation assertable.
+    int issuedCount(RequestKind kind) const noexcept;
     std::vector<cb::RequestId> pendingRequests() const;
     bool isPending(cb::RequestId id) const;
     std::optional<RequestKind> pendingKind(cb::RequestId id) const;
@@ -185,9 +209,16 @@ class FakeBackend final : public cb::MihomoBackend {
         const QString &reason =
             QStringLiteral("The privileged service disconnected before confirming core shutdown."));
 
-    // ---- the ordering knob
+    // ---- the ordering knobs
     void setAbortOrdering(AbortOrdering ordering) noexcept { abortOrdering_ = ordering; }
     AbortOrdering abortOrdering() const noexcept { return abortOrdering_; }
+    void setStopStamping(StopStamping stamping) noexcept { stopStamping_ = stamping; }
+    StopStamping stopStamping() const noexcept { return stopStamping_; }
+
+    // ---- the re-issue obligation (backend-r2, restated by r3 B3)
+    // True while a bump that was not an endpoint change still owes the snapshot
+    // set. flushEvents() waits for it, so no test has to know it exists.
+    bool isSnapshotReissuePending() const noexcept { return snapshotReissueScheduled_; }
 
     // ======================================================= MihomoBackend
 
@@ -196,6 +227,10 @@ class FakeBackend final : public cb::MihomoBackend {
     bool removeObserver(cb::BackendObserver *observer) noexcept override;
 
     // ---- BackendLifecycle
+    // What discovery finds when no path was set. Empty means "no mihomo binary
+    // anywhere", which is the only way a managed start can fail before it runs.
+    void setDiscoverableBinary(const QString &path) { discoverableBinary_ = path; }
+
     QString discoverBinary() const noexcept override;
     void setBinaryPath(const QString &path) noexcept override;
     QString binaryPath() const noexcept override;
@@ -302,6 +337,13 @@ class FakeBackend final : public cb::MihomoBackend {
     // identity
     cb::RequestId nextRequest() noexcept;
     void bumpGeneration() noexcept;
+    // backend-r2's obligation on the single global generation: any bump that is
+    // NOT an endpoint change re-issues the snapshot set, because fetchRules and
+    // fetchConfigs have no recovery poll and a discarded reply would otherwise
+    // leave the rules list and BaseConfig stale. Queued, never synchronous, and
+    // coalesced - exactly like MihomoBackendImpl::scheduleSnapshotReissue().
+    void scheduleSnapshotReissue();
+    void runSnapshotReissue();
 
     // requests
     cb::RequestId submit(RequestKind kind, const QString &first = {}, const QString &second = {},
@@ -343,6 +385,11 @@ class FakeBackend final : public cb::MihomoBackend {
     int mutatingDepth_ = 0;
     bool delivering_ = false;
     bool drainScheduled_ = false;
+    bool snapshotReissueScheduled_ = false;
+    // Set while attach()/detach() is rewriting the endpoint. An endpoint change
+    // re-issues the snapshot set by itself (attach ends in refreshState), so the
+    // bumps it performs must NOT schedule a second, duplicate re-issue.
+    bool attachingEndpoint_ = false;
 
     // --- identity
     cb::Generation generation_ = cb::Generation::Initial;
@@ -354,6 +401,7 @@ class FakeBackend final : public cb::MihomoBackend {
     Gate childExitGate_ = Gate::Held;
     Gate probeGate_ = Gate::Immediate;
     AbortOrdering abortOrdering_ = AbortOrdering::BumpThenAbort;
+    StopStamping stopStamping_ = StopStamping::PostBump;
     VersionResponse versionResponse_ = VersionResponse::Ok;
     StagedData staged_;
 
@@ -366,6 +414,7 @@ class FakeBackend final : public cb::MihomoBackend {
     bool connected_ = false;
     bool controllerReachable_ = true;
     std::vector<InFlight> inFlight_;
+    QHash<int, int> issued_;  // RequestKind -> how many were ever issued
     bool tunPending_ = false;
     bool geoPending_ = false;
 
@@ -390,6 +439,10 @@ class FakeBackend final : public cb::MihomoBackend {
     bool serviceStopping_ = false;
     bool explicitStop_ = false;
     cb::RequestId stopRequest_ = cb::RequestId::Invalid;
+    // The generation stop() was submitted under. Under StopStamping::PostBump it
+    // is unused for the stamp; under SubmitGeneration it IS the stamp, which is
+    // what reproduces the real backend's B1 defect.
+    cb::Generation stopGeneration_ = cb::Generation::Initial;
     cb::CoreState stopResult_ = cb::CoreState::Stopped;
     cb::ErrorInfo stopError_;
     cb::RequestId startRequest_ = cb::RequestId::Invalid;

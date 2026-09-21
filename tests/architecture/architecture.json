@@ -261,7 +261,7 @@
       ]
     },
     "clash_backend": {
-      "_role": "Published MihomoBackend contract (backend-r2). Header-only boundary between the application and the engine; both the real backend and the fake implement it.",
+      "_role": "Published MihomoBackend contract (backend-r2). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when D2 was discharged: the composition root needs it, so it cannot live in component-private core/mihomo/**.",
       "deps": [
         "clash_types"
       ],
@@ -276,6 +276,7 @@
         "core/backend/control.h",
         "core/backend/lifecycle.h",
         "core/backend/observer.h",
+        "core/backend/privileged_core_service.h",
         "core/backend/telemetry.h",
         "core/backend/types.h"
       ]
@@ -360,6 +361,21 @@
       ],
       "public_headers": [
         "app/composition/privileged_service_adapter.h"
+      ]
+    },
+    "clash_backend_bridge": {
+      "_role": "Qt-native view of the backend contract; the mechanism the G2 UI migration consumes. Filters superseded events on behalf of ~66 call sites, with one deliberate exemption for the managed core's terminal outcomes -- uniform filtering would drop the unconfirmed stop that blocks quit, and wedge quit forever.",
+      "deps": [
+        "clash_backend"
+      ],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": [
+        "core/backend/backend_bridge.h"
       ]
     }
   },
@@ -581,6 +597,14 @@
     "backend-contract-tests": {
       "_note": "Runs the backend-r2 contract suite against the fake.",
       "deps": [
+        "clash_backend_fake"
+      ],
+      "optional": true
+    },
+    "backend-bridge-tests": {
+      "_note": "Bridge signal surface, non-re-entrancy and supersession handling.",
+      "deps": [
+        "clash_backend_bridge",
         "clash_backend_fake"
       ],
       "optional": true

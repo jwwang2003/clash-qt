@@ -15,6 +15,18 @@ target_sources(clash_backend INTERFACE FILE_SET HEADERS
 target_include_directories(clash_backend INTERFACE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(clash_backend INTERFACE clash_types)
 
+# Qt-native view of the backend contract. BackendObserver is a plain non-QObject,
+# but ~66 UI call sites connect to signals; without this bridge the G2 migration
+# cannot start. Deliberately NOT itself a BackendObserver: 23 callbacks share a
+# name with their signal, which would make &BackendBridge::proxiesUpdated
+# ambiguous at every migrated call site. The sink is a nested member.
+qt_add_library(clash_backend_bridge STATIC backend/backend_bridge.cpp)
+target_sources(clash_backend_bridge PUBLIC FILE_SET HEADERS
+    BASE_DIRS "${PROJECT_SOURCE_DIR}/src" FILES backend/backend_bridge.h)
+set_target_properties(clash_backend_bridge PROPERTIES AUTOMOC ON AUTOUIC OFF AUTORCC OFF)
+target_include_directories(clash_backend_bridge PUBLIC "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(clash_backend_bridge PUBLIC clash_backend Qt6::Core)
+
 # Portable component object model, contract revision component-r1. Deliberately
 # links nothing -- not even Qt6::Core -- because it is the foundation every
 # component boundary is expressed in; a Qt type in a published signature would

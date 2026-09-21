@@ -176,11 +176,18 @@ void ShutdownCoordinator::approve() {
 // ------------------------------------------------------------ BackendObserver
 
 bool ShutdownCoordinator::admit(cb::Generation generation) noexcept {
-    // backend-r2 section 2, the consumer obligation. Safe for terminal
-    // outcomes: delivery order is preserved (observer.h rule 2), so nothing
-    // produced after a stop can be delivered before its stopCompleted, and
-    // lastObserved_ therefore cannot have overtaken the post-bump stamp that
-    // section A1 gives it.
+    // backend-r3 section 2, the consumer obligation. Safe for a terminal
+    // outcome only because of what backend-r3 B1 now requires of the backend: a
+    // StopCompleted carries the generation current AFTER every bump its own
+    // teardown caused, not the one captured when stop() was submitted.
+    //
+    // Delivery order alone does not buy this. The unconfirmed path delivers
+    // coreFailed before stopCompleted, in order, from one teardown, and the
+    // failure bumps -- so a submit-time stamp arrives strictly older than an
+    // event already admitted, and the stop is dropped, taking the quit-blocking
+    // warning with it. Until B1 this coordinator escaped that only because it
+    // does not override coreFailed, so lastObserved_ never saw the higher
+    // generation.
     if (cb::isSuperseded(generation, lastObserved_)) return false;
     lastObserved_ = generation;
     return true;
@@ -203,7 +210,10 @@ void ShutdownCoordinator::stopCompleted(const cb::StopCompleted &result) noexcep
     // success: cleanup was requested and the privileged service disconnected
     // before confirming the child exited. It becomes a warning that holds the
     // quit open until the user acknowledges it.
-    if (quitting_ && !result.confirmed)
+    // A superseded stop is one this teardown abandoned in favour of a later
+    // one, not a stop that failed to confirm. Warning on it would hold the quit
+    // open for an outcome no longer being waited on.
+    if (quitting_ && !result.confirmed && result.status != cb::CompletionStatus::Superseded)
         raiseWarning(QString::fromLatin1(kCoreWarningTitle),
                      unconfirmedStopMessage(result.reason.message));
 

@@ -1,11 +1,15 @@
 // Contract suite for the MihomoBackend facade.
-// Specification: .refactor/BACKEND_CONTRACT.md revision backend-r1, section 10.
+// Specification: .refactor/BACKEND_CONTRACT.md revision backend-r3, section 10.
 //
 // Every case here is one the contract names, and every case was validated by
 // temporarily inverting the behaviour it protects and confirming this suite
 // fails. The inversions are listed in the worker report, not re-run here - with
-// one exception: the generation/abort ordering is a knob on the fake, because
-// the contract requires the suite itself to tell the two orders apart.
+// two exceptions, both knobs on the fake, because the contract requires the
+// suite itself to tell the two orders apart:
+//   * the generation/abort ordering (section 2);
+//   * the unconfirmed stop's stamping (r2 A1, restated by r3 B1) - a real,
+//     delivered defect of the real backend. A double that cannot reproduce a
+//     real failure mode cannot show that the assertion against it has teeth.
 //
 // The suite runs against the fake backend. A passing fake proves the contract
 // is implementable and that a consumer written to it is correct; it proves
@@ -41,6 +45,7 @@ using testsupport::backend::Gate;
 using testsupport::backend::RecordingObserver;
 using testsupport::backend::RequestKind;
 using testsupport::backend::RequestOutcome;
+using testsupport::backend::StopStamping;
 using testsupport::backend::VersionResponse;
 
 namespace {
@@ -275,6 +280,130 @@ class BackendContractTest : public QObject {
         fake.removeObserver(&observer);
     }
 
+    // --- the obligation that comes with ONE global generation (r2's answer to
+    //     the second open question, restated by r3 B3). The same case the real
+    //     suite runs as aNonEndpointGenerationBumpReIssuesTheSnapshotSet: there
+    //     it counts GET /rules and GET /configs at the loopback controller, here
+    //     it counts issued requests of the same two kinds.
+
+    void aNonEndpointGenerationBumpReIssuesTheSnapshotSet_data() {
+        QTest::addColumn<int>("bump");
+        QTest::newRow("managed start") << 0;
+        QTest::newRow("managed stop") << 1;
+        QTest::newRow("managed failure") << 2;
+        QTest::newRow("controller disconnect") << 3;
+    }
+
+    void aNonEndpointGenerationBumpReIssuesTheSnapshotSet() {
+        QFETCH(int, bump);
+
+        FakeBackend fake;
+        RecordingObserver observer(&fake);
+        fake.addObserver(&observer);
+
+        const Endpoint controller = endpointAt("127.0.0.1", 9099);
+        fake.addExternalController(controller);
+        fake.attach(controller);
+        QVERIFY(fake.flushEvents());
+        QVERIFY2(fake.isConnected(), "the snapshot set was never issued in the first place");
+
+        if (bump == 2) {
+            // A managed core has to be running before it can fail.
+            QVERIFY(bringUpCore(fake, QStringLiteral("/cfg.yaml"), endpointAt("127.0.0.1", 9090)));
+            QVERIFY(fake.flushEvents());
+        }
+
+        const int versionBefore = fake.issuedCount(RequestKind::RefreshVersion);
+        const int proxiesBefore = fake.issuedCount(RequestKind::RefreshProxies);
+        const int rulesBefore = fake.issuedCount(RequestKind::RefreshRules);
+        const int configsBefore = fake.issuedCount(RequestKind::RefreshConfig);
+        const Generation before = fake.generation();
+        const Endpoint attachedBefore = fake.currentEndpoint();
+
+        switch (bump) {
+            case 0:
+                fake.mapConfigFile(QStringLiteral("/cfg.yaml"), endpointAt("127.0.0.1", 9090));
+                fake.start(QStringLiteral("/cfg.yaml"), QStringLiteral("/work"));
+                break;
+            case 1: fake.stop(); break;
+            case 2: QVERIFY(fake.crashChild(1)); break;
+            case 3: fake.disconnectController(); break;
+            default: QFAIL("unknown bump");
+        }
+
+        QVERIFY2(fake.generation() > before, "this case did not bump the generation at all");
+        // The premise: it is NOT an endpoint change. The attachment is untouched,
+        // so nothing else re-issues the snapshot set on this path.
+        QVERIFY(core::backend::isSameEndpoint(fake.currentEndpoint(), attachedBefore));
+        QVERIFY(fake.isAttached());
+        QVERIFY(fake.flushEvents());
+
+        // /rules and /configs are the two that matter: fetchVersion and
+        // fetchProxies recover via the 5 s poll at main.cpp:277-283, but
+        // fetchRules and fetchConfigs are issued only from refreshState, so a
+        // discarded reply would leave the rules list and BaseConfig stale until
+        // the next endpoint change.
+        QVERIFY2(fake.issuedCount(RequestKind::RefreshRules) > rulesBefore,
+                 "a generation bump that was not an endpoint change did not re-issue /rules");
+        QVERIFY2(fake.issuedCount(RequestKind::RefreshConfig) > configsBefore,
+                 "a generation bump that was not an endpoint change did not re-issue /configs");
+        QVERIFY(fake.issuedCount(RequestKind::RefreshVersion) > versionBefore);
+        QVERIFY(fake.issuedCount(RequestKind::RefreshProxies) > proxiesBefore);
+        // The obligation is discharged after the mutating call returns, like
+        // every other event (section 7).
+        QVERIFY(!observer.sawReentrantDelivery);
+        fake.removeObserver(&observer);
+    }
+
+    // The other half of the obligation: an endpoint change re-issues the set by
+    // itself, so it must not ALSO schedule one. Without this, a backend that
+    // simply re-issued on every bump would pass the case above while double
+    // fetching on the commonest path of all.
+    void anEndpointChangeReIssuesTheSnapshotSetExactlyOnce() {
+        FakeBackend fake;
+        fake.setRequestGate(Gate::Held);
+
+        fake.attach(endpointAt("127.0.0.1", 9090));
+        QVERIFY(fake.flushEvents());
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshRules), 1);
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshConfig), 1);
+
+        fake.attach(endpointAt("127.0.0.1", 9091));
+        QVERIFY(fake.flushEvents());
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshRules), 2);
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshConfig), 2);
+
+        // Detached: there is no endpoint to fetch anything from, so the bump
+        // owes nothing.
+        fake.detach();
+        QVERIFY(fake.flushEvents());
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshRules), 2);
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshConfig), 2);
+    }
+
+    // The obligation is deferred, so the world can move between the bump that
+    // incurs it and the moment it is discharged. A re-issue owed to a controller
+    // the consumer has since detached from must not be sent anywhere.
+    void ASnapshotReissueOwedToAnEndpointWeDetachedFromIsNotSent() {
+        FakeBackend fake;
+        fake.setRequestGate(Gate::Held);
+        fake.attach(endpointAt("127.0.0.1", 9090));
+        QVERIFY(fake.flushEvents());
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshRules), 1);
+
+        // A managed stop incurs the obligation...
+        fake.stop();
+        QVERIFY2(fake.isSnapshotReissuePending(), "the stop did not incur the obligation");
+        // ...and the consumer detaches before it is discharged.
+        fake.detach();
+        QVERIFY(fake.flushEvents());
+
+        QVERIFY(!fake.isAttached());
+        QVERIFY2(fake.issuedCount(RequestKind::RefreshRules) == 1,
+                 "a snapshot re-issue was sent to an endpoint we are no longer attached to");
+        QCOMPARE(fake.issuedCount(RequestKind::RefreshConfig), 1);
+    }
+
     // --- 4. readiness requires 200 + a string `version`, not process start
 
     void readinessRequiresAVersionStringNotAStartedProcess_data() {
@@ -485,11 +614,82 @@ class BackendContractTest : public QObject {
         const auto &result = observer.stops.front();
         QCOMPARE(result.request, stopRequest);
         QVERIFY2(!result.confirmed, "an unconfirmed stop was reported as confirmed");
+        // backend-r3 B2: the status says so too, not just the flag.
+        QCOMPARE(result.status, CompletionStatus::Failed);
         QVERIFY(result.reason.isFailure());
         QCOMPARE(result.reason.code, ErrorCode::ServiceDisconnected);
         QVERIFY(!result.reason.message.isEmpty());
         QCOMPARE(fake.state(), CoreState::Failed);
         QCOMPARE(observer.stoppedCount, 0);
+        fake.removeObserver(&observer);
+    }
+
+    // r2 A1, restated by r3 B1. Reporting `confirmed == false` is not enough if
+    // a consumer obeying the MANDATORY section 2 rejection rule then throws it
+    // away: the application turns this result into a shutdown warning that
+    // blocks quit, so losing it loses the warning silently.
+    //
+    // The defective row is not hypothetical. It is the order the real backend
+    // delivers today - coreFailed(N+1) then stopCompleted(N), measured as
+    // stopGen=2, coreFailedGen=3 - and it is here so that the assertion in the
+    // conforming row is demonstrably not vacuous.
+    void anUnconfirmedStopIsNotDroppedByAConformingConsumer_data() {
+        QTest::addColumn<int>("stamping");
+        QTest::addColumn<bool>("consumerDropsIt");
+        QTest::newRow("post-bump (the contract)")
+            << static_cast<int>(StopStamping::PostBump) << false;
+        QTest::newRow("submit generation (the real backend's B1 defect)")
+            << static_cast<int>(StopStamping::SubmitGeneration) << true;
+    }
+
+    void anUnconfirmedStopIsNotDroppedByAConformingConsumer() {
+        QFETCH(int, stamping);
+        QFETCH(bool, consumerDropsIt);
+
+        FakeBackend fake;
+        RecordingObserver observer(&fake);
+        fake.addObserver(&observer);
+        fake.setStopStamping(static_cast<StopStamping>(stamping));
+        fake.setServiceSupported(true);
+        QVERIFY(fake.setExecutionMode(ExecutionMode::PrivilegedService));
+        QVERIFY(bringUpCore(fake, QStringLiteral("/cfg.yaml"), endpointAt("127.0.0.1", 9090)));
+
+        const RequestId stopRequest = fake.stop();
+        QVERIFY(fake.flushEvents());
+        const Generation submitted = fake.generation();
+
+        QVERIFY(fake.disconnectPrivilegedService());
+        QVERIFY(fake.flushEvents());
+
+        // The precondition of the whole case: the terminal failure moved the
+        // generation on after the stop was submitted. Without this the two
+        // stampings are indistinguishable and neither row proves anything.
+        QVERIFY2(fake.generation() > submitted,
+                 "the unconfirmed failure did not bump: the stamping is untestable here");
+        QCOMPARE(static_cast<int>(observer.failures.size()), 1);
+        const Generation failureStamp = observer.failures.front().generation;
+        QCOMPARE(failureStamp, fake.generation());
+
+        if (consumerDropsIt) {
+            QVERIFY2(observer.stops.empty(),
+                     "the defective stamping was accepted: the suite would not catch B1");
+            QCOMPARE(static_cast<int>(observer.stopsRejectedByGeneration.size()), 1);
+            const auto &dropped = observer.stopsRejectedByGeneration.front();
+            QCOMPARE(dropped.request, stopRequest);
+            QVERIFY(!dropped.confirmed);
+            QVERIFY(core::backend::isSuperseded(dropped.generation, failureStamp));
+        } else {
+            QVERIFY2(observer.stopsRejectedByGeneration.empty(),
+                     "a conforming consumer dropped the unconfirmed stop it has to act on");
+            QCOMPARE(static_cast<int>(observer.stops.size()), 1);
+            const auto &result = observer.stops.front();
+            QCOMPARE(result.request, stopRequest);
+            QVERIFY2(!result.confirmed, "an unconfirmed stop was reported as confirmed");
+            QCOMPARE(result.reason.code, ErrorCode::ServiceDisconnected);
+            QVERIFY2(!core::backend::isSuperseded(result.generation, failureStamp),
+                     "the stop carried a generation the failure before it had already superseded");
+            QCOMPARE(result.generation, fake.generation());
+        }
         fake.removeObserver(&observer);
     }
 
@@ -506,6 +706,7 @@ class BackendContractTest : public QObject {
         QCOMPARE(static_cast<int>(observer.stops.size()), 1);
         QCOMPARE(observer.stops.front().request, stopRequest);
         QVERIFY(observer.stops.front().confirmed);
+        QCOMPARE(observer.stops.front().status, CompletionStatus::Ok);
         QVERIFY(!observer.stops.front().reason.isFailure());
         QCOMPARE(observer.stoppedCount, 1);
         QCOMPARE(fake.state(), CoreState::Stopped);
@@ -603,6 +804,17 @@ class BackendContractTest : public QObject {
         QVERIFY(fake.flushEvents());
         QVERIFY(first.callbackCount > late.callbackCount);
         QVERIFY(!late.sawReentrantDelivery);
+        // Exactly none: every event of that attach was PRODUCED before `late`
+        // registered, including the ones still queued behind the callback that
+        // registered it. "fewer than `first`" is not the same claim and does not
+        // distinguish a backend that simply re-reads the observer list per event.
+        QCOMPARE(late.callbackCount, 0);
+
+        // ...and it is registered, not inert: what comes after, it gets.
+        fake.refreshVersion();
+        QVERIFY(fake.flushEvents());
+        QVERIFY2(late.callbackCount > 0, "an observer added during delivery never received "
+                                         "anything afterwards either");
         fake.removeObserver(&first);
         fake.removeObserver(&late);
     }
@@ -654,6 +866,41 @@ class BackendContractTest : public QObject {
         fake.removeObserver(&observer);
     }
 
+    // backend-r3 B2. A TUN change abandoned because the controller changed is a
+    // SUPERSESSION, not a protocol error: the controller never answered unusably,
+    // it stopped being the controller. The same case the real suite runs as
+    // aTunChangeCancelledByAnEndpointChangeIsSupersededNotAProtocolError.
+    void aTunChangeCancelledByAnEndpointChangeIsSupersededNotAProtocolError() {
+        FakeBackend fake;
+        RecordingObserver observer(&fake);
+        fake.addObserver(&observer);
+        fake.setRequestGate(Gate::Held);
+
+        fake.attach(endpointAt("127.0.0.1", 9090, "a"));
+        QVERIFY(fake.flushEvents());
+        const RequestId change = fake.setTunEnabled(true);
+        QVERIFY(change != RequestId::Invalid);
+        QVERIFY(fake.isTunChangePending());
+
+        // The controller changes underneath it.
+        fake.attach(endpointAt("127.0.0.1", 9091, "b"));
+        QVERIFY(fake.flushEvents());
+
+        QCOMPARE(static_cast<int>(observer.tunChanges.size()), 1);
+        const auto &result = observer.tunChanges.front();
+        QCOMPARE(result.request, change);
+        QCOMPARE(result.status, CompletionStatus::Superseded);
+        QVERIFY2(result.error.code != ErrorCode::Protocol,
+                 "a supersession was reported as a protocol error: the engine was blamed "
+                 "for something it never did");
+        QCOMPARE(result.error.code, ErrorCode::Superseded);
+        QVERIFY2(!result.actual,
+                 "an abandoned TUN change reported a read-back it never performed");
+        QVERIFY2(!fake.isTunChangePending(),
+                 "the abandoned change left the TUN operation pending forever");
+        fake.removeObserver(&observer);
+    }
+
     // Evidence for the contract's first open question: ProviderClient's pending
     // key set is a COALESCING key, and a per-submission RequestId cannot express
     // it - two identical submissions must produce one request, not two ids.
@@ -689,6 +936,55 @@ class BackendContractTest : public QObject {
         fake.releaseChildExit();
         QVERIFY(fake.flushEvents());
         QVERIFY(fake.setExecutionMode(ExecutionMode::PrivilegedService));
+    }
+
+    // Section 8, and decision D3: the status is answered by THIS component,
+    // through the connection it already owns. The fake can assert the queried-
+    // not-assumed half; only the real backend can prove no second
+    // PrivilegedServiceClient was opened, because only it has a socket to open.
+    void aPrivilegedServiceStatusQueryIsAnsweredByTheBackendInstance() {
+        FakeBackend fake;
+        RecordingObserver observer(&fake);
+        fake.addObserver(&observer);
+        fake.setServiceSupported(true);
+        core::backend::PrivilegedServiceStatus status;
+        status.state = core::backend::ServiceState::Connected;
+        status.version = QStringLiteral("1.0.0");
+        fake.setServiceStatus(status);
+
+        const RequestId request = fake.requestPrivilegedServiceStatus();
+        QVERIFY(request != RequestId::Invalid);
+        QVERIFY(fake.flushEvents());
+        QVERIFY(!observer.sawReentrantDelivery);
+
+        // A second instance answers from its own state, not from a shared one.
+        FakeBackend other;
+        other.setServiceSupported(false);
+        QVERIFY(!other.serviceAvailable());
+        QVERIFY(fake.serviceAvailable());
+        fake.removeObserver(&observer);
+    }
+
+    void aMissingManagedEngineFailsWithAnActionableMessage() {
+        FakeBackend fake;
+        RecordingObserver observer(&fake);
+        fake.addObserver(&observer);
+        fake.setBinaryPath(QString());
+        fake.setDiscoverableBinary(QString());
+
+        const RequestId request = fake.start(QStringLiteral("/cfg.yaml"), QStringLiteral("/work"));
+        QVERIFY(request != RequestId::Invalid);
+        QVERIFY(fake.flushEvents());
+
+        QCOMPARE(fake.state(), CoreState::Failed);
+        QCOMPARE(static_cast<int>(observer.failures.size()), 1);
+        const auto &failure = observer.failures.front();
+        QCOMPARE(failure.error.code, ErrorCode::BinaryNotFound);
+        QVERIFY2(!failure.error.message.isEmpty(),
+                 "a missing engine failed with nothing a user could act on");
+        QVERIFY(!fake.isRestartPending());
+        QCOMPARE(fake.ownership(), Ownership::None);
+        fake.removeObserver(&observer);
     }
 
     void capabilitiesAreQueriedFromTheInstance() {

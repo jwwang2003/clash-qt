@@ -48,7 +48,14 @@ class RecordingObserver final : public cb::BackendObserver {
     std::vector<CompletionEvent> rejectedByGeneration;
     std::vector<CompletionEvent> supersededByBackend;
 
+    // Stop completions this consumer ACTED on. backend-r3 B1: a stop is the
+    // terminal outcome of an operation that bumps the generation itself, so a
+    // conforming consumer applying the mandatory section 2 rejection rule must
+    // still accept it. One stamped with a superseded generation lands in
+    // `stopsRejectedByGeneration` instead - which is the live defect B1 records,
+    // and is exactly how the application would lose its shutdown warning.
     std::vector<cb::StopCompleted> stops;
+    std::vector<cb::StopCompleted> stopsRejectedByGeneration;
     std::vector<cb::TunChangeCompleted> tunChanges;
     std::vector<cb::Completion> failures;
     QStringList logLines;

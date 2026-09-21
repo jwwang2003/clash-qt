@@ -118,6 +118,14 @@ void MihomoBackendImpl::connectCollaborators() {
     // already have accepted the reply the bump was meant to discard.
     QObject::connect(&client_, &MihomoClient::invalidating, context, [this] {
         bumpGeneration();
+        // backend-r3 B2. MihomoClient cancels an outstanding TUN change on
+        // exactly the three paths that emit this signal - setEndpoint, detach
+        // and setConnected(false) - and finishTunChange() follows it
+        // synchronously (mihomo_client.cpp:46-47, :78-79, :119-120). Recording
+        // it HERE is what lets tunChangeFinished classify that cancellation as a
+        // supersession without matching on the error text, which is translated
+        // and is not something any caller may switch on.
+        if (tunRequest_ != cb::RequestId::Invalid) tunSuperseded_ = true;
         // An endpoint change re-issues the snapshot set by itself: setEndpoint
         // ends in refreshState(). Any OTHER bump - a disconnect - does not, and
         // fetchRules/fetchConfigs have no recovery poll.
@@ -240,12 +248,33 @@ void MihomoBackendImpl::connectCollaborators() {
                      [this](bool requested, bool actual, const QString &error) {
         cb::TunChangeCompleted result;
         result.request = tunRequest_;
+        // A TUN change bumps nothing of its own, so A1's ordinary rule applies:
+        // the generation it was SUBMITTED under. On the superseded path that
+        // makes it compare older than the newest observed value, which is the
+        // consumer's second line of defence behind the explicit mark below.
         result.generation = tunGeneration_;
         result.requested = requested;
         // A READ-BACK, never an echo: MihomoClient re-reads /configs after the
         // PATCH, including after an HTTP failure.
         result.actual = actual;
-        if (!error.isEmpty()) result.error = {cb::ErrorCode::Protocol, error};
+        if (tunSuperseded_) {
+            // backend-r3 B2. "Cancelled because the controller changed" is a
+            // SUPERSESSION, not a protocol error: the controller did not answer
+            // unusably, it stopped being the controller. Labelling it Protocol
+            // told a consumer the engine misbehaved when nothing had.
+            result.status = cb::CompletionStatus::Superseded;
+            result.error = {cb::ErrorCode::Superseded,
+                            error.isEmpty()
+                                ? QCoreApplication::translate("core::MihomoBackend",
+                                                              "the generation moved on")
+                                : error};
+        } else if (!error.isEmpty()) {
+            result.status = cb::CompletionStatus::Failed;
+            result.error = {cb::ErrorCode::Protocol, error};
+        } else {
+            result.status = cb::CompletionStatus::Ok;
+        }
+        tunSuperseded_ = false;
         tunRequest_ = cb::RequestId::Invalid;
         enqueue([result](cb::BackendObserver &observer) { observer.tunChangeCompleted(result); });
     });
@@ -363,8 +392,30 @@ void MihomoBackendImpl::connectCollaborators() {
         if (stopRequest_ == cb::RequestId::Invalid) return;
         cb::StopCompleted result;
         result.request = stopRequest_;
-        result.generation = stopGeneration_;
+        // backend-r3 B1, applying A1 to the case that broke it.
+        //
+        // A stop's terminal outcome carries the generation current AFTER every
+        // bump its own operation caused - not only the bump stop() itself made
+        // at submit. On the unconfirmed path CoreProcess emits failed() and THEN
+        // stopFinished() from one call (core_process.cpp:486-491), and the
+        // failed handler above bumps. Stamping stopGeneration_ here therefore
+        // delivered coreFailed(N+1) followed by stopCompleted(N), and a consumer
+        // applying section 2's MANDATORY rejection rule dropped the unconfirmed
+        // stop - the precise failure A1 was written to prevent, and the one the
+        // application turns into a warning that blocks quit.
+        //
+        // Re-read at emit rather than reordering CoreProcess's two signals: the
+        // re-read absorbs ANY bump between submit and the terminal answer, while
+        // a reorder would fix only the one path we know about today and would
+        // change an emission order that CoreProcess's own consumers rely on.
+        // This is not "stamped at delivery" - the queue is drained later and the
+        // stamp does not move again - and it matches what the fake already does
+        // (fake_backend.cpp:859-880), so fake and real stop diverging.
+        Q_ASSERT(!cb::isSuperseded(generation_, stopGeneration_));
+        result.generation = generation_;
         result.confirmed = confirmed;
+        // backend-r3 B2: the outcome is now stated, not inferred from a bool.
+        result.status = confirmed ? cb::CompletionStatus::Ok : cb::CompletionStatus::Failed;
         if (!confirmed) {
             // NOT a success. Lease cleanup was requested and nothing confirmed
             // the child exited; the application turns this into a shutdown
@@ -865,8 +916,10 @@ cb::RequestId MihomoBackendImpl::setTunEnabled(bool enabled) noexcept {
     const cb::RequestId request = nextRequest();
     tunRequest_ = request;
     tunGeneration_ = generation_;
+    tunSuperseded_ = false;
     if (client_.setTunEnabled(enabled) == 0) {
         tunRequest_ = cb::RequestId::Invalid;
+        tunSuperseded_ = false;
         return cb::RequestId::Invalid;
     }
     return request;

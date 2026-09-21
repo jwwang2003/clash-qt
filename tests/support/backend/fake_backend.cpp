@@ -26,6 +26,10 @@ bool isProviderKind(RequestKind kind) {
            kind == RequestKind::HealthCheckProvider;
 }
 
+// Everything but the privileged-service query is answered by the controller over
+// HTTP or a websocket. A controller that is not there answers none of it.
+bool isControllerBound(RequestKind kind) { return kind != RequestKind::ServiceStatus; }
+
 }  // namespace
 
 // ---------------------------------------------------------------- MutationScope
@@ -87,7 +91,12 @@ void FakeBackend::drain() {
 }
 
 bool FakeBackend::flushEvents(int timeoutMs) {
-    return waitFor([this] { return queue_.empty() && !drainScheduled_; }, timeoutMs);
+    // The snapshot re-issue is queued work of the backend's own, so a flush that
+    // ignored it would leave the obligation half-performed and make the suite
+    // order-dependent.
+    return waitFor(
+        [this] { return queue_.empty() && !drainScheduled_ && !snapshotReissueScheduled_; },
+        timeoutMs);
 }
 
 bool FakeBackend::waitFor(const std::function<bool()> &predicate, int timeoutMs) {
@@ -125,6 +134,30 @@ void FakeBackend::bumpGeneration() noexcept {
     generation_ = static_cast<cb::Generation>(cb::number(generation_) + 1);
 }
 
+// backend-r2's answer to the second open question, restated by r3 B3. One global
+// generation is enough ONLY if every bump that is not an endpoint change
+// re-issues the snapshot set: fetchVersion and fetchProxies recover via the 5 s
+// poll, but fetchRules and fetchConfigs are issued only from refreshState, so a
+// discarded /rules or /configs reply would leave the rules list and BaseConfig
+// stale until the next endpoint change.
+//
+// Queued rather than immediate, for the same reason events are: the obligation
+// is discharged after the mutating call returns, never from inside it.
+void FakeBackend::scheduleSnapshotReissue() {
+    if (snapshotReissueScheduled_) return;
+    snapshotReissueScheduled_ = true;
+    QMetaObject::invokeMethod(&pump_, [this] { runSnapshotReissue(); }, Qt::QueuedConnection);
+}
+
+void FakeBackend::runSnapshotReissue() {
+    // Cleared first: a bump raised while the set is being re-issued owes another
+    // one, and must not be swallowed by the coalescing flag.
+    snapshotReissueScheduled_ = false;
+    if (!isAttached_) return;
+    MutationScope guard(this);
+    refreshState();
+}
+
 // ------------------------------------------------------------------- requests
 
 cb::RequestId FakeBackend::submit(RequestKind kind, const QString &first, const QString &second,
@@ -146,9 +179,26 @@ cb::RequestId FakeBackend::submit(RequestKind kind, const QString &first, const 
     request.flag = flag;
     request.coalesceKey = coalesceKey;
     inFlight_.push_back(request);
+    issued_[static_cast<int>(kind)] += 1;
     if (isProviderKind(kind)) publishProviderBusy();
-    if (requestGate_ == Gate::Immediate) releaseRequest(request.id, RequestOutcome::Success, {});
+    if (requestGate_ == Gate::Immediate) {
+        // A controller that dropped us does not start answering again just
+        // because something re-issued the snapshot set at it. Without this the
+        // re-issue that a disconnect owes would silently reconnect the fake,
+        // which no real controller would do.
+        if (!controllerReachable_ && isControllerBound(kind)) {
+            releaseRequest(
+                request.id, RequestOutcome::Failure,
+                {cb::ErrorCode::Network, QStringLiteral("the controller is unreachable")});
+        } else {
+            releaseRequest(request.id, RequestOutcome::Success, {});
+        }
+    }
     return request.id;
+}
+
+int FakeBackend::issuedCount(RequestKind kind) const noexcept {
+    return issued_.value(static_cast<int>(kind), 0);
 }
 
 std::vector<cb::RequestId> FakeBackend::pendingRequests() const {
@@ -270,6 +320,10 @@ void FakeBackend::deliverCompletion(const InFlight &request, const cb::Completio
             cb::TunChangeCompleted result;
             result.request = completion.request;
             result.generation = completion.generation;
+            // backend-r3 B2: carried through, so a TUN change abandoned by an
+            // endpoint change is marked Superseded rather than reported as a
+            // protocol error the engine never committed.
+            result.status = completion.status;
             result.requested = request.flag;
             // A read-back, never an echo.
             result.actual = ok ? data.tunActual : false;
@@ -377,6 +431,10 @@ void FakeBackend::invalidate(const cb::ErrorInfo &reason) {
         abortInFlight(reason);
         bumpGeneration();
     }
+    // An endpoint change re-issues the snapshot set by itself - attach() ends in
+    // refreshState(), and detach() has no endpoint to fetch from. Any OTHER bump
+    // through here is a disconnect, which owes the re-issue.
+    if (!attachingEndpoint_) scheduleSnapshotReissue();
 }
 
 // ----------------------------------------------------------------- attachment
@@ -434,6 +492,7 @@ cb::RequestId FakeBackend::attach(const cb::Endpoint &endpoint) noexcept {
         refreshState();
         return request;
     }
+    attachingEndpoint_ = true;
     invalidate({cb::ErrorCode::Superseded, QStringLiteral("the controller changed")});
     setConnected(false);
     attached_ = endpoint;
@@ -444,13 +503,17 @@ cb::RequestId FakeBackend::attach(const cb::Endpoint &endpoint) noexcept {
     enqueue([generation, endpoint, ownership](cb::BackendObserver &observer) {
         observer.endpointChanged(generation, endpoint, ownership);
     });
+    // The endpoint change's own re-issue. It is what makes the scheduled one
+    // unnecessary here, not an optimisation on top of it.
     if (isAttached_) refreshState();
+    attachingEndpoint_ = false;
     return request;
 }
 
 cb::RequestId FakeBackend::detach() noexcept {
     MutationScope guard(this);
     const cb::RequestId request = nextRequest();
+    attachingEndpoint_ = true;
     // Never terminates the controller: the registry is untouched here.
     invalidate({cb::ErrorCode::Superseded, QStringLiteral("detached")});
     setConnected(false);
@@ -461,6 +524,7 @@ cb::RequestId FakeBackend::detach() noexcept {
     enqueue([generation](cb::BackendObserver &observer) {
         observer.endpointChanged(generation, cb::Endpoint{}, cb::Ownership::None);
     });
+    attachingEndpoint_ = false;
     return request;
 }
 
@@ -585,8 +649,10 @@ cb::RequestId FakeBackend::start(const QString &configPath, const QString &workD
     MutationScope guard(this);
     const cb::RequestId request = nextRequest();
     explicitStop_ = false;
-    // A managed start invalidates outstanding work (contract section 2).
+    // A managed start invalidates outstanding work (contract section 2), and is
+    // not an endpoint change, so it owes the snapshot set (backend-r2).
     bumpGeneration();
+    scheduleSnapshotReissue();
     serviceParsing_ = false;
     cancelValidation();
     pendingLaunch_.reset();
@@ -759,7 +825,10 @@ cb::RequestId FakeBackend::stop() noexcept {
     const cb::RequestId request = nextRequest();
     explicitStop_ = true;
     stopRequest_ = request;
+    // A managed stop invalidates outstanding work and is not an endpoint change.
     bumpGeneration();
+    stopGeneration_ = generation_;
+    scheduleSnapshotReissue();
     serviceParsing_ = false;
     cancelValidation();
     pendingLaunch_.reset();
@@ -822,8 +891,10 @@ bool FakeBackend::crashChild(int exitCode, const QString &lastLine) {
 
 void FakeBackend::failManaged(const cb::ErrorInfo &reason, cb::RequestId request) {
     failRequest_ = request;
-    // A managed failure invalidates outstanding work (contract section 2).
+    // A managed failure invalidates outstanding work (contract section 2) and is
+    // not an endpoint change.
     bumpGeneration();
+    scheduleSnapshotReissue();
     serviceParsing_ = false;
     cancelValidation();
     pendingLaunch_.reset();
@@ -857,6 +928,12 @@ void FakeBackend::finishStop() {
     stopError_ = {};
     setState(result);
     const cb::Generation generation = generation_;
+    // backend-r2 A1, restated by r3 B1: a stop is the terminal outcome of an
+    // operation that bumps the generation itself, so it carries the POST-bump
+    // value. StopStamping::SubmitGeneration reproduces the real backend's defect
+    // instead, so the suite can prove it would catch it.
+    const cb::Generation stopStamp =
+        stopStamping_ == StopStamping::PostBump ? generation : stopGeneration_;
     if (result == cb::CoreState::Failed) {
         // Stamped with the CURRENT generation, not the failing request's: this
         // event reports the managed core's new state and a consumer must act on
@@ -869,7 +946,10 @@ void FakeBackend::finishStop() {
             explicitStop_ = false;
             cb::StopCompleted result2;
             result2.request = stopRequest_;
-            result2.generation = generation;
+            result2.generation = stopStamp;
+            // backend-r3 B2: cleanup was requested and nothing confirmed the
+            // exit. That is a failed stop, not an Ok one carrying a flag.
+            result2.status = cb::CompletionStatus::Failed;
             result2.confirmed = false;
             result2.reason = reason;
             enqueue([result2](cb::BackendObserver &observer) { observer.stopCompleted(result2); });
@@ -879,7 +959,8 @@ void FakeBackend::finishStop() {
         enqueue([generation](cb::BackendObserver &observer) { observer.coreStopped(generation); });
         cb::StopCompleted stopped;
         stopped.request = stopRequest_;
-        stopped.generation = generation;
+        stopped.generation = stopStamp;
+        stopped.status = cb::CompletionStatus::Ok;
         stopped.confirmed = true;
         enqueue([stopped](cb::BackendObserver &observer) { observer.stopCompleted(stopped); });
     }
@@ -895,7 +976,16 @@ bool FakeBackend::disconnectPrivilegedService(const QString &reason) {
         if (controllers_[i].managed) controllers_.removeAt(i);
     if (wasStopping && stopResult_ == cb::CoreState::Stopped) {
         // Cleanup was requested, but nothing confirmed the child exited.
+        //
+        // This is a managed failure, so it bumps like any other (section 2) -
+        // and that bump is precisely what makes the stop completion's stamp
+        // observable: with the contract's PostBump stamping the stop carries the
+        // new generation and a conforming consumer acts on it, while with the
+        // real backend's B1 defect it carries the submit generation, compares
+        // older than the coreFailed that preceded it, and is DROPPED.
         pendingLaunch_.reset();
+        bumpGeneration();
+        scheduleSnapshotReissue();
         stopResult_ = cb::CoreState::Failed;
         stopError_ = {cb::ErrorCode::ServiceDisconnected, reason};
         finishStop();

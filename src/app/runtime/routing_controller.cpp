@@ -170,6 +170,14 @@ void RoutingController::tunChangeCompleted(const cb::TunChangeCompleted &result)
     // `actual` is the read-back. Publishing `requested` here is precisely the
     // "pending change reported as success" defect.
     tunEnabled_ = result.actual;
+    // A supersession is not a user-visible failure: the change was abandoned
+    // because the controller moved on, not because it was rejected. Before
+    // backend-r3 B2 this arrived indistinguishable from a protocol error and
+    // was shown to the user as one.
+    if (result.status == cb::CompletionStatus::Superseded) {
+        Q_EMIT routingStateChanged();
+        return;
+    }
     if (result.error.isFailure()) {
         lastError_ = result.error.message;
         Q_EMIT routingStateChanged();

@@ -166,6 +166,10 @@ qt_add_executable(backend-contract-tests contracts/backend/backend_contract_test
 target_link_libraries(backend-contract-tests PRIVATE Qt6::Test clash_backend_fake)
 add_test(NAME backend-contract COMMAND backend-contract-tests)
 
+qt_add_executable(backend-bridge-tests contracts/backend/bridge/backend_bridge_test.cpp)
+target_link_libraries(backend-bridge-tests PRIVATE Qt6::Test clash_backend_bridge clash_backend_fake)
+add_test(NAME backend-bridge COMMAND backend-bridge-tests)
+
 # Portable component object model contract (component-r1).
 qt_add_executable(component-contract-tests contracts/component/component_contract_test.cpp)
 target_link_libraries(component-contract-tests PRIVATE Qt6::Test clashqt_com)
@@ -374,3 +378,4 @@ foreach(test_name IN LISTS clash_qt_all_tests)
         "CLASH_QT_DATA_DIR=${CMAKE_BINARY_DIR}/test-data/${test_name}")
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${existing_env}")
 endforeach()
+clash_qt_label(backend-bridge     unit contract backend)

@@ -2,7 +2,7 @@
 
 // The real MihomoBackend: an ADAPTER over the existing CoreProcess,
 // MihomoClient and ProviderClient, not a rewrite of them.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r2.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
 //
 // WHAT THIS CLASS ADDS OVER THE THREE OBJECTS IT WRAPS
 //
@@ -36,6 +36,13 @@
 //     after the mutating call returns, on the owning thread. MihomoClient emits
 //     five signals synchronously from inside setEndpoint/setConnected; this
 //     class is what stops that reaching a consumer mid-mutation.
+//
+//   * Terminal-outcome stamping that survives its own teardown (backend-r3 B1).
+//     A stop's StopCompleted is stamped when it is PRODUCED, not when it was
+//     submitted, because CoreProcess emits failed() before stopFinished() on the
+//     unconfirmed path and this class bumps on failed(). See the stopFinished
+//     handler; it is the one place where A1's "post-bump" clause is load-bearing
+//     rather than a restatement of the submit-time stamp.
 
 #include <cstdint>
 #include <functional>
@@ -75,6 +82,13 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     /// True while a mutating call of this backend is on the stack. An observer
     /// invoked while this is true was delivered re-entrantly.
     bool isInsideMutatingCall() const noexcept { return mutatingDepth_ > 0; }
+    /// Readiness-probe completions delivered after their probe was cancelled.
+    /// Contract section 5.2 requires the probe to disconnect before aborting, so
+    /// this must always be 0; published here because the rule is otherwise
+    /// unobservable through the facade (backend-r3, weak-coverage item 3).
+    int probeCompletionsAfterCancel() const noexcept {
+        return process_.probeCompletionsAfterCancel();
+    }
 
     /// The readiness and termination budget this backend will REALLY apply.
     /// timings() publishes whatever is set here, so a consumer sizing its own
@@ -269,6 +283,13 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     cb::Generation stopGeneration_ = cb::Generation::Initial;
     cb::RequestId tunRequest_ = cb::RequestId::Invalid;
     cb::Generation tunGeneration_ = cb::Generation::Initial;
+    /// Set when MihomoClient::invalidating fires while a TUN change is
+    /// outstanding. MihomoClient cancels the pending change on exactly those
+    /// three paths (setEndpoint, detach, setConnected(false)), so this - not the
+    /// text of the error message, which is translated - is how the adapter knows
+    /// a TUN completion is a SUPERSESSION rather than a protocol error
+    /// (backend-r3 B2).
+    bool tunSuperseded_ = false;
     cb::RequestId serviceStatusRequest_ = cb::RequestId::Invalid;
     cb::Generation serviceStatusGeneration_ = cb::Generation::Initial;
 

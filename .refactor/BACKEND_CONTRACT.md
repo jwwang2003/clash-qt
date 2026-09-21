@@ -360,6 +360,17 @@ drives the real engine is `real-core`-labelled and therefore excluded from `make
 lane, or §10 stops claiming it. The claim is not permitted to stand on a suite whose
 name merely contains "real".
 
+**Resolved.** `backend-real-contract` drives the real backend adapter against a
+*fixture* core and no longer claims otherwise. The engine claim now rests on
+`backend-real-core`, grown from one smoke case to five driving the locally built
+mihomo, label-gated to the integration lane and run by `make test-integration`
+(10/10). Bullets the real engine cannot drive are enumerated in that suite's header
+with reasons — mihomo's `/version` always answers 200 with a string, so the negative
+arms are unreachable; a core that comes up, keeps logging and never answers cannot
+exist; and the unconfirmed stop is a property of the privileged helper, not the
+engine. The TUN supersession case is drivable in principle but **declined**: it would
+ask the engine to create a TUN device on a developer's machine.
+
 ## Known weak coverage, to be closed with these fixes
 
 Mutation testing found three acceptance bullets that the **real** suite does not

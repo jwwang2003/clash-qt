@@ -157,6 +157,16 @@ struct Completion {
 struct StopCompleted {
     RequestId request = RequestId::Invalid;
     Generation generation = Generation::Initial;
+    // backend-r3 B2. Every completion type carries a status, because A2 requires
+    // an abandoned completion to be MARKED and a bare `confirmed` flag cannot
+    // express that: `false` would be indistinguishable from the unconfirmed
+    // lease cleanup below, which is a different thing entirely.
+    //   Ok         - the managed child's exit was observed (confirmed == true)
+    //   Failed     - cleanup was requested and nothing confirmed the exit
+    //   Superseded - abandoned because a newer stop replaced this one
+    // `confirmed` stays, because section 6 is written in terms of it and the
+    // application's shutdown warning keys on it.
+    CompletionStatus status = CompletionStatus::Ok;
     bool confirmed = false;
     ErrorInfo reason;  // populated when !confirmed; empty otherwise
 };
@@ -166,6 +176,12 @@ struct StopCompleted {
 struct TunChangeCompleted {
     RequestId request = RequestId::Invalid;
     Generation generation = Generation::Initial;
+    // backend-r3 B2. A TUN change cancelled because the controller changed or
+    // disconnected is a SUPERSESSION, not a protocol error: the controller never
+    // answered unusably, it stopped being the controller. Reporting it as
+    // ErrorCode::Protocol told a consumer the engine misbehaved when nothing of
+    // the sort happened.
+    CompletionStatus status = CompletionStatus::Ok;
     bool requested = false;
     bool actual = false;
     ErrorInfo error;

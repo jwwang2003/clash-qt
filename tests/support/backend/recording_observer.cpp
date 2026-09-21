@@ -58,6 +58,7 @@ void RecordingObserver::clear() {
     rejectedByGeneration.clear();
     supersededByBackend.clear();
     stops.clear();
+    stopsRejectedByGeneration.clear();
     tunChanges.clear();
     failures.clear();
     logLines.clear();
@@ -103,6 +104,13 @@ void RecordingObserver::coreStopped(cb::Generation generation) noexcept {
 
 void RecordingObserver::stopCompleted(const cb::StopCompleted &result) noexcept {
     witness();
+    // The section 2 rule is applied here verbatim, before the stamp is folded
+    // into lastObserved_ - otherwise the completion would always validate itself
+    // and the rule could never fire.
+    if (cb::isSuperseded(result.generation, lastObserved_)) {
+        stopsRejectedByGeneration.push_back(result);
+        return;
+    }
     observe(result.generation);
     stops.push_back(result);
 }

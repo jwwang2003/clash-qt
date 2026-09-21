@@ -559,7 +559,16 @@ void CoreProcess::probeController() {
     probeReply_ = network_->get(request);
     QNetworkReply *reply = probeReply_;
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
-        if (probeReply_ != reply) return;
+        if (probeReply_ != reply) {
+            // Contract section 5.2. cancelProbe() disconnects BEFORE it aborts,
+            // so a cancelled probe can never reach this handler at all. Getting
+            // here means that ordering was inverted and abort() delivered
+            // finished() synchronously into a handler that was being torn down.
+            // Counted rather than merely swallowed: an unobservable rule is one
+            // no test can hold the implementation to.
+            ++probeCompletionsAfterCancel_;
+            return;
+        }
         probeReply_ = nullptr;
         reply->deleteLater();
         // The core may have died or timed out while this probe was in flight.
@@ -580,10 +589,16 @@ void CoreProcess::cancelProbe() {
     if (!probeReply_) return;
     QNetworkReply *reply = probeReply_;
     probeReply_ = nullptr;
+    // Contract section 5.2, and the order of these two statements IS the rule:
+    // QNetworkReply::abort() emits finished() synchronously, so aborting first
+    // would deliver a completion into a handler this call is tearing down.
+    // probeCompletionsAfterCancel() is what makes the violation observable.
     reply->disconnect(this);
     reply->abort();
     reply->deleteLater();
 }
+
+int CoreProcess::probeCompletionsAfterCancel() const { return probeCompletionsAfterCancel_; }
 
 void CoreProcess::drainOutput() {
     if (!process_) return;
