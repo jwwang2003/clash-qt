@@ -17,11 +17,11 @@
 
 #include "ui/theme/formatting.h"
 #include "ui/theme/theme.h"
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 
 namespace ui {
 namespace {
-bool sameProviders(const QVector<core::Provider> &a, const QVector<core::Provider> &b) {
+bool sameProviders(const QVector<core::backend::Provider> &a, const QVector<core::backend::Provider> &b) {
     return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](const auto &first, const auto &second) {
         return first.name == second.name && first.type == second.type && first.vehicle == second.vehicle &&
                first.behavior == second.behavior && first.count == second.count && first.updated == second.updated &&
@@ -30,10 +30,9 @@ bool sameProviders(const QVector<core::Provider> &a, const QVector<core::Provide
 }
 }
 
-ProvidersPage::ProvidersPage(core::MihomoClient *client, QWidget *parent)
-    : QWidget(parent), providers_(new core::ProviderClient(client, this)),
-      model_(new QStandardItemModel(this)), filter_(new QSortFilterProxyModel(this)),
-      renderTimer_(new QTimer(this)) {
+ProvidersPage::ProvidersPage(core::backend::BackendBridge *bridge, QWidget *parent)
+    : QWidget(parent), bridge_(bridge), model_(new QStandardItemModel(this)),
+      filter_(new QSortFilterProxyModel(this)), renderTimer_(new QTimer(this)) {
     renderTimer_->setSingleShot(true);
     connect(renderTimer_, &QTimer::timeout, this, &ProvidersPage::renderProviders);
     kind_ = new ComboBox(this);
@@ -99,29 +98,33 @@ ProvidersPage::ProvidersPage(core::MihomoClient *client, QWidget *parent)
         refresh();
     });
     connect(update_, &QPushButton::clicked, this, [this] {
-        providers_->update(kind_->currentData().toBool(), selectedName());
+        bridge_->updateProvider(kind_->currentData().toBool(), selectedName());
     });
     connect(updateAll_, &QPushButton::clicked, this, [this] {
         const bool rules = kind_->currentData().toBool();
         for (int row = 0; row < model_->rowCount(); ++row) {
-            providers_->update(rules, model_->item(row, 0)->text());
+            bridge_->updateProvider(rules, model_->item(row, 0)->text());
         }
     });
     connect(health_, &QPushButton::clicked, this, [this] {
-        providers_->healthCheck(selectedName());
+        bridge_->healthCheckProvider(selectedName());
     });
     connect(view_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
             &ProvidersPage::updateActions);
-    connect(providers_, &core::ProviderClient::providersReceived, this, &ProvidersPage::populate);
-    connect(providers_, &core::ProviderClient::busyChanged, this, [this](bool busy) {
+    connect(bridge_, &core::backend::BackendBridge::providersReceived, this,
+            &ProvidersPage::populate);
+    connect(bridge_, &core::backend::BackendBridge::providerBusyChanged, this, [this](bool busy) {
         busy_ = busy;
         updateActions();
     });
-    connect(providers_, &core::ProviderClient::errorOccurred, this, [this](const QString &message) {
-        status_->setText(message);
-    });
-    connect(providers_, &core::ProviderClient::operationFinished, status_, &QLabel::setText);
-    connect(client, &core::MihomoClient::endpointChanged, this, [this] {
+    // providerError, not errorOccurred: the bridge re-aims a provider failure
+    // onto this channel so it keeps landing on this label rather than becoming
+    // a main-window status-bar toast it never was.
+    connect(bridge_, &core::backend::BackendBridge::providerError, this,
+            [this](const QString &message) { status_->setText(message); });
+    connect(bridge_, &core::backend::BackendBridge::providerOperationFinished, status_,
+            &QLabel::setText);
+    connect(bridge_, &core::backend::BackendBridge::endpointChanged, this, [this] {
         populate(kind_->currentData().toBool(), {});
         if (isVisible()) refresh();
     });
@@ -136,7 +139,7 @@ void ProvidersPage::showEvent(QShowEvent *event) {
 
 void ProvidersPage::refresh() {
     status_->setText(tr("Loading providers…"));
-    providers_->fetch(kind_->currentData().toBool());
+    bridge_->fetchProviders(kind_->currentData().toBool());
 }
 
 QString ProvidersPage::selectedName() const {
@@ -144,7 +147,7 @@ QString ProvidersPage::selectedName() const {
     return rows.isEmpty() ? QString() : rows.first().data().toString();
 }
 
-void ProvidersPage::populate(bool rules, const QVector<core::Provider> &providers) {
+void ProvidersPage::populate(bool rules, const QVector<core::backend::Provider> &providers) {
     if (rules != kind_->currentData().toBool()) return;
     status_->setText(providers.isEmpty() ? tr("No providers are configured in the running core.")
                                          : tr("%n provider(s)", nullptr, providers.size()));

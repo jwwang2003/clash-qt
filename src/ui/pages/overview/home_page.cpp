@@ -11,9 +11,10 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QUrl>
 #include <QVBoxLayout>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 #include "ui/theme/formatting.h"
 #include "ui/theme/theme.h"
 #include "ui/widgets/settings_section.h"
@@ -28,9 +29,36 @@ QLabel *valueLabel(QWidget *parent, const QString &text = QStringLiteral("—"))
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
     return label;
 }
+
+/// The Controller card's Address row.
+///
+/// backend::Endpoint is deliberately behaviour-free -- core/backend/types.h
+/// puts URL construction on whichever side owns the transport -- so
+/// core::Endpoint::httpBase() has no equivalent there. This is that
+/// construction, on the consumer side, and it is identical to what
+/// core::Endpoint::baseUrl("http") produced for every real endpoint, IPv6
+/// brackets included.
+///
+/// It differs in one place, deliberately: BEFORE anything is attached.
+/// core::Endpoint defaulted to 127.0.0.1:9090, so this row used to claim an
+/// address the application was not talking to; backend::Endpoint defaults to no
+/// host and no port, which would render as "http://:0". Neither is an address,
+/// so an invalid endpoint reads as the same em dash every other not-yet-known
+/// field in this form starts at.
+QString addressText(const core::backend::Endpoint &endpoint) {
+    if (!core::backend::isValid(endpoint)) return QStringLiteral("—");
+    QUrl url;
+    url.setScheme(QStringLiteral("http"));
+    QString address = endpoint.host.trimmed();
+    if (address.startsWith('[') && address.endsWith(']'))
+        address = address.mid(1, address.size() - 2);
+    url.setHost(address);
+    url.setPort(endpoint.port);
+    return url.toString(QUrl::FullyEncoded);
+}
 } // namespace
 
-HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent) {
+HomePage::HomePage(core::backend::BackendBridge *bridge, QWidget *parent) : QWidget(parent) {
     auto *body = new QWidget;
     auto *layout = new QVBoxLayout(body);
     layout->setContentsMargins(0, 0, theme::kPageSpacing, 0);
@@ -55,8 +83,8 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
     overviewLayout->setLabelAlignment(Qt::AlignLeft);
     overviewLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     overview->addLayout(overviewLayout);
-    auto *status = valueLabel(overview, client->isConnected() ? tr("Connected") : tr("Disconnected"));
-    auto *endpoint = valueLabel(overview, client->endpoint().httpBase());
+    auto *status = valueLabel(overview, bridge->isConnected() ? tr("Connected") : tr("Disconnected"));
+    auto *endpoint = valueLabel(overview, addressText(bridge->endpoint()));
     auto *version = valueLabel(overview);
     auto *mode = valueLabel(overview);
     auto *ports = valueLabel(overview);
@@ -93,7 +121,7 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
     auto *type = new ComboBox(diagnostics);
     type->addItems({"A", "AAAA", "CNAME", "MX", "TXT", "NS"});
     auto *query = new QPushButton(tr("Query"), diagnostics);
-    query->setEnabled(client->isConnected());
+    query->setEnabled(bridge->isConnected());
     controls->addWidget(domain, 1);
     controls->addWidget(type);
     controls->addWidget(query);
@@ -112,8 +140,8 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
     auto *flushFake = new QPushButton(tr("Clear Fake-IP Cache"), diagnostics);
     flush->setObjectName("flushDnsButton");
     flushFake->setObjectName("flushFakeIpButton");
-    flush->setEnabled(client->isConnected());
-    flushFake->setEnabled(client->isConnected());
+    flush->setEnabled(bridge->isConnected());
+    flushFake->setEnabled(bridge->isConnected());
     cacheControls->addWidget(cacheStatus, 1);
     cacheControls->addWidget(flush);
     cacheControls->addWidget(flushFake);
@@ -121,27 +149,27 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
     layout->addWidget(diagnostics);
     layout->addStretch(1);
 
-    connect(client, &core::MihomoClient::versionReceived, this, [version](const QString &v) {
+    connect(bridge, &core::backend::BackendBridge::versionReceived, this, [version](const QString &v) {
         version->setText(v);
     });
-    connect(client, &core::MihomoClient::configReceived, this,
-            [mode, ports](const core::BaseConfig &config) {
+    connect(bridge, &core::backend::BackendBridge::configReceived, this,
+            [mode, ports](const core::backend::BaseConfig &config) {
         mode->setText(config.mode);
         ports->setText(tr("Mixed %1 · HTTP %2 · SOCKS %3").arg(config.mixedPort).arg(config.httpPort).arg(config.socksPort));
     });
-    connect(client, &core::MihomoClient::memorySample, this, [memory](quint64 inuse, quint64) {
+    connect(bridge, &core::backend::BackendBridge::memorySample, this, [memory](quint64 inuse, quint64) {
         memory->setText(formatBytes(inuse));
     });
-    connect(client, &core::MihomoClient::trafficSample, this, [rate, chart](quint64 up, quint64 down) {
+    connect(bridge, &core::backend::BackendBridge::trafficSample, this, [rate, chart](quint64 up, quint64 down) {
         rate->setText(tr("Upload %1 · Download %2").arg(formatRate(up), formatRate(down)));
         chart->append(up, down);
     });
-    connect(client, &core::MihomoClient::connectionsUpdated, this,
-            [totals](const QVector<core::Connection> &connections, quint64 up, quint64 down) {
+    connect(bridge, &core::backend::BackendBridge::connectionsUpdated, this,
+            [totals](const QVector<core::backend::Connection> &connections, quint64 up, quint64 down) {
         totals->setText(tr("%1 active connections · uploaded %2 · downloaded %3")
                            .arg(connections.size()).arg(formatBytes(up), formatBytes(down)));
     });
-    connect(client, &core::MihomoClient::connectedChanged, this,
+    connect(bridge, &core::backend::BackendBridge::connectedChanged, this,
             [=](bool connected) {
         status->setText(connected ? tr("Connected") : tr("Disconnected"));
         query->setEnabled(connected);
@@ -149,8 +177,8 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
         flushFake->setEnabled(connected);
         if (!connected) { version->setText("—"); mode->setText("—"); ports->setText("—"); chart->clear(); }
     });
-    connect(client, &core::MihomoClient::endpointChanged, this, [=] {
-        endpoint->setText(client->endpoint().httpBase());
+    connect(bridge, &core::backend::BackendBridge::endpointChanged, this, [=] {
+        endpoint->setText(addressText(bridge->endpoint()));
         result->clear();
         cacheStatus->clear();
         chart->clear();
@@ -159,13 +187,13 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
         if (!query->isEnabled() || domain->text().trimmed().isEmpty()) return;
         query->setEnabled(false);
         result->setPlainText(tr("Resolving %1…").arg(domain->text().trimmed()));
-        client->queryDns(domain->text().trimmed(), type->currentText());
+        bridge->queryDns(domain->text().trimmed(), type->currentText());
     };
     connect(query, &QPushButton::clicked, this, queryDns);
     connect(domain, &QLineEdit::returnPressed, this, queryDns);
-    connect(client, &core::MihomoClient::dnsQueryFinished, this,
+    connect(bridge, &core::backend::BackendBridge::dnsQueryFinished, this,
             [=](const QString &name, const QJsonObject &response, const QString &error) {
-        query->setEnabled(client->isConnected());
+        query->setEnabled(bridge->isConnected());
         if (!error.isEmpty()) { result->setPlainText(error); return; }
         QStringList lines{tr("%1 · DNS status %2").arg(name).arg(response.value("Status").toInt())};
         for (const QString section : {QString("Answer"), QString("Authority"), QString("Additional")}) {
@@ -184,15 +212,15 @@ HomePage::HomePage(core::MihomoClient *client, QWidget *parent) : QWidget(parent
     connect(flush, &QPushButton::clicked, this, [=] {
         flush->setEnabled(false);
         cacheStatus->setText(tr("Clearing DNS cache…"));
-        client->flushDnsCache();
+        bridge->flushDnsCache(false);
     });
     connect(flushFake, &QPushButton::clicked, this, [=] {
         flushFake->setEnabled(false);
         cacheStatus->setText(tr("Clearing Fake-IP cache…"));
-        client->flushDnsCache(true);
+        bridge->flushDnsCache(true);
     });
-    connect(client, &core::MihomoClient::dnsCacheFlushed, this, [=](bool fakeIp, const QString &error) {
-        (fakeIp ? flushFake : flush)->setEnabled(client->isConnected());
+    connect(bridge, &core::backend::BackendBridge::dnsCacheFlushed, this, [=](bool fakeIp, const QString &error) {
+        (fakeIp ? flushFake : flush)->setEnabled(bridge->isConnected());
         cacheStatus->setText(error.isEmpty() ? (fakeIp ? tr("Fake-IP cache cleared") : tr("DNS cache cleared")) : error);
     });
 }

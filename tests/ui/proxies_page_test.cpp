@@ -12,7 +12,8 @@
 #include <QPushButton>
 #include <memory>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
+#include "support/backend/fake_backend.h"
 #include "ui/pages/proxies/proxies_page.h"
 #include "support/preference_isolation.h"
 #include "support/scoped_environment.h"
@@ -36,16 +37,17 @@ private slots:
     }
 
     void emptyProxySnapshotClearsMembersAndAction() {
-        core::MihomoClient client;
-        ui::ProxiesPage page(&client);
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::ProxiesPage page(&bridge);
         page.show();
-        client.proxiesUpdated({core::ProxyGroup{"Choose", "Selector", "Node", {"Node"}}},
-                              {{"Node", core::ProxyNode{"Node", "Direct", 20}}});
+        bridge.proxiesUpdated({core::backend::ProxyGroup{"Choose", "Selector", "Node", {"Node"}}},
+                              {{"Node", core::backend::ProxyNode{"Node", "Direct", 20}}});
         const auto lists = page.findChildren<QListWidget *>();
         QCOMPARE(lists.size(), 2);
         QTRY_COMPARE(lists[0]->count(), 1);
         QCOMPARE(lists[1]->count(), 1);
-        client.proxiesUpdated({}, {});
+        bridge.proxiesUpdated({}, {});
         QTRY_COMPARE(lists[0]->count(), 0);
         QCOMPARE(lists[1]->count(), 0);
         for (auto *button : page.findChildren<QPushButton *>())
@@ -53,13 +55,14 @@ private slots:
     }
 
     void proxyFilterAndLatencySort() {
-        core::MihomoClient client;
-        ui::ProxiesPage page(&client);
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::ProxiesPage page(&bridge);
         page.show();
-        client.proxiesUpdated({core::ProxyGroup{"Choose", "Selector", "Fast", {"Slow", "Fast", "Untested"}}},
-                              {{"Slow", core::ProxyNode{"Slow", "Direct", 200}},
-                               {"Fast", core::ProxyNode{"Fast", "Direct", 10}},
-                               {"Untested", core::ProxyNode{"Untested", "Direct", -1}}});
+        bridge.proxiesUpdated({core::backend::ProxyGroup{"Choose", "Selector", "Fast", {"Slow", "Fast", "Untested"}}},
+                              {{"Slow", core::backend::ProxyNode{"Slow", "Direct", 200}},
+                               {"Fast", core::backend::ProxyNode{"Fast", "Direct", 10}},
+                               {"Untested", core::backend::ProxyNode{"Untested", "Direct", -1}}});
         auto *nodes = page.findChild<QListWidget *>("proxyNodes");
         QVERIFY(nodes);
         QTRY_COMPARE(nodes->count(), 3);
@@ -72,22 +75,23 @@ private slots:
     }
 
     void proxySnapshotsSkipUnchangedAndHiddenRebuilds() {
-        core::MihomoClient client;
-        ui::ProxiesPage page(&client);
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::ProxiesPage page(&bridge);
         page.show();
-        QVector<core::ProxyGroup> groups{{"Choose", "Selector", "Node", {"Node"}}};
-        QHash<QString, core::ProxyNode> nodes{{"Node", {"Node", "Direct", 20}}};
+        QVector<core::backend::ProxyGroup> groups{{"Choose", "Selector", "Node", {"Node"}}};
+        QHash<QString, core::backend::ProxyNode> nodes{{"Node", {"Node", "Direct", 20}}};
         auto *list = page.findChild<QListWidget *>("proxyNodes");
-        client.proxiesUpdated(groups, nodes);
+        bridge.proxiesUpdated(groups, nodes);
         QTRY_COMPARE(list->count(), 1);
         QSignalSpy resets(list->model(), &QAbstractItemModel::modelReset);
-        for (int i = 0; i < 10; ++i) client.proxiesUpdated(groups, nodes);
+        for (int i = 0; i < 10; ++i) bridge.proxiesUpdated(groups, nodes);
         QTest::qWait(30);
         QCOMPARE(resets.size(), 0);
         page.hide();
         groups[0].all << "Next";
         nodes.insert("Next", {"Next", "Direct", 30});
-        client.proxiesUpdated(groups, nodes);
+        bridge.proxiesUpdated(groups, nodes);
         QTest::qWait(30);
         QCOMPARE(resets.size(), 0);
         QCOMPARE(list->count(), 1);

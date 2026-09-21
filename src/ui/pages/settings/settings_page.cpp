@@ -25,10 +25,11 @@
 #include <QSettings>
 #include <QVBoxLayout>
 
+#include "app/runtime/routing_controller.h"
+#include "core/backend/backend_bridge.h"
 #include "core/config/enhance/config_enhancer.h"
-#include "core/mihomo/mihomo_client.h"
-#include "core/mihomo/process/core_process.h"
 #include "core/preferences/preferences.h"
+#include "core/types.h"
 #include "core/profiles/profile_store.h"
 #include "platform/proxy/system_proxy.h"
 #include "platform/proxy/system_proxy_service.h"
@@ -42,6 +43,15 @@
 namespace ui {
 namespace {
 
+namespace cb = core::backend;
+
+/// backend::Endpoint carries no behaviour by contract; core::Endpoint spells the
+/// same fields and owns the tested URL construction, so the page converts here
+/// rather than re-deriving it.
+QString httpBase(const cb::Endpoint &endpoint) {
+    return core::Endpoint{endpoint.host, endpoint.port, endpoint.secret}.httpBase();
+}
+
 constexpr auto kBypassKey = "sysproxy/bypass";
 constexpr auto kDefaultBypass = "localhost, 127.0.0.1, ::1";
 
@@ -49,21 +59,18 @@ struct AutostartResult { bool enabled = false; bool valid = false; bool success 
 
 QSettings settings() { return core::preferences::open(); }
 
-QString failureText(const QString &what, const QString &reason) {
-    return reason.isEmpty() ? QObject::tr("%1 The platform reported no reason.").arg(what)
-                            : QObject::tr("%1 %2").arg(what, reason);
-}
-
 }  // namespace
 
-SettingsPage::SettingsPage(const app::Context &context, QWidget *parent)
-    : QWidget(parent), context_(context), proxyService_(platform::SystemProxyService::instance()) {
+SettingsPage::SettingsPage(const app::Context &context, cb::BackendBridge *backend,
+                           app::runtime::RoutingController *routing, QWidget *parent)
+    : QWidget(parent), context_(context), backend_(backend), routing_(routing),
+      proxyService_(platform::SystemProxyService::instance()) {
     auto *column = new QVBoxLayout;
     column->setContentsMargins(0, 0, theme::kPageSpacing, 0);
     column->setSpacing(theme::kPageSpacing);
     buildSystemProxy(column);
     buildCore(column);
-    auto *service = new ServiceSettings(context_, this);
+    auto *service = new ServiceSettings(context_, backend_, this);
     connect(service, &ServiceSettings::installationBusyChanged, this, &SettingsPage::serviceInstallationBusyChanged);
     column->addWidget(service);
     buildRuntime(column);
@@ -85,40 +92,23 @@ SettingsPage::SettingsPage(const app::Context &context, QWidget *parent)
     auto *layout = theme::pageLayout(this);
     layout->addWidget(scroll, 1);
 
-    connect(proxyService_, &platform::SystemProxyService::stateChanged, this,
-            [this](const platform::SystemProxyState &) { renderSystemProxy(); });
-    connect(proxyService_, &platform::SystemProxyService::busyChanged, this, [this](bool busy) {
-        if (!busy) proxyRequest_.reset();
-        renderSystemProxy();
-    });
-    connect(proxyService_, &platform::SystemProxyService::activityChanged, this,
+    // One notification for every routing change - the controller already folds
+    // the service's stateChanged, busyChanged and activityChanged into it, so
+    // subscribing to those as well would only re-render twice.
+    connect(routing_, &app::runtime::RoutingController::routingStateChanged, this,
             &SettingsPage::renderSystemProxy);
-    connect(proxyService_, &platform::SystemProxyService::changeFinished, this,
-            [this](bool requested, bool success, const QString &reason) {
-        proxyOperationError_ = success ? QString() : failureText(requested
-            ? tr("Could not set the system proxy.") : tr("Could not clear the system proxy."), reason);
-        if (!success && !proxyService_->isShuttingDown()) emit systemProxyError(proxyOperationError_);
-        renderSystemProxy();
-    });
-    connect(proxyService_, &platform::SystemProxyService::restoreFinished, this,
-            [this](bool success, const QString &reason) {
-        proxyOperationError_ = success ? QString() : failureText(tr("Could not restore the system proxy."), reason);
-        if (!success && !proxyService_->isShuttingDown()) emit systemProxyError(proxyOperationError_);
-        renderSystemProxy();
-    });
     // Readback and re-targeting use the cache; no OS process runs in this slot.
-    connect(context_.client, &core::MihomoClient::configReceived, this,
-            [this](const core::BaseConfig &config) {
+    connect(backend_, &cb::BackendBridge::configReceived, this, [this](const cb::BaseConfig &config) {
         corePort_ = config.mixedPort != 0 ? config.mixedPort : config.httpPort;
         coreSocksPort_ = config.mixedPort != 0 ? config.mixedPort : config.socksPort;
         const auto &state = proxyService_->state();
-        const bool targetChanged = state.config.host != context_.client->endpoint().host ||
+        const bool targetChanged = state.config.host != backend_->endpoint().host ||
             state.config.port != corePort_ || state.config.socksPort != coreSocksPort_;
-        if (state.valid && state.owned && targetChanged && context_.client->isConnected() && corePort_ != 0)
+        if (state.valid && state.owned && targetChanged && backend_->isConnected() && corePort_ != 0)
             applySystemProxy(true);
         else refreshSystemProxy();
     });
-    connect(context_.client, &core::MihomoClient::connectedChanged, this,
+    connect(backend_, &cb::BackendBridge::connectedChanged, this,
             [this](bool) { refreshSystemProxy(); });
     refreshSystemProxy();
 }
@@ -137,7 +127,7 @@ void SettingsPage::buildSystemProxy(QVBoxLayout *column) {
     bypassEdit_->setPlaceholderText(tr("Hosts that skip the proxy, comma separated"));
     connect(bypassEdit_, &QLineEdit::editingFinished, this, [this] {
         settings().setValue(kBypassKey, bypassEdit_->text());
-        if (proxyToggle_->isChecked() && !proxyService_->isChanging()) applySystemProxy(true);
+        if (proxyToggle_->isChecked() && !routing_->systemProxyPending()) applySystemProxy(true);
     });
 
     auto *bypassLabel = new QLabel(tr("Bypass"), proxySection_);
@@ -212,57 +202,50 @@ void SettingsPage::buildChain(QVBoxLayout *column) {
     column->addWidget(section);
 }
 
-void SettingsPage::toggleSystemProxy() {
-    if (proxyToggle_->isEnabled()) proxyToggle_->toggle();
-}
+void SettingsPage::toggleSystemProxy() { routing_->toggleSystemProxy(); }
 
-bool SettingsPage::systemProxyEnabled() const { return proxyToggle_->isChecked(); }
-bool SettingsPage::systemProxyAvailable() const { return proxyToggle_->isEnabled(); }
+bool SettingsPage::systemProxyEnabled() const { return routing_->systemProxyEnabled(); }
+bool SettingsPage::systemProxyAvailable() const { return routing_->systemProxyAvailable(); }
 
 void SettingsPage::setSystemProxyEnabled(bool enabled) {
-    if (proxyToggle_->isEnabled()) proxyToggle_->setChecked(enabled);
+    if (routing_->systemProxyAvailable()) routing_->requestSystemProxy(enabled);
     renderSystemProxy();
 }
 
 void SettingsPage::applySystemProxy(bool enabled) {
-    if (proxyService_->isShuttingDown()) { renderSystemProxy(); return; }
-    if (enabled && (!context_.client->isConnected() || corePort_ == 0)) {
-        proxyOperationError_ = tr("Connect to a core with a reported proxy port first.");
-        renderSystemProxy();
-        emit systemProxyError(proxyOperationError_);
-        return;
-    }
-    proxyOperationError_.clear();
+    // The controller owns every guard the page used to apply by hand - shutting
+    // down, not connected, no reported port - and raises the one error for it.
     proxyRequest_ = enabled;
     platform::ProxyConfig config;
-    config.host = context_.client->endpoint().host;
+    config.host = backend_->endpoint().host;
     config.port = corePort_;
     config.socksPort = coreSocksPort_;
     config.bypass = bypassEdit_->text().trimmed();
-    proxyService_->setEnabled(enabled, config);
+    routing_->setProxyTarget(config);
+    routing_->requestSystemProxy(enabled);
     renderSystemProxy();
 }
 
 void SettingsPage::refreshSystemProxy() {
     renderSystemProxy();
-    proxyService_->refresh();
+    routing_->refreshSystemProxy();
 }
 
 void SettingsPage::restoreSystemProxy() { proxyService_->restoreOwned(); }
 
 void SettingsPage::renderSystemProxy() {
+    // CONFIRMED, and the same answer the toolbar and the tray show: a change in
+    // flight leaves the switch on the last confirmed value and reads as pending.
+    const bool matches = routing_->systemProxyEnabled();
+    const bool available = routing_->systemProxyAvailable();
+    const bool pending = routing_->systemProxyPending();
+    if (!pending) proxyRequest_.reset();
+    // Descriptive only: what the OS currently holds, and why a read failed.
     const auto &state = proxyService_->state();
-    // A background read must not swallow the first click that focuses the app.
-    // Mutations queue safely behind that read; only writes/initial reads are inert.
-    const bool changing = proxyService_->isChanging();
-    const bool pending = changing || (!state.valid && proxyService_->isBusy());
     const bool on = state.config.port != 0;
-    const bool matches = on && state.config.port == corePort_ &&
-                         state.config.host == context_.client->endpoint().host;
     const QSignalBlocker blocker(proxyToggle_);
     proxyToggle_->setChecked(matches);
-    proxyToggle_->setEnabled(state.supported && state.valid && !pending && !proxyService_->isShuttingDown() &&
-                            (matches || (context_.client->isConnected() && corePort_ != 0)));
+    proxyToggle_->setEnabled(available);
     bypassEdit_->setEnabled(state.supported && !pending && !proxyService_->isShuttingDown());
     QString system;
     if (pending) {
@@ -279,8 +262,9 @@ void SettingsPage::renderSystemProxy() {
     const QString port = corePort_ != 0 ? tr("Core port: %1").arg(corePort_)
                                        : tr("Core port: not reported yet");
     proxyState_->setText(system + "   ·   " + port);
-    proxySection_->setError(proxyOperationError_.isEmpty() ? state.error : proxyOperationError_);
-    emit systemProxyStateChanged(matches, proxyToggle_->isEnabled());
+    const QString operationError = routing_->lastError();
+    proxySection_->setError(operationError.isEmpty() ? state.error : operationError);
+    emit systemProxyStateChanged(matches, available);
     emit systemProxyBusyChanged(pending);
 }
 
@@ -329,7 +313,7 @@ void SettingsPage::runAutostartOperation(std::optional<bool> enabled) {
 void SettingsPage::buildCore(QVBoxLayout *column) {
     auto *section = new SettingsSection(tr("Core"), tr("Choose the mihomo executable used for managed profiles."), this);
     auto *binary = new QLineEdit(settings().value("core/binary").toString(), section);
-    binary->setPlaceholderText(core::CoreProcess::discoverBinary());
+    binary->setPlaceholderText(backend_->backend().discoverBinary());
     binary->setAccessibleName(tr("Mihomo executable"));
     auto *browse = new QPushButton(tr("Browse…"), section);
     auto *row = new QHBoxLayout;
@@ -341,26 +325,26 @@ void SettingsPage::buildCore(QVBoxLayout *column) {
         if (!path.isEmpty()) {
             binary->setText(path);
             settings().setValue("core/binary", path);
-            context_.coreProcess->setBinaryPath(path);
+            backend_->backend().setBinaryPath(path);
         }
     });
     connect(binary, &QLineEdit::editingFinished, this, [this, binary] {
         const QString path = binary->text().trimmed();
         settings().setValue("core/binary", path);
-        context_.coreProcess->setBinaryPath(path);
+        backend_->backend().setBinaryPath(path);
     });
     auto *controller = new QLabel(section);
     controller->setTextFormat(Qt::PlainText);
     controller->setTextInteractionFlags(Qt::TextSelectableByMouse);
     const auto updateEndpoint = [this, controller] {
-        controller->setText(tr("Controller: %1").arg(context_.client->endpoint().httpBase()));
+        controller->setText(tr("Controller: %1").arg(httpBase(backend_->endpoint())));
     };
-    connect(context_.client, &core::MihomoClient::endpointChanged, this, updateEndpoint);
+    connect(backend_, &cb::BackendBridge::endpointChanged, this, updateEndpoint);
     updateEndpoint();
     section->addWidget(controller);
     auto *geo = new QPushButton(tr("Update GEO Databases"), section);
     geo->setToolTip(tr("Ask the connected core to download its configured geographic databases."));
-    geo->setEnabled(context_.client->isConnected());
+    geo->setEnabled(backend_->isConnected());
     auto *geoStatus = new QLabel(section);
     geoStatus->setTextFormat(Qt::PlainText);
     geoStatus->setWordWrap(true);
@@ -370,12 +354,12 @@ void SettingsPage::buildCore(QVBoxLayout *column) {
         geo->setProperty("updating", true);
         geo->setEnabled(false);
         geoStatus->setText(tr("Updating GEO databases…"));
-        context_.client->updateGeoDatabases();
+        backend_->updateGeoDatabases();
     });
-    connect(context_.client, &core::MihomoClient::geoDatabasesUpdated, section,
+    connect(backend_, &cb::BackendBridge::geoDatabasesUpdated, section,
             [this, geo, geoStatus](const QString &error) {
         geo->setProperty("updating", false);
-        geo->setEnabled(context_.client->isConnected());
+        geo->setEnabled(backend_->isConnected());
         geoStatus->setText(error.isEmpty() ? tr("GEO databases updated.") : error);
     });
     const auto cancelGeo = [geo, geoStatus] {
@@ -384,8 +368,8 @@ void SettingsPage::buildCore(QVBoxLayout *column) {
         geo->setProperty("updating", false);
         geo->setEnabled(false);
     };
-    connect(context_.client, &core::MihomoClient::endpointChanged, section, cancelGeo);
-    connect(context_.client, &core::MihomoClient::connectedChanged, section,
+    connect(backend_, &cb::BackendBridge::endpointChanged, section, cancelGeo);
+    connect(backend_, &cb::BackendBridge::connectedChanged, section,
             [geo, cancelGeo](bool connected) {
         if (!connected) cancelGeo();
         else geo->setEnabled(!geo->property("updating").toBool());
@@ -414,9 +398,9 @@ void SettingsPage::buildRuntime(QVBoxLayout *column) {
     connect(mode, &QComboBox::currentTextChanged, section, edited);
     connect(lan, &QCheckBox::toggled, section, edited);
     connect(ipv6, &QCheckBox::toggled, section, edited);
-    connect(context_.client, &core::MihomoClient::configReceived, section,
-            [this, port, mode, lan, ipv6, dirty](const core::BaseConfig &config) {
-        if (*dirty || context_.coreProcess->state() != core::CoreState::Running) return;
+    connect(backend_, &cb::BackendBridge::configReceived, section,
+            [this, port, mode, lan, ipv6, dirty](const cb::BaseConfig &config) {
+        if (*dirty || backend_->coreState() != cb::CoreState::Running) return;
         const QSignalBlocker portBlocker(port), modeBlocker(mode), lanBlocker(lan), ipv6Blocker(ipv6);
         if (config.mixedPort) port->setValue(config.mixedPort);
         mode->setCurrentText(config.mode);
@@ -447,7 +431,7 @@ void SettingsPage::buildRuntime(QVBoxLayout *column) {
         section->setNotice({});
         if (!context_.profiles->setRuntimeOverrides(overrides)) return;
         *dirty = false;
-        if (context_.coreProcess->state() == core::CoreState::Running)
+        if (backend_->coreState() == cb::CoreState::Running)
             context_.profiles->requestRuntimeConfig();
         else section->setNotice(tr("Saved. These settings take effect when you start the core."));
     });
@@ -456,12 +440,12 @@ void SettingsPage::buildRuntime(QVBoxLayout *column) {
         *coreFailure = false;
         section->setError(error);
     });
-    connect(context_.coreProcess, &core::CoreProcess::failed, section,
+    connect(backend_, &cb::BackendBridge::coreFailed, section,
             [section, coreFailure](const QString &error) {
         *coreFailure = true;
         section->setError(error);
     });
-    connect(context_.coreProcess, &core::CoreProcess::ready, section, [section, coreFailure] {
+    connect(backend_, &cb::BackendBridge::coreReady, section, [section, coreFailure] {
         // Clear an earlier core failure only after a successful launch. An
         // unrelated profile/save error must remain visible until addressed.
         if (*coreFailure) section->setError({});

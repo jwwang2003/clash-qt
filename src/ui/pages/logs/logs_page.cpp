@@ -17,7 +17,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 #include "ui/theme/theme.h"
 
 namespace ui {
@@ -33,14 +33,14 @@ QString levelColor(const QString &level) {
 
 }  // namespace
 
-LogsPage::LogsPage(core::MihomoClient *client, QWidget *parent)
-    : QWidget(parent), client_(client) {
+LogsPage::LogsPage(core::backend::BackendBridge *bridge, QWidget *parent)
+    : QWidget(parent), bridge_(bridge) {
     levelBox_ = new ComboBox(this);
     levelBox_->addItems({"debug", "info", "warning", "error"});
     levelBox_->setCurrentText("info");
     connect(levelBox_, &QComboBox::currentTextChanged, this,
             [this](const QString &level) {
-                client_->openLogStream(level);
+                bridge_->openLogStream(level);
                 renderEntries();
             });
 
@@ -108,30 +108,30 @@ LogsPage::LogsPage(core::MihomoClient *client, QWidget *parent)
     layout->addLayout(controls);
     layout->addWidget(view_, 1);
 
-    connect(client_, &core::MihomoClient::logReceived, this, &LogsPage::onLogReceived);
+    connect(bridge_, &core::backend::BackendBridge::logReceived, this, &LogsPage::onLogReceived);
     connect(theme::notifier(), &theme::Notifier::changed, this, &LogsPage::renderEntries);
-    connect(client_, &core::MihomoClient::endpointChanged, this, [this] {
+    connect(bridge_, &core::backend::BackendBridge::endpointChanged, this, [this] {
         entries_.clear();
         view_->clear();
     });
 }
 
 void LogsPage::appendCoreLine(const QString &line) {
-    appendEntry(core::LogEntry{"core", line, QDateTime::currentDateTime()});
+    appendEntry(core::backend::LogEntry{"core", line, QDateTime::currentDateTime()});
 }
 
-void LogsPage::onLogReceived(const core::LogEntry &entry) { appendEntry(entry); }
+void LogsPage::onLogReceived(const core::backend::LogEntry &entry) { appendEntry(entry); }
 
-QString LogsPage::entryHtml(const core::LogEntry &entry) const {
+QString LogsPage::entryHtml(const core::backend::LogEntry &entry) const {
     return QString("<span style=\"color:%1\">[%2]</span> %3 %4")
         .arg(entry.level == "core" ? theme::tokens().textDim.name() : levelColor(entry.level),
              entry.level.toUpper().toHtmlEscaped(), entry.time.toString("HH:mm:ss"),
              entry.payload.toHtmlEscaped());
 }
 
-void LogsPage::appendEntry(const core::LogEntry &entry) {
+void LogsPage::appendEntry(const core::backend::LogEntry &entry) {
     if (pauseButton_->isChecked()) return;
-    core::LogEntry bounded = entry;
+    core::backend::LogEntry bounded = entry;
     constexpr int maxPayloadCharacters = 8192;
     if (bounded.payload.size() > maxPayloadCharacters)
         bounded.payload = bounded.payload.left(maxPayloadCharacters) + tr("… [truncated]");
@@ -145,7 +145,7 @@ void LogsPage::appendEntry(const core::LogEntry &entry) {
     if (matchesFilter(bounded)) view_->appendHtml(entryHtml(bounded));
 }
 
-bool LogsPage::matchesFilter(const core::LogEntry &entry) const {
+bool LogsPage::matchesFilter(const core::backend::LogEntry &entry) const {
     const QStringList levels{"debug", "info", "warning", "error"};
     if (entry.level != "core" && levels.indexOf(entry.level) < levels.indexOf(levelBox_->currentText()))
         return false;

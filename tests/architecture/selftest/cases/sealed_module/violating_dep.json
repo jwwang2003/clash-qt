@@ -1,0 +1,94 @@
+{
+  "_about": "Variant of the SEALED-MODULE case in which synth_app declares the sealed module in its 'deps'. This is the exact hole that hid eight clash-qt targets: 'deps' is consulted before exceptions, so the edge becomes permanently allowed -- no owner, no removal phase, invisible to the ratchet -- and, because the allowlist short-circuits before match_edge() runs, the site that WAS tracking it now reads as discharged debt. Expected: ARCH-R4-SEALED-MODULE-DECLARED-DEP and, as a consequence, ARCH-R4-STALE-EXCEPTION.",
+  "ignore_external": [
+    "Qt6::Platform"
+  ],
+  "forbidden_external": [
+    "Qt6::Widgets",
+    "Qt6::Quick",
+    "Qt6::Graphs"
+  ],
+  "modules": {
+    "synth_types": {
+      "deps": [],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_platform": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Gui"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui"
+      ]
+    },
+    "synth_impl": {
+      "_role": "Component-private. Stands in for clash_mihomo_impl.",
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    }
+  },
+  "consumers": {
+    "synth_app": {
+      "_note": "The defect: the link is declared as an ordinary dep instead of being baselined.",
+      "deps": [
+        "synth_impl"
+      ]
+    },
+    "synth_tool": {
+      "_note": "Declared so that its link to the sealed module is visible at all: an undeclared executable is invisible to the consumer allowlist.",
+      "deps": []
+    },
+    "synth_probe": {
+      "deps": [
+        "synth_platform"
+      ]
+    }
+  },
+  "include_rules": [],
+  "sealed_modules": [
+    {
+      "module": "synth_impl",
+      "sealed_while": [
+        "SEAL-*"
+      ],
+      "exempt_linkers": [
+        "arch_probe_*"
+      ],
+      "reason": "While SEAL-baseline is open, synth_impl may be reached only through a baselined site: never through a 'deps' declaration, which check_targets() honours before it consults exceptions, and never by a target the ledger does not name."
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "SEAL-baseline",
+      "class": "migration-baseline",
+      "kind": "target_edge",
+      "owner": "SELFTEST",
+      "remove_in": "never",
+      "reason": "Stands in for G2-consumers-link-component-private: the targets that still link the component-private module, each with an owner and a removal phase.",
+      "sites": [
+        {
+          "from": "synth_app",
+          "to": "synth_impl"
+        },
+        {
+          "from": "synth_tool",
+          "to": "synth_impl"
+        }
+      ]
+    }
+  ]
+}

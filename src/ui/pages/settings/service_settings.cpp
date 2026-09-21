@@ -6,22 +6,26 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QTimer>
-#include "core/mihomo/process/core_process.h"
+#include "core/backend/backend_bridge.h"
 #include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
-#include "platform/service/privileged_service_client.h"
 #include "platform/service/privileged_service_installer.h"
 
 namespace ui {
-ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
+
+namespace cb = core::backend;
+
+ServiceSettings::ServiceSettings(const app::Context &context, cb::BackendBridge *backend,
+                                 QWidget *parent)
     : SettingsSection(tr("Privileged Service"),
         tr("Run the managed core with the privileges needed for TUN. The desktop app stays unprivileged. "
            "Installing or removing the service requires macOS administrator authorization."), parent),
-      context_(context), installer_(new platform::PrivilegedServiceInstaller(this)),
-      probe_(new platform::PrivilegedServiceClient(this)), startupRetry_(new QTimer(this)) {
+      context_(context), backend_(backend),
+      installer_(new platform::PrivilegedServiceInstaller(this)),
+      startupRetry_(new QTimer(this)) {
     startupRetry_->setSingleShot(true);
     startupRetry_->setInterval(500);
-    connect(startupRetry_, &QTimer::timeout, probe_, &platform::PrivilegedServiceClient::requestStatus);
+    connect(startupRetry_, &QTimer::timeout, this, &ServiceSettings::checkStatus);
     setAccessibleName(tr("Privileged Service"));
     status_ = new QLabel(this);
     status_->setObjectName("privilegedServiceStatus");
@@ -47,9 +51,8 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
     row->addWidget(check_);
     row->addStretch();
     addLayout(row);
-    connect(context_.coreProcess, &core::CoreProcess::stateChanged, this, [this] {
-        const auto state = context_.coreProcess->state();
-        if (state == core::CoreState::Stopped || state == core::CoreState::Failed)
+    connect(backend_, &cb::BackendBridge::coreStateChanged, this, [this](cb::CoreState state) {
+        if (state == cb::CoreState::Stopped || state == cb::CoreState::Failed)
             QTimer::singleShot(0, this, &ServiceSettings::checkStatus);
         refresh();
     });
@@ -81,16 +84,18 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
         }
         refresh();
     });
-    connect(probe_, &platform::PrivilegedServiceClient::statusReceived, this, [this](const QJsonObject &status) {
-        serviceRunning_ = status.value("state").toString() == "running";
-        startupRetries_ = 0;
-        startupRetry_->stop();
-        setError({});
-        reachable_ = true;
-        probe_->close();
-        refresh();
-    });
-    connect(probe_, &platform::PrivilegedServiceClient::errorOccurred, this, [this](const QString &error) {
+    // D3: the component owns the single privileged connection; this is the
+    // published answer coming back, not a second socket of our own.
+    connect(backend_, &cb::BackendBridge::privilegedServiceStatus, this,
+            [this](cb::ServiceState state, const QString &, const QString &error) {
+        if (state == cb::ServiceState::Connected && error.isEmpty()) {
+            startupRetries_ = 0;
+            startupRetry_->stop();
+            setError({});
+            reachable_ = true;
+            refresh();
+            return;
+        }
         reachable_ = false;
         if (startupRetries_ > 0 && !installer_->isBusy()) {
             --startupRetries_;
@@ -109,10 +114,8 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
     connect(check_, &QPushButton::clicked, this, &ServiceSettings::checkStatus);
     connect(install_, &QPushButton::clicked, this, [this] {
         setError({});
-        probe_->close();
-        const QString path = context_.coreProcess->binaryPath().isEmpty()
-            ? core::CoreProcess::discoverBinary() : context_.coreProcess->binaryPath();
-        installer_->install(path);
+        const QString configured = backend_->backend().binaryPath();
+        installer_->install(configured.isEmpty() ? backend_->backend().discoverBinary() : configured);
     });
     connect(remove_, &QPushButton::clicked, this, [this] {
         auto *message = new QMessageBox(QMessageBox::Question, tr("Remove Privileged Service"),
@@ -122,10 +125,9 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
         message->setAttribute(Qt::WA_DeleteOnClose);
         connect(message, &QMessageBox::finished, this, [this](int result) {
             if (result != QMessageBox::Yes || installer_->isBusy()) return;
-            const auto state = context_.coreProcess->state();
-            if ((state != core::CoreState::Stopped && state != core::CoreState::Failed)
+            const auto state = backend_->coreState();
+            if ((state != cb::CoreState::Stopped && state != cb::CoreState::Failed)
                 || context_.profiles->isRuntimeBusy() || serviceRunning_) return;
-            probe_->close();
             installer_->uninstall();
         });
         message->open();
@@ -135,7 +137,9 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
 }
 
 bool ServiceSettings::applyMode(bool enabled) {
-    if (!context_.coreProcess->setUseService(enabled)) return false;
+    if (!backend_->backend().setExecutionMode(enabled ? cb::ExecutionMode::PrivilegedService
+                                                      : cb::ExecutionMode::Managed))
+        return false;
     core::preferences::open().setValue("core/useService", enabled);
     if (!enabled) {
         auto overrides = context_.profiles->runtimeOverrides();
@@ -153,16 +157,16 @@ void ServiceSettings::checkStatus() {
     if (!platform::PrivilegedServiceInstaller::isSupported() || installer_->isBusy()) return;
     setError({});
     installer_->refresh();
-    probe_->requestStatus();
+    backend_->requestPrivilegedServiceStatus();
 }
 
 void ServiceSettings::refresh() {
     const bool supported = platform::PrivilegedServiceInstaller::isSupported();
-    const auto state = context_.coreProcess->state();
-    const bool stopped = state == core::CoreState::Stopped || state == core::CoreState::Failed;
+    const auto state = backend_->coreState();
+    const bool stopped = state == cb::CoreState::Stopped || state == cb::CoreState::Failed;
     const bool available = supported && stopped && !serviceRunning_ && !context_.profiles->isRuntimeBusy() && !installer_->isBusy();
     const QSignalBlocker blocker(enabled_);
-    enabled_->setChecked(context_.coreProcess->isServiceMode());
+    enabled_->setChecked(backend_->backend().executionMode() == cb::ExecutionMode::PrivilegedService);
     enabled_->setEnabled(available && installed_);
     install_->setEnabled(available);
     remove_->setEnabled(available && installed_);
@@ -174,9 +178,9 @@ void ServiceSettings::refresh() {
         status_->setText(tr("Waiting for administrator authorization / updating service…"));
     } else if (startupRetries_ > 0 || startupRetry_->isActive()) {
         status_->setText(tr("Starting privileged service…"));
-    } else if (context_.coreProcess->usesPrivilegedService()) {
-        status_->setText(state == core::CoreState::Starting ? tr("Service core starting…")
-            : state == core::CoreState::Stopping ? tr("Service core stopping…")
+    } else if (backend_->backend().usesPrivilegedService()) {
+        status_->setText(state == cb::CoreState::Starting ? tr("Service core starting…")
+            : state == cb::CoreState::Stopping ? tr("Service core stopping…")
             : tr("Service core active"));
     } else if (!checked_) {
         status_->setText(tr("Checking installation…"));

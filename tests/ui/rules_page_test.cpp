@@ -9,7 +9,8 @@
 #include <QTableView>
 #include <memory>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
+#include "support/backend/fake_backend.h"
 #include "ui/pages/rules/rules_page.h"
 #include "support/preference_isolation.h"
 #include "support/scoped_environment.h"
@@ -33,9 +34,10 @@ private slots:
     }
 
     void rulesKeepRoutingOrderAndFilterType() {
-        core::MihomoClient client;
-        ui::RulesPage page(&client);
-        client.rulesUpdated({{"ZZZ", "first", "DIRECT"}, {"AAA", "last", "REJECT"}});
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::RulesPage page(&bridge);
+        bridge.rulesUpdated({{"ZZZ", "first", "DIRECT"}, {"AAA", "last", "REJECT"}});
         auto *view = page.findChild<QTableView *>();
         QCOMPARE(view->model()->index(0, 0).data().toString(), QString("ZZZ"));
         page.findChild<QLineEdit *>()->setText("reject");

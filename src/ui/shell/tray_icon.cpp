@@ -12,12 +12,24 @@
 #include "ui/shell/proxy_environment.h"
 #include "ui/shell/tray_proxy_menu.h"
 #include "ui/shell/routing_controls.h"
-#include "core/mihomo/mihomo_client.h"
+#include "app/runtime/routing_controller.h"
+#include "core/backend/backend_bridge.h"
 #include "core/profiles/profile_store.h"
+#include "core/types.h"
 #include "platform/proxy/system_proxy.h"
 
 namespace ui {
 namespace {
+
+namespace cb = core::backend;
+
+/// proxy_environment() is written against core::Endpoint, which carries the URL
+/// behaviour the published backend::Endpoint deliberately does not. The two
+/// spell the same three fields, so the shell converts at the one place it needs
+/// to rather than duplicating the transport knowledge.
+core::Endpoint asCoreEndpoint(const cb::Endpoint &endpoint) {
+    return {endpoint.host, endpoint.port, endpoint.secret};
+}
 
 QIcon trayIcon() {
     const qreal scale = qApp->devicePixelRatio();
@@ -44,21 +56,23 @@ TrayIcon::TrayIcon(MainWindow *window, QObject *parent)
         window_->activateWindow();
     });
     const auto context = window->context();
+    auto *backend = window->backend();
+    auto *routing = window->routing();
     auto *start = menu_->addAction(tr("Start Core"), window_, &MainWindow::startCore);
     auto *stop = menu_->addAction(tr("Stop Core"), window_, &MainWindow::stopCore);
     auto *restart = menu_->addAction(tr("Restart Core"), window_, &MainWindow::startCore);
-    const auto updateState = [=](core::CoreState state) {
-        const bool live = state == core::CoreState::Starting || state == core::CoreState::Running;
+    const auto updateState = [=](cb::CoreState state) {
+        const bool live = state == cb::CoreState::Starting || state == cb::CoreState::Running;
         const bool preparing = context.profiles->isRuntimeBusy();
-        start->setEnabled(!live && !preparing && state != core::CoreState::Stopping);
-        stop->setEnabled((live || preparing) && state != core::CoreState::Stopping);
+        start->setEnabled(!live && !preparing && state != cb::CoreState::Stopping);
+        stop->setEnabled((live || preparing) && state != cb::CoreState::Stopping);
         restart->setEnabled(live && !preparing);
     };
-    connect(context.coreProcess, &core::CoreProcess::stateChanged, this, updateState);
-    connect(context.profiles, &core::ProfileStore::runtimeBusyChanged, this, [context, updateState] {
-        updateState(context.coreProcess->state());
+    connect(backend, &cb::BackendBridge::coreStateChanged, this, updateState);
+    connect(context.profiles, &core::ProfileStore::runtimeBusyChanged, this, [backend, updateState] {
+        updateState(backend->coreState());
     });
-    updateState(context.coreProcess->state());
+    updateState(backend->coreState());
     menu_->addSeparator();
     auto *modeMenu = menu_->addMenu(tr("Routing Mode"));
     auto *modes = new QActionGroup(this);
@@ -70,14 +84,17 @@ TrayIcon::TrayIcon(MainWindow *window, QObject *parent)
         action->setData(mode);
         action->setCheckable(true);
         modes->addAction(action);
-        connect(action, &QAction::triggered, context.client, [context, mode] { context.client->patchMode(mode); });
+        connect(action, &QAction::triggered, routing, [routing, mode] { routing->requestMode(mode); });
     }
-    modeMenu->setEnabled(context.client->isConnected());
-    connect(context.client, &core::MihomoClient::connectedChanged, modeMenu, &QMenu::setEnabled);
-    connect(context.client, &core::MihomoClient::configReceived, this, [modes](const core::BaseConfig &config) {
-        for (auto *action : modes->actions()) action->setChecked(action->data() == config.mode);
+    modeMenu->setEnabled(backend->isConnected());
+    connect(backend, &cb::BackendBridge::connectedChanged, modeMenu, &QMenu::setEnabled);
+    // The CONFIRMED mode, one answer shared with the toolbar box: a change in
+    // flight must not tick a menu entry that has not taken yet.
+    connect(routing, &app::runtime::RoutingController::routingStateChanged, this,
+            [modes, routing] {
+        for (auto *action : modes->actions()) action->setChecked(action->data() == routing->mode());
     });
-    menu_->addMenu(new TrayProxyMenu(context.client, menu_));
+    menu_->addMenu(new TrayProxyMenu(backend, menu_));
     auto *profiles = menu_->addMenu(tr("Profiles"));
     connect(profiles, &QMenu::aboutToShow, this, [context, profiles] {
         profiles->clear();
@@ -90,20 +107,20 @@ TrayIcon::TrayIcon(MainWindow *window, QObject *parent)
         }
         if (profiles->isEmpty()) profiles->addAction(tr("No profiles"))->setEnabled(false);
     });
-    auto *routing = window_->routingControls();
+    auto *controls = window_->routingControls();
     auto *proxy = menu_->addAction(tr("System Proxy"));
     auto *tun = menu_->addAction(tr("TUN Mode"));
     proxy->setCheckable(true);
     tun->setCheckable(true);
-    connect(proxy, &QAction::triggered, routing, &RoutingControls::requestSystemProxyChange);
-    connect(tun, &QAction::triggered, routing, &RoutingControls::requestTunChange);
-    const auto updateRouting = [routing, proxy, tun] {
-        proxy->setChecked(routing->systemProxyEnabled());
-        proxy->setEnabled(routing->systemProxyAvailable());
-        tun->setChecked(routing->tunEnabled());
-        tun->setEnabled(routing->tunAvailable());
+    connect(proxy, &QAction::triggered, controls, &RoutingControls::requestSystemProxyChange);
+    connect(tun, &QAction::triggered, controls, &RoutingControls::requestTunChange);
+    const auto updateRouting = [controls, proxy, tun] {
+        proxy->setChecked(controls->systemProxyEnabled());
+        proxy->setEnabled(controls->systemProxyAvailable());
+        tun->setChecked(controls->tunEnabled());
+        tun->setEnabled(controls->tunAvailable());
     };
-    connect(routing, &RoutingControls::stateChanged, this, updateRouting);
+    connect(controls, &RoutingControls::stateChanged, this, updateRouting);
     connect(menu_, &QMenu::aboutToShow, window_, &MainWindow::refreshRoutingState);
     updateRouting();
     auto *shellMenu = menu_->addMenu(tr("Copy Shell Commands"));
@@ -111,18 +128,19 @@ TrayIcon::TrayIcon(MainWindow *window, QObject *parent)
     auto *posix = shellMenu->addAction(tr("POSIX (bash / zsh)"));
     auto *powershell = shellMenu->addAction(tr("PowerShell"));
     shellMenu->setEnabled(false);
-    connect(context.client, &core::MihomoClient::configReceived, this,
-            [context, shellMenu, posix, powershell](const core::BaseConfig &config) {
-        posix->setData(proxyEnvironment(context.client->endpoint(), config, Shell::Posix));
-        powershell->setData(proxyEnvironment(context.client->endpoint(), config, Shell::PowerShell));
-        shellMenu->setEnabled(context.client->isConnected() && !posix->data().toString().isEmpty());
+    connect(backend, &cb::BackendBridge::configReceived, this,
+            [backend, shellMenu, posix, powershell](const cb::BaseConfig &config) {
+        const core::Endpoint endpoint = asCoreEndpoint(backend->endpoint());
+        posix->setData(proxyEnvironment(endpoint, config, Shell::Posix));
+        powershell->setData(proxyEnvironment(endpoint, config, Shell::PowerShell));
+        shellMenu->setEnabled(backend->isConnected() && !posix->data().toString().isEmpty());
     });
-    connect(context.client, &core::MihomoClient::endpointChanged, this, [shellMenu, posix, powershell] {
+    connect(backend, &cb::BackendBridge::endpointChanged, this, [shellMenu, posix, powershell] {
         posix->setData(QString());
         powershell->setData(QString());
         shellMenu->setEnabled(false);
     });
-    connect(context.client, &core::MihomoClient::connectedChanged, this,
+    connect(backend, &cb::BackendBridge::connectedChanged, this,
             [shellMenu, posix, powershell](bool connected) {
         if (!connected) {
             posix->setData(QString());

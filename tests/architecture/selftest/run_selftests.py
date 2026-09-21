@@ -113,6 +113,59 @@ GRAPH_CASES = [
         "expect": ["ARCH-R4-UNDECLARED-TARGET"],
         "why": "A library nobody declared must not slip through unchecked.",
     },
+    {
+        "name": "R4-zombie-exception-site",
+        "project": "allowed",
+        "graph": "variants/zombie_site.json",
+        "expect": ["ARCH-R4-EXCEPTION-SITE-TARGET-MISSING"],
+        "expect_subject": "synth_ghost",
+        "why": "A dead site inside a LIVE exception must fail. The stale rule "
+               "cannot see it, because it excuses any subject missing from the "
+               "evaluated graph; a dead site is otherwise indistinguishable "
+               "from discharged debt and silently understates the ledger.",
+    },
+    {
+        "name": "R4-site-target-unbuilt",
+        "project": "allowed",
+        "graph": "variants/site_target_unbuilt.json",
+        "expect": [],
+        "why": "The false-positive guard for the rule above: a site naming a "
+               "declared consumer that this configuration does not build is "
+               "not a zombie. Deleted and not-built-here must stay distinct.",
+    },
+    {
+        "name": "R4-sealed-module-honoured",
+        "project": "sealed_module",
+        "graph": "sealed_module/architecture.json",
+        "expect": [],
+        "why": "Every direct linker of the sealed module is carried by a "
+               "baselined site, and no deps entry names it. Must pass, or the "
+               "seal would just be a ban on the module existing.",
+    },
+    {
+        "name": "R4-sealed-module-declared-dep",
+        "project": "sealed_module",
+        "graph": "sealed_module/violating_dep.json",
+        "expect": ["ARCH-R4-SEALED-MODULE-DECLARED-DEP",
+                   "ARCH-R4-STALE-EXCEPTION"],
+        "expect_subject": "synth_app -> synth_impl",
+        "why": "The escape hatch: deps is consulted BEFORE exceptions, so one "
+               "line of JSON converts tracked debt into permanent "
+               "architecture -- and makes the site that was tracking it read "
+               "as discharged. Both halves of that signature must fire.",
+    },
+    {
+        "name": "R4-sealed-module-unbaselined-link",
+        "project": "sealed_module",
+        "graph": "sealed_module/violating_link.json",
+        "expect": ["ARCH-R4-SEALED-MODULE-UNBASELINED-LINK"],
+        "expect_subject": "synth_tool -> synth_impl",
+        "forbid_subject": ["synth_probe", "synth_app"],
+        "why": "An undeclared executable is invisible to the consumer "
+               "allowlist. While the module is sealed, the ledger is derived "
+               "from the evaluated graph instead, so a linker it does not name "
+               "fails -- and a target that does not link it is left alone.",
+    },
 ]
 
 INCLUDE_CASES = [

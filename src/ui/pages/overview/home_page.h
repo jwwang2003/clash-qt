@@ -2,7 +2,7 @@
 
 #include <QWidget>
 
-namespace core { class MihomoClient; }
+namespace core::backend { class BackendBridge; }
 
 namespace ui {
 
@@ -10,7 +10,7 @@ namespace ui {
 class HomePage : public QWidget {
     Q_OBJECT
 public:
-    explicit HomePage(core::MihomoClient *client, QWidget *parent = nullptr);
+    explicit HomePage(core::backend::BackendBridge *bridge, QWidget *parent = nullptr);
 };
 
 } // namespace ui

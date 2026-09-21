@@ -1,9 +1,16 @@
 # Test suite index
 
-Coverage index for the suites produced by partitioning the two shared monoliths
-`tests/core/runtime_test.cpp` and `tests/ui/data_pages_test.cpp`. Both files are
-gone; every case they held lives in exactly one suite below. Use the
-original-to-new maps to confirm that nothing was dropped.
+The coverage index `docs/TEST_STRATEGY.md` ("Feature contracts") and
+`docs/IMPLEMENTATION_ROADMAP.md` require: every registered suite, the coverage
+IDs it carries, the environment it needs, and the gaps that remain.
+
+It had drifted. It was written as the record of one job — partitioning the two
+shared monoliths `tests/core/runtime_test.cpp` and `tests/ui/data_pages_test.cpp`
+— and it still is that record, in the second half. But it listed 13 of the 42
+tests CTest registers, and it carried no workflow IDs at all, so ten suites
+built after it (the application-coordinator, backend-contract and real-engine
+lanes) existed nowhere in it. The registered-suite table below is now the index;
+everything after it is detail.
 
 Feature identifiers are the ones used throughout the refactor plan:
 
@@ -19,6 +26,265 @@ Feature identifiers are the ones used throughout the refactor plan:
 | F08 | Backup / restore |
 | F09 | Preferences / integrations |
 | F10 | Application / distribution |
+
+Workflow identifiers `W01`–`W05` are the five complete journeys in
+`docs/TEST_STRATEGY.md` ("Complete workflows"). They are tracked separately
+below, because no suite currently runs one end to end.
+
+---
+
+## Registered suites
+
+Every name CTest registers, in lane order. `make test` runs all of them except
+the `native`, `privileged`, `benchmark` and `real-core` labels.
+
+### Core lane
+
+| CTest name | Target | Source | Labels | Features |
+| --- | --- | --- | --- | --- |
+| `controller` | `controller-tests` | `core/controller_test.cpp` | core, integration, mihomo | F04, F05, F06 |
+| `provider` | `provider-tests` | `core/provider_test.cpp` | core, integration, mihomo | F06, F02 |
+| `backup` | `backup-tests` | `core/backup_test.cpp` | backups, core, integration | F08 |
+| `traffic-history` | `traffic-history-tests` | `core/traffic_history_test.cpp` | core, telemetry, unit | F07 |
+| `preferences` | `preferences-tests` | `core/preferences_test.cpp` | core, preferences, unit | F09 |
+| `config-generation` | `config-generation-tests` | `core/config_generation_test.cpp` | config, core, integration | F03, F05, F01 |
+| `profile-store` | `profile-store-tests` | `core/profile_store_test.cpp` | core, integration, profiles | F01, F02, F03 |
+| `core-process` | `core-process-tests` | `core/core_process_test.cpp` | core, integration, mihomo | F04, F09 |
+| `runtime-maintenance` | `runtime-maintenance-tests` | `core/maintenance_test.cpp` | core, integration, profiles | F08, F01 |
+| `engine-discovery` | `engine-discovery-tests` | `core/mihomo/engine_discovery_test.cpp` | core, mihomo, unit | F04, F10 |
+| `backend-real-contract` | `backend-real-contract-tests` | `core/mihomo/backend_real_contract_test.cpp` | contract, core, integration, mihomo | F04, F05, F06, F07 |
+| `backend-real-core` | `backend-real-core-tests` | `core/mihomo/backend_real_core_test.cpp` | core, integration, mihomo, **real-core** | F04, F05 |
+
+### Contract lane
+
+| CTest name | Target | Source | Labels | Features |
+| --- | --- | --- | --- | --- |
+| `backend-contract` | `backend-contract-tests` | `contracts/backend/backend_contract_test.cpp` | backend, contract, unit | F04, F05, F06, F07 |
+| `backend-bridge` | `backend-bridge-tests` | `contracts/backend/bridge/backend_bridge_test.cpp` | backend, contract, unit | F04, F05, F06, F07 |
+| `component-contract` | `component-contract-tests` | `contracts/component/component_contract_test.cpp` | component, contract, unit | F10 |
+
+`backend-contract` and `backend-real-contract` run the same backend-r3 semantics
+against the fake and against the real `MihomoBackend`. A passing fake proves the
+contract is implementable; only the real one is evidence about the engine, and
+only `backend-real-core` is evidence about mihomo itself.
+
+### Application lane
+
+| CTest name | Target | Source | Labels | Features |
+| --- | --- | --- | --- | --- |
+| `shutdown-coordinator` | `shutdown-coordinator-tests` | `app/lifecycle/shutdown_coordinator_test.cpp` | app, lifecycle, unit | F04, F05, F10 |
+| `backup-coordinator` | `backup-coordinator-tests` | `app/backup/backup_coordinator_test.cpp` | app, backup, unit | F08, F01, F03 |
+| `runtime-coordinator` | `runtime-coordinator-tests` | `app/runtime/runtime_coordinator_test.cpp` | app, runtime, unit | F03, F04, F01 |
+| `routing-controller` | `routing-controller-tests` | `app/runtime/routing_controller_test.cpp` | app, runtime, unit | F05 |
+
+### Platform lane
+
+| CTest name | Target | Source | Labels | Features |
+| --- | --- | --- | --- | --- |
+| `proxy` | `proxy-tests` | `platform/system_proxy_test.cpp` | platform, proxy, unit | F05 |
+| `system-proxy-async` | `system-proxy-async-tests` | `platform/system_proxy_async_test.cpp` | platform, proxy, unit | F05 |
+| `privileged-service` | `privileged-service-tests` | `platform/privileged_service_client_test.cpp` | integration, platform, service | F05, F09 |
+| `privileged-helper` | `clash-qt-service-helper` | in-binary, run as `--self-test` | platform, service, unit | F09, F05 |
+| `privileged-helper-ipc` | `privileged-helper-ipc-tests` | `src/services/macos/macos_helper.mm` (built with `CLASH_QT_HELPER_TESTING`, run as `--ipc-self-test`) | platform, service, unit | F05, F09 |
+
+### UI lane
+
+| CTest name | Target | Source | Labels | Features |
+| --- | --- | --- | --- | --- |
+| `tray` | `tray-tests` | `ui/tray_test.cpp` | shell, ui | F05, F06, F10 |
+| `routing-controls` | `routing-controls-tests` | `ui/routing_controls_test.cpp` | shell, ui | F05 |
+| `dashboard-async` | `dashboard-async-tests` | `ui/dashboard_async_test.cpp` | shell, ui | F09, F10 |
+| `home-page` | `home-page-tests` | `ui/home_page_test.cpp` | pages, ui | F07, F10 |
+| `traffic-graph` | `traffic-graph-tests` | `ui/traffic_graph_test.cpp` | pages, ui | F07 |
+| `proxies-page` | `proxies-page-tests` | `ui/proxies_page_test.cpp` | pages, ui | F06 |
+| `connections-page` | `connections-page-tests` | `ui/connections_page_test.cpp` | pages, ui | F07 |
+| `providers-page` | `providers-page-tests` | `ui/providers_page_test.cpp` | pages, ui | F06 |
+| `rules-page` | `rules-page-tests` | `ui/rules_page_test.cpp` | pages, ui | F06 |
+| `logs-page` | `logs-page-tests` | `ui/logs_page_test.cpp` | pages, ui | F07 |
+
+### Benchmark lane (excluded from `make test`)
+
+| CTest name | Target | Source | Labels | Features |
+| --- | --- | --- | --- | --- |
+| `traffic-graph-frames` | `traffic-graph-frames-tests` | `benchmarks/traffic_graph_frames_test.cpp` | benchmark, ui | F07 |
+| `traffic-frame-pacing` | `traffic-frame-pacing-tests` | `benchmarks/traffic_frame_pacing_test.cpp` | benchmark, ui | F07 |
+
+### Fixture self-tests
+
+The shared fixtures are themselves tested, because a fixture that lies makes
+every suite that uses it lie with it. They carry no feature ID.
+
+| CTest name | Target | Source | Labels |
+| --- | --- | --- | --- |
+| `scoped-environment` | `scoped-environment-tests` | `support/scoped_environment_test.cpp` | support, unit |
+| `loopback-server` | `loopback-server-tests` | `support/loopback_server_test.cpp` | support, unit |
+| `fake-core` | `fake-core-tests` | `support/fake_core_test.cpp` | support, unit |
+
+### Architecture checks
+
+Not feature coverage. They check the shape of the build, per
+`docs/TEST_STRATEGY.md` "Architecture checks".
+
+| CTest name | What it checks |
+| --- | --- |
+| `arch-graph` | The evaluated CMake target graph, read through the File API, against `architecture/architecture.json`: declared edges, acyclicity, external allowlists, and the exception ratchet (including the sealed-module rules that keep the migration ledger derived from the graph rather than from memory). |
+| `arch-public-headers` | Every published header compiles alone, in a consumer that links only its own module. |
+| `arch-selftest` | Nineteen synthetic projects: each rule is shown accepting its allowed graph and rejecting its forbidden one, so a permanently green checker cannot masquerade as coverage. |
+
+---
+
+## Workflow coverage — W01 to W05
+
+No suite runs a complete journey yet. Recording that plainly is the point of
+this table: the contributing suites below prove the pieces, not the trip. The
+roadmap places W01/W03/W04/W05 in phase 3 and W02 in phase 4.
+
+| Journey | Contributing suites | What is still missing |
+| --- | --- | --- |
+| **W01** First launch | `engine-discovery` (managed engine resolution and provenance), `core-process` (start → ready → stop with a real child), `runtime-coordinator` (autostart deferred into the event loop, generation as the start action), `profile-store` (selection survives a reopen), `shutdown-coordinator` (no owned child survives quit) | Nothing walks empty workspace → import → start → inspect → stop → quit → reopen in one process against one data directory. |
+| **W02** Subscription update | `profile-store` (`rejectsNonHttpSubscriptions`, `subscriptionUrlEditPreservesCacheAndRejectsOldRefresh`, `reloadCancelsInFlightImport`), `config-generation` (overrides survive regeneration), `provider` (subscription counts) | No journey drives a local HTTP subscription through refresh with a user override in place, and no pinned real-core smoke. |
+| **W03** Routing controls | `routing-controller` (`everyRoutingSurfaceReadsTheSameConfirmedSystemProxyState`, `theTrayActionAndTheHotkeyUseTheSameIntentPath`), `routing-controls`, `tray`, `proxy`, `system-proxy-async`, `privileged-service`, `controller` (TUN confirmation) | The surfaces are proven to agree on the confirmed value at coordinator level, but not across a started managed backend and a real quit. |
+| **W04** Restore | `backup` (snapshot → restore → rollback), `backup-coordinator` (writers quiesced, core stopped before restore, enhancer reloaded before profiles), `runtime-maintenance` (the only evidence for the "writers quiesced" contract) | Nothing reopens the application after a restore to show the restored state is what comes back. |
+| **W05** Recovery | `backend-contract` / `backend-real-contract` (supersession, unconfirmed stop, validation failure leaves the running config intact), `core-process` (`hangingProbeCanStopAndRestart`), `shutdown-coordinator` (bounded shutdown, accurate cleanup status) | No journey drops a controller or crashes a child and then switches profile and quits. |
+
+---
+
+## Suites built after this index was first written
+
+Ten suites postdate the partition record below. They are indexed above; this
+section is the detail the older suites already have.
+
+### `backend-contract` — `tests/contracts/backend/backend_contract_test.cpp`
+
+* **Features:** F04, F05, F06, F07. The backend-r3 acceptance set.
+* **Environment:** headless. Runs against `clash_backend_fake`, a deterministic
+  in-process backend — no child processes, no sockets.
+* **Cases (28):** published shape/ABI readiness, ownership reporting, generation
+  and supersession, readiness requiring a version string rather than a started
+  process, validation failure leaving the running configuration intact,
+  re-entrancy (no observer invoked from inside a mutating call, safe removal
+  during delivery), TUN read-back rather than echo, provider coalescing,
+  privileged-service status, actionable failure for a missing managed engine.
+
+### `backend-real-contract` — `tests/core/mihomo/backend_real_contract_test.cpp`
+
+* **Features:** F04, F05, F06, F07.
+* **Environment:** real child processes and a real loopback controller, but a
+  **fixture** core binary (`clash-qt-fake-core`, passed as
+  `CLASH_QT_FAKE_CORE`). It is not evidence about mihomo.
+* **Cases (26):** the same semantics as `backend-contract`, plus the readiness
+  hard cap not being refreshed by log output, a cancelled readiness probe
+  disconnecting before it aborts, and a privileged-service status answered
+  without a second connection.
+
+### `backend-real-core` — `tests/core/mihomo/backend_real_core_test.cpp`
+
+* **Features:** F04, F05.
+* **Environment:** drives the **locally built engine** (`CLASH_QT_CORE_BINARY`).
+  Labelled `real-core`, which `make test` excludes and `make test-integration`
+  selects, so an absent engine cannot fail the routine lane — and cannot be
+  mistaken for a pass either.
+* **Cases (5):** the real engine supervised through the published contract;
+  detach and stop reaching only what this component started; a completion
+  aborted by an endpoint change marked superseded; a validation failure leaving
+  the real engine running; delivery never re-entrant and observer removal safe.
+
+### `engine-discovery` — `tests/core/mihomo/engine_discovery_test.cpp`
+
+* **Features:** F04, F10.
+* **Environment:** headless, filesystem only.
+* **Cases (8):** the managed path never resolving `PATH` or another Clash
+  installation; a local build being a managed engine and labelled as one; an
+  unusable local build not resolving; provenance tied to the artefact it
+  describes; an engine without a manifest saying so rather than staying silent;
+  an explicit choice reported as a choice; distinct user-facing labels.
+
+### `backend-bridge` — `tests/contracts/backend/bridge/backend_bridge_test.cpp`
+
+* **Features:** F04, F05, F06, F07. The Qt-native view of the backend contract
+  that the G2 UI migration consumes.
+* **Environment:** headless, against the fake backend.
+* **Cases (25):** sink registration, state cached from events rather than from
+  the backend, every signal firing with its arguments, republication of each
+  event family, spans materialised into owned containers, no emission from
+  inside a mutating call, superseded completions and stream samples dropped
+  while the stop outcome is never dropped, generation announced before the
+  events it invalidates, disconnection and receiver destruction during emission.
+
+### `component-contract` — `tests/contracts/component/component_contract_test.cpp`
+
+* **Features:** F10 (component ABI, G2).
+* **Environment:** headless. No Qt event loop required.
+* **Cases (30):** signed result codes and their published values, published
+  interface ids matching the contract table, query reflexivity/symmetry/
+  stability and identity across interfaces, reference-count behaviour on
+  success and failure, smart-pointer adopt/retain/move/put/detach, atomic
+  reference counting under concurrency, buffer ownership and failing resize,
+  error info retrieved from the failing object, unknown class distinguished
+  from unknown interface.
+
+### `shutdown-coordinator` — `tests/app/lifecycle/shutdown_coordinator_test.cpp`
+
+* **Features:** F04, F05, F10.
+* **Environment:** headless, no widget tree.
+* **Cases (16):** quit held until approved and approval deferred by one event
+  loop turn; repeated quit requests running the actions once; system-proxy
+  shutdown strictly preceding the core stop; a failed proxy restore still
+  stopping the core; an earlier stop not satisfying the quit's own stop; busy
+  gates evaluated in declared order; the final prune running exactly once; an
+  unconfirmed stop blocking quit and never being reported as success; a stop
+  completion from a superseded generation rejected.
+
+### `backup-coordinator` — `tests/app/backup/backup_coordinator_test.cpp`
+
+* **Features:** F08, F01, F03.
+* **Environment:** headless, no widget tree — the store is owned rather than
+  discovered in the widget tree, which is one of the assertions.
+* **Cases (11):** preparation required from the start and waiting until both
+  stores have finished writing; restore preparation stopping the core first,
+  with a synchronous fast path when it is already stopped; an unrelated core
+  stop not resuming a restore; maintenance mode following the operation and the
+  shutdown; a restore reloading the enhancer before the profiles.
+
+### `runtime-coordinator` — `tests/app/runtime/runtime_coordinator_test.cpp`
+
+* **Features:** F03, F04, F01.
+* **Environment:** headless, against the fake backend.
+* **Cases (13):** the reload gate being the backend's own predicate for every
+  state; a 100 ms reload debounce that coalesces triggers; a core stopping
+  inside the debounce window not being reloaded; a reload with nothing selected
+  stopping the core instead of regenerating; autostart deferred into the event
+  loop; a ready core attached to before its retired snapshot is discarded;
+  snapshot deletion never running on the GUI thread; an idempotent final prune.
+
+### `routing-controller` — `tests/app/runtime/routing_controller_test.cpp`
+
+* **Features:** F05. The strongest W03 evidence in the tree.
+* **Environment:** headless, against the fake backend.
+* **Cases (11):** the shipped restore delays (0 s and 5 s); a stopped core
+  restoring only the proxy the application owns; a core that restarts before
+  the hop fires, and a controller that returns inside the grace window, both
+  keeping their proxy; a TUN change in flight never reported as applied; a TUN
+  read-back that disagrees with the request not counting as an applied change;
+  every routing surface reading the same confirmed state; the tray action and
+  the hotkey using the same intent path.
+
+---
+
+## Counts move, and are meant to
+
+Two workers are migrating the UI onto the published backend contract while this
+is written. Case counts and the link ledger in
+`tests/architecture/architecture.json` both move with that migration; the
+architecture checker derives its G2 site list from the evaluated build graph on
+every run rather than from a number recorded here, so a link that appears or
+disappears fails loudly instead of silently disagreeing with this file. Treat
+per-suite case counts in the sections below as accurate at the partition, not as
+invariants — the original-to-new maps are the invariant.
+
+One count has already moved: `core-process` gained two cases after the
+partition, when privileged-service mode was restored (`d697d45`). It is 6 cases
+now, not the 4 recorded below; the 19 originals are all still there.
 
 ---
 
@@ -60,15 +326,21 @@ Feature identifiers are the ones used throughout the refactor plan:
 
 ### `core-process` — `tests/core/core_process_test.cpp`
 
-* **Features:** F04.
+* **Features:** F04, and F09 since the privileged-service-mode cases landed.
 * **Environment:** `QT_QPA_PLATFORM=offscreen`. **POSIX only** — every case is
   `QSKIP`ped under `Q_OS_WIN`. Needs `/bin/sh`, and
   `restartWaitsForOldExitWithoutBlockingGui` needs `/usr/bin/python3`. Uses real
   loopback TCP, a real `QLocalServer` and real child processes; slowest of the
   core suites (~7.5 s).
-* **Cases (4):** `restartWaitsForOldExitWithoutBlockingGui`,
+* **Cases at the partition (4):** `restartWaitsForOldExitWithoutBlockingGui`,
   `privilegedServiceLifecycleUsesLeaseAndWaitsForStopAck`,
   `validationIsResponsiveAndCancelable`, `hangingProbeCanStopAndRestart`.
+* **Added afterwards (2, now 6 in total):**
+  `anUninjectedProcessHasNoPrivilegedServiceAndSaysSo` and
+  `anInjectedAdapterMakesServiceModeAvailableWhereThePlatformSupportsIt`, from
+  `d697d45` "restore privileged-service mode, which P3 silently disabled". They
+  are new coverage, not partitioned cases, so they are outside the 19-original
+  accounting below and are listed here rather than in the original-to-new map.
 * `privilegedServiceLifecycleUsesLeaseAndWaitsForStopAck` also drives
   `platform::PrivilegedServiceClient`, but its oracle throughout is
   `core::CoreProcess::state()`, so it belongs here and not in the platform lane.
@@ -280,6 +552,12 @@ After, measured:
 
 `27 − (4 × 2) = 19`, and `19 + 2 = 21` — the original total.
 
+Measured at the partition. `core-process` has since gained the two
+privileged-service-mode cases described above, so it now reports 8 passed / 6
+cases and the row sum is 29 passed / 21 cases. The invariant the table asserts
+is unaffected: it is that the 19 originals all survived, not that the total can
+never grow.
+
 ### `data-pages` — 17 cases / 18 invocations
 
 Before: `Totals: 18 passed, 2 skipped` = 16 passing invocations (17 cases, one
@@ -313,14 +591,17 @@ label excludes them, so they are not counted at all rather than counted as passe
 | --- | --- | --- |
 | `trafficNativeFillStaysBelowOutline` | `traffic-graph-frames` | `CLASH_QT_VERIFY_GRAPH_FRAMES` is set and the platform is not `offscreen` |
 | `trafficNativeFrameTiming` | `traffic-frame-pacing` | `CLASH_QT_MEASURE_FRAMES` is set and the platform is not `offscreen` |
-| all four `core-process` cases | `core-process` | the platform is not Windows |
+| every `core-process` case (6) | `core-process` | the platform is not Windows |
 
 ---
 
 ## Shared helpers
 
 Two header-only files, each extracted only because it has several consumers.
-Anything used by a single partition stayed private to that partition.
+Anything used by a single partition stayed private to that partition. The
+compiled fixtures they sit beside — `scoped_environment`, `loopback_server`,
+`fake_core` and the `clash-qt-fake-core` helper binary — have self-tests of
+their own; see "Fixture self-tests" in the registered-suite index.
 
 ### `tests/support/fixture_files.h`
 
@@ -341,7 +622,9 @@ read an artefact back byte-for-byte.
 `core::preferences` really resolved inside it, and the developer's real preference
 store is unchanged at the end.
 
-* **Consumers (9):** all seven `ui/pages` suites and both benchmark suites.
+* **Consumers (12):** all seven `ui/pages` suites, both benchmark suites, and
+  the three application-coordinator suites (`backup-coordinator`,
+  `runtime-coordinator`, `routing-controller`) added afterwards.
 * They return a message instead of asserting, because a `QVERIFY2` inside a helper
   would return from the helper and hide the failure.
 

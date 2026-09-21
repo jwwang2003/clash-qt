@@ -10,6 +10,8 @@ class QLabel;
 class QLineEdit;
 class QVBoxLayout;
 
+namespace app::runtime { class RoutingController; }
+namespace core::backend { class BackendBridge; }
 namespace platform { class SystemProxyService; }
 
 namespace ui {
@@ -20,7 +22,17 @@ class SettingsPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SettingsPage(const app::Context &context, QWidget *parent = nullptr);
+    /// `backend` and `routing` must outlive the page; neither is owned.
+    ///
+    /// Every system-proxy DECISION - is it on, may it change, is a change in
+    /// flight - is app::runtime::RoutingController's confirmed answer, shared
+    /// with the toolbar and the tray. The platform service is still read for
+    /// the descriptive status line only (the OS-held host:port, whether the
+    /// read is valid, the platform's own error text and "restoring"), because
+    /// the controller publishes none of those; it is the same instance the
+    /// controller was constructed with, so the two cannot disagree.
+    SettingsPage(const app::Context &context, core::backend::BackendBridge *backend,
+                 app::runtime::RoutingController *routing, QWidget *parent = nullptr);
     bool systemProxyEnabled() const;
     bool systemProxyAvailable() const;
 
@@ -33,7 +45,9 @@ public slots:
 
 signals:
     void systemProxyStateChanged(bool enabled, bool available);
-    void systemProxyError(const QString &error);
+    // NOTE: systemProxyError is gone. RoutingController::errorOccurred is the
+    // single routing error channel now; republishing here would report one
+    // failure twice once the composition root wires that channel up.
     void systemProxyBusyChanged(bool busy);
     void serviceInstallationBusyChanged(bool busy);
 
@@ -50,9 +64,10 @@ private:
     void renderAutostart();
 
     app::Context context_;
+    core::backend::BackendBridge *backend_;
+    app::runtime::RoutingController *routing_;
     platform::SystemProxyService *proxyService_;
     std::optional<bool> proxyRequest_;
-    QString proxyOperationError_;
     bool startupBusy_ = false;
     bool startupKnown_ = false;
     bool startupEnabled_ = false;

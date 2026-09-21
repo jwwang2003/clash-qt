@@ -1,62 +1,113 @@
+// RoutingControls: the toolbar's two switches as a VIEW of RoutingController.
+//
+// The widget no longer owns any routing state, so the cases drive the
+// controller - over the deterministic FakeBackend and over a real
+// platform::SystemProxyService whose OS call is substituted through its
+// constructor - and assert what the switches then show. Each case protects what
+// it protected before: the system-proxy switch mirrors the confirmed state
+// without feeding its own render back as intent; the TUN switch waits for the
+// controller's read-back and never renders a request as applied; a known
+// permission block is refused before anything is sent but never blocks a
+// disable; a failed device setup leaves the switch off, re-enabled and
+// explained.
+//
+// The error assertions moved to RoutingController::errorOccurred, which is now
+// the single error channel for routing. The widget deliberately does not
+// republish it - it only reads lastError() for the tooltip - so one failure is
+// reported exactly once.
+
 #include <QtTest>
 #include <QCheckBox>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QTcpServer>
-#include <QTcpSocket>
-#include <QTimer>
 
-#include "core/mihomo/mihomo_client.h"
+#include <atomic>
+#include <memory>
+
+#include "app/runtime/routing_controller.h"
+#include "platform/proxy/system_proxy_service.h"
+#include "support/backend/fake_backend.h"
 #include "ui/shell/routing_controls.h"
 #include "ui/theme/theme.h"
 
-class RoutingServer : public QTcpServer {
-public:
-    bool enabled = false;
-    bool rejectDevice = false;
-    int patches = 0;
-    RoutingServer() {
-        connect(this, &QTcpServer::newConnection, this, [this] {
-            while (auto *socket = nextPendingConnection()) {
-                connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
-                connect(socket, &QTcpSocket::readyRead, socket, [this, socket] {
-                    const QByteArray data = socket->property("request").toByteArray() + socket->readAll();
-                    socket->setProperty("request", data);
-                    const int end = data.indexOf("\r\n\r\n");
-                    if (end < 0 || socket->property("answered").toBool()) return;
-                    int length = 0;
-                    for (const auto &line : data.left(end).split('\n'))
-                        if (line.toLower().startsWith("content-length:")) length = line.mid(15).trimmed().toInt();
-                    if (data.size() < end + 4 + length) return;
-                    socket->setProperty("answered", true);
-                    const auto words = data.left(data.indexOf('\r')).split(' ');
-                    QByteArray body = "{}";
-                    QByteArray status = "200 OK";
-                    if (words[1] == "/version") body = R"({"version":"test"})";
-                    else if (words[1] == "/proxies") body = R"({"proxies":{}})";
-                    else if (words[1] == "/rules") body = R"({"rules":[]})";
-                    else if (words[0] == "PATCH") {
-                        ++patches;
-                        const auto patch = QJsonDocument::fromJson(data.mid(end + 4)).object();
-                        if (!rejectDevice) enabled = patch.value("tun").toObject().value("enable").toBool();
-                        status = "204 No Content";
-                        body.clear();
-                    } else if (words[1] == "/configs") {
-                        body = QJsonDocument(QJsonObject{{"mode", "rule"}, {"mixed-port", 7890},
-                            {"tun", QJsonObject{{"enable", enabled}, {"auto-route", true},
-                                               {"auto-detect-interface", true}, {"stack", "mixed"}}}}).toJson();
-                    }
-                    QTimer::singleShot(15, socket, [socket, status, body] {
-                        socket->write("HTTP/1.1 " + status + "\r\nContent-Length: " + QByteArray::number(body.size()) +
-                                      "\r\nConnection: close\r\n\r\n" + body);
-                        socket->disconnectFromHost();
-                    });
-                });
-            }
-        });
-    }
-    core::Endpoint endpoint() const { return {"127.0.0.1", serverPort(), "test"}; }
+namespace cb = core::backend;
+
+using app::runtime::RestoreDelays;
+using app::runtime::RoutingController;
+using testsupport::backend::FakeBackend;
+using testsupport::backend::Gate;
+using testsupport::backend::RequestKind;
+using testsupport::backend::RequestOutcome;
+
+namespace {
+
+using Action = platform::SystemProxyAction;
+using Config = platform::ProxyConfig;
+using Result = platform::SystemProxyResult;
+
+// The grace window compressed so a disconnect's restore cannot outlive a case.
+constexpr RestoreDelays kFastDelays{0, 30};
+
+struct ProxyCalls {
+    std::atomic_int enables{0};
+    std::atomic_int disables{0};
+    std::atomic_int refreshes{0};
+    std::atomic_int restores{0};
+    int changes() const { return enables.load() + disables.load(); }
 };
+
+// A real service whose only OS call is this in-process function: nothing
+// touches the machine's proxy settings.
+std::unique_ptr<platform::SystemProxyService> makeService(std::shared_ptr<ProxyCalls> calls,
+                                                          std::shared_ptr<Config> osState) {
+    return std::make_unique<platform::SystemProxyService>(
+        nullptr, [calls, osState](Action action, const Config &config) {
+            Result result;
+            result.state.supported = true;
+            result.state.valid = true;
+            switch (action) {
+                case Action::Enable:
+                    ++calls->enables;
+                    *osState = config;
+                    result.state.owned = true;
+                    break;
+                case Action::Disable:
+                    ++calls->disables;
+                    *osState = Config{};
+                    break;
+                case Action::Restore:
+                    ++calls->restores;
+                    *osState = Config{};
+                    break;
+                case Action::Refresh:
+                    ++calls->refreshes;
+                    break;
+            }
+            result.state.config = *osState;
+            result.state.owned = result.state.config.port != 0;
+            return result;
+        });
+}
+
+cb::Endpoint endpointAt(quint16 port) {
+    cb::Endpoint endpoint;
+    endpoint.host = QStringLiteral("127.0.0.1");
+    endpoint.port = port;
+    return endpoint;
+}
+
+// Attach and settle, so the controller has a connection and a configuration.
+void connectWithConfig(FakeBackend &backend, bool tunEnabled) {
+    backend.staged().config.tunEnabled = tunEnabled;
+    backend.attach(endpointAt(29190));
+    QVERIFY(backend.flushEvents());
+}
+
+cb::RequestId pendingOfKind(const FakeBackend &backend, RequestKind kind) {
+    for (const cb::RequestId id : backend.pendingRequests())
+        if (backend.pendingKind(id) == kind) return id;
+    return cb::RequestId::Invalid;
+}
+
+}  // namespace
 
 class RoutingControlsTest : public QObject {
     Q_OBJECT
@@ -64,93 +115,135 @@ private slots:
     void initTestCase() { ui::theme::install(); }
 
     void systemProxySwitchMirrorsActualStateWithoutFeedback() {
-        core::MihomoClient client;
-        ui::RoutingControls controls(&client);
+        auto calls = std::make_shared<ProxyCalls>();
+        auto osState = std::make_shared<Config>();
+        auto service = makeService(calls, osState);
+        FakeBackend backend;
+        RoutingController routing(backend, service.get(), kFastDelays);
+        ui::RoutingControls controls(&routing);
         controls.show();
         auto *proxy = controls.findChild<QCheckBox *>("systemProxySwitch");
         QVERIFY(proxy);
+        // Nothing read back yet: the switch is a view, so it offers nothing.
         QVERIFY(!proxy->isEnabled());
-        QSignalSpy requested(&controls, &ui::RoutingControls::systemProxyRequested);
-        controls.setSystemProxyState(false, true);
-        QTest::mouseClick(proxy, Qt::LeftButton);
-        QCOMPARE(requested.size(), 1);
-        QCOMPARE(requested.last().first().toBool(), true);
-        controls.setSystemProxyState(false, true);
+
+        Config target;
+        target.port = 27890;
+        routing.setProxyTarget(target);
+        connectWithConfig(backend, false);
+        routing.refreshSystemProxy();
+        QTRY_VERIFY(proxy->isEnabled());
         QVERIFY(!proxy->isChecked());
-        QCOMPARE(requested.size(), 1);
-        controls.setSystemProxyState(true, true);
+
+        QTest::mouseClick(proxy, Qt::LeftButton);
+        QTRY_COMPARE(calls->enables.load(), 1);
+        QTRY_VERIFY(proxy->isChecked());
+        QCOMPARE(calls->changes(), 1);
+
+        // Rendering a state the OS reports must never come back as intent.
+        *osState = Config{};
+        routing.refreshSystemProxy();
+        QTRY_VERIFY(!proxy->isChecked());
+        QCOMPARE(calls->changes(), 1);
+
+        // …and the keyboard path is the same intent as the pointer one.
         proxy->setFocus();
         QTest::keyClick(proxy, Qt::Key_Space);
-        QCOMPARE(requested.size(), 2);
-        QCOMPARE(requested.last().first().toBool(), false);
+        QTRY_COMPARE(calls->enables.load(), 2);
+        QTRY_VERIFY(proxy->isChecked());
+        proxy->setFocus();
+        QTest::keyClick(proxy, Qt::Key_Space);
+        QTRY_COMPARE(calls->disables.load(), 1);
+        QTRY_VERIFY(!proxy->isChecked());
     }
 
     void tunSwitchWaitsForConfirmationAndCanTurnOff() {
-        RoutingServer server;
-        QVERIFY(server.listen(QHostAddress::LocalHost));
-        core::MihomoClient client;
-        ui::RoutingControls controls(&client);
+        FakeBackend backend;
+        RoutingController routing(backend, nullptr, kFastDelays);
+        ui::RoutingControls controls(&routing);
         controls.show();
         auto *tun = controls.findChild<QCheckBox *>("tunSwitch");
-        QSignalSpy applied(&controls, &ui::RoutingControls::tunApplied);
-        client.setEndpoint(server.endpoint());
+        QSignalSpy applied(&routing, &RoutingController::tunConfirmed);
+        connectWithConfig(backend, false);
         QTRY_VERIFY(controls.tunAvailable());
+        backend.setRequestGate(Gate::Held);
+
         QTest::mouseClick(tun, Qt::LeftButton);
+        // A request in flight is NOT an applied change.
         QVERIFY(!tun->isChecked());
         QVERIFY(!tun->isEnabled());
-        controls.requestTunChange(true);
+        controls.requestTunChange(true);  // coalesced away: one change at a time
+        QCOMPARE(backend.issuedCount(RequestKind::SetTun), 1);
+
+        backend.staged().tunActual = true;
+        QVERIFY(backend.releaseRequest(pendingOfKind(backend, RequestKind::SetTun)));
         QTRY_COMPARE(applied.size(), 1);
         QVERIFY(tun->isChecked());
         QVERIFY(tun->isEnabled());
-        QCOMPARE(server.patches, 1);
+        QCOMPARE(backend.issuedCount(RequestKind::SetTun), 1);
+
         QTest::mouseClick(tun, Qt::LeftButton);
+        backend.staged().tunActual = false;
+        QVERIFY(backend.releaseRequest(pendingOfKind(backend, RequestKind::SetTun)));
         QTRY_COMPARE(applied.size(), 2);
         QVERIFY(!tun->isChecked());
-        QCOMPARE(server.patches, 2);
+        QCOMPARE(backend.issuedCount(RequestKind::SetTun), 2);
         QCOMPARE(applied.last().first().toBool(), false);
     }
 
     void knownPermissionFailureDoesNotSendEnableButAllowsDisable() {
-        RoutingServer server;
-        QVERIFY(server.listen(QHostAddress::LocalHost));
-        core::MihomoClient client;
-        ui::RoutingControls controls(&client);
-        client.setEndpoint(server.endpoint());
+        FakeBackend backend;
+        RoutingController routing(backend, nullptr, kFastDelays);
+        ui::RoutingControls controls(&routing);
+        connectWithConfig(backend, false);
         QTRY_VERIFY(controls.tunAvailable());
         controls.setTunEnableBlockedReason("TUN requires a privileged service.");
-        QSignalSpy errors(&controls, &ui::RoutingControls::errorOccurred);
-        QSignalSpy applied(&controls, &ui::RoutingControls::tunApplied);
+        QSignalSpy errors(&routing, &RoutingController::errorOccurred);
+        QSignalSpy applied(&routing, &RoutingController::tunConfirmed);
         controls.requestTunChange(true);
         QCOMPARE(errors.size(), 1);
-        QCOMPARE(server.patches, 0);
+        QCOMPARE(backend.issuedCount(RequestKind::SetTun), 0);
         QCOMPARE(applied.size(), 0);
         QVERIFY(!controls.tunEnabled());
-        server.enabled = true;
-        client.fetchConfigs();
+
+        // The core reports TUN on anyway; turning it OFF must stay possible.
+        backend.staged().config.tunEnabled = true;
+        backend.refreshConfig();
+        QVERIFY(backend.flushEvents());
         QTRY_VERIFY(controls.tunEnabled());
+        backend.staged().tunActual = false;
         controls.requestTunChange(false);
         QTRY_COMPARE(applied.size(), 1);
-        QCOMPARE(server.patches, 1);
+        QCOMPARE(backend.issuedCount(RequestKind::SetTun), 1);
         QVERIFY(!controls.tunEnabled());
-        controls.setTunEnableBlockedReason({}); // External/privileged core.
+
+        controls.setTunEnableBlockedReason({});  // External/privileged core.
+        backend.staged().tunActual = true;
         controls.requestTunChange(true);
         QTRY_COMPARE(applied.size(), 2);
         QVERIFY(controls.tunEnabled());
     }
 
     void failedDeviceSetupDoesNotEnableOrPersistToggle() {
-        RoutingServer server;
-        server.rejectDevice = true;
-        QVERIFY(server.listen(QHostAddress::LocalHost));
-        core::MihomoClient client;
-        ui::RoutingControls controls(&client);
+        FakeBackend backend;
+        RoutingController routing(backend, nullptr, kFastDelays);
+        ui::RoutingControls controls(&routing);
         controls.show();
-        QSignalSpy applied(&controls, &ui::RoutingControls::tunApplied);
-        QSignalSpy errors(&controls, &ui::RoutingControls::errorOccurred);
-        client.setEndpoint(server.endpoint());
+        QSignalSpy applied(&routing, &RoutingController::tunConfirmed);
+        QSignalSpy errors(&routing, &RoutingController::errorOccurred);
+        connectWithConfig(backend, false);
         QTRY_VERIFY(controls.tunAvailable());
+        backend.setRequestGate(Gate::Held);
         auto *tun = controls.findChild<QCheckBox *>("tunSwitch");
         QTest::mouseClick(tun, Qt::LeftButton);
+        // The controller accepted the PATCH and read TUN back as still off.
+        backend.staged().tunActual = false;
+        QVERIFY(backend.releaseRequest(
+            pendingOfKind(backend, RequestKind::SetTun), RequestOutcome::Failure,
+            {cb::ErrorCode::Protocol,
+             QStringLiteral("The controller accepted the request, but TUN is still disabled. "
+                            "Check the core logs and whether the core has permission to create "
+                            "a TUN interface.")}));
         QTRY_COMPARE(errors.size(), 1);
         QVERIFY(!tun->isChecked());
         QVERIFY(tun->isEnabled());
@@ -159,9 +252,9 @@ private slots:
     }
 
     void compactLayoutKeepsBothSwitchesReachable() {
-        core::MihomoClient client;
-        ui::RoutingControls controls(&client);
-        controls.setSystemProxyState(true, true);
+        FakeBackend backend;
+        RoutingController routing(backend, nullptr, kFastDelays);
+        ui::RoutingControls controls(&routing);
         controls.show();
         auto *proxy = controls.findChild<QCheckBox *>("systemProxySwitch");
         auto *tun = controls.findChild<QCheckBox *>("tunSwitch");

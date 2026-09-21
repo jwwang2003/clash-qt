@@ -1,16 +1,18 @@
 #include "ui/shell/tray_proxy_menu.h"
 
 #include <QActionGroup>
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 
 namespace ui {
 
-TrayProxyMenu::TrayProxyMenu(core::MihomoClient *client, QWidget *parent)
-    : QMenu(tr("Proxy Groups"), parent), client_(client) {
-    setEnabled(client_->isConnected());
-    connect(client_, &core::MihomoClient::connectedChanged, this, &QMenu::setEnabled);
-    connect(client_, &core::MihomoClient::proxiesUpdated, this,
-            [this](const QVector<core::ProxyGroup> &groups, const QHash<QString, core::ProxyNode> &) {
+namespace cb = core::backend;
+
+TrayProxyMenu::TrayProxyMenu(cb::BackendBridge *backend, QWidget *parent)
+    : QMenu(tr("Proxy Groups"), parent), backend_(backend) {
+    setEnabled(backend_->isConnected());
+    connect(backend_, &cb::BackendBridge::connectedChanged, this, &QMenu::setEnabled);
+    connect(backend_, &cb::BackendBridge::proxiesUpdated, this,
+            [this](const QVector<cb::ProxyGroup> &groups, const QHash<QString, cb::ProxyNode> &) {
         groups_ = groups;
     });
     connect(this, &QMenu::aboutToShow, this, &TrayProxyMenu::rebuild);
@@ -41,7 +43,7 @@ void TrayProxyMenu::rebuild() {
             action->setData(node);
             action->setCheckable(true);
             action->setChecked(node == group.now);
-            action->setEnabled(group.selectable());
+            action->setEnabled(cb::isSelectable(group));
             choices->addAction(action);
             connect(action, &QAction::triggered, this,
                     [this, name = group.name, node] { choose(name, node); });
@@ -52,19 +54,19 @@ void TrayProxyMenu::rebuild() {
 }
 
 void TrayProxyMenu::choose(const QString &name, const QString &node) {
-    if (!client_->isConnected()) return;
+    if (!backend_->isConnected()) return;
     for (const auto &group : groups_)
-        if (group.name == name && group.selectable() && group.all.contains(node)) {
-            client_->selectNode(name, node);
+        if (group.name == name && cb::isSelectable(group) && group.all.contains(node)) {
+            backend_->selectNode(name, node);
             return;
         }
 }
 
 void TrayProxyMenu::reset(const QString &name) {
-    if (!client_->isConnected()) return;
+    if (!backend_->isConnected()) return;
     for (const auto &group : groups_)
         if (group.name == name && (group.type == "URLTest" || group.type == "Fallback")) {
-            client_->resetGroupSelection(name);
+            backend_->resetGroupSelection(name);
             return;
         }
 }

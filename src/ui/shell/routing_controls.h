@@ -1,42 +1,44 @@
 #pragma once
 
+#include <QString>
 #include <QWidget>
 
-namespace core { class MihomoClient; }
+namespace app::runtime { class RoutingController; }
+
 namespace ui {
 class ToggleSwitch;
 
+/// The toolbar's two routing switches: a VIEW of app::runtime::RoutingController
+/// and the intent that goes back into it.
+///
+/// It keeps no routing state of its own. Everything it shows is the
+/// controller's CONFIRMED answer, so a change still in flight renders as
+/// pending and never as applied. The controller also owns the error channel;
+/// this widget reads lastError() for the switch's tooltip and deliberately does
+/// not republish it, so one failure is reported once.
 class RoutingControls : public QWidget {
     Q_OBJECT
 public:
-    explicit RoutingControls(core::MihomoClient *client, QWidget *parent = nullptr);
+    explicit RoutingControls(app::runtime::RoutingController *routing, QWidget *parent = nullptr);
     bool systemProxyEnabled() const;
     bool systemProxyAvailable() const;
-    bool tunEnabled() const { return tunEnabled_; }
+    bool tunEnabled() const;
     bool tunAvailable() const;
 
 public slots:
-    void setSystemProxyState(bool enabled, bool available);
     void requestSystemProxyChange(bool enabled);
     void requestTunChange(bool enabled);
     void setTunEnableBlockedReason(const QString &reason);
+    /// Re-renders both switches from the controller.
+    void refresh();
 
 signals:
     void stateChanged();
-    void systemProxyRequested(bool enabled);
-    void tunApplied(bool enabled);
-    void errorOccurred(const QString &error);
 
 private:
-    void refreshTun();
-    core::MihomoClient *client_;
+    app::runtime::RoutingController *routing_;
     ToggleSwitch *systemProxy_;
     ToggleSwitch *tun_;
-    bool configKnown_ = false;
-    bool tunEnabled_ = false;
-    bool tunPending_ = false;
-    QString tunError_;
-    QString tunEnableBlockedReason_;
 };
 
 }  // namespace ui

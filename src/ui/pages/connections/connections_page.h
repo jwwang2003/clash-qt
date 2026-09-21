@@ -7,7 +7,7 @@
 #include <QVector>
 #include <QWidget>
 
-#include "core/types.h"
+#include "core/backend/types.h"
 
 class QLabel;
 class QComboBox;
@@ -15,8 +15,8 @@ class QSortFilterProxyModel;
 class QTableView;
 class QTimer;
 
-namespace core {
-class MihomoClient;
+namespace core::backend {
+class BackendBridge;
 }
 
 namespace ui {
@@ -42,9 +42,9 @@ public:
 
     explicit ConnectionModel(QObject *parent = nullptr);
 
-    void setConnections(const QVector<core::Connection> &connections);
+    void setConnections(const QVector<core::backend::Connection> &connections);
     QString idAt(int row) const;
-    std::optional<core::Connection> connectionAt(int row) const;
+    std::optional<core::backend::Connection> connectionAt(int row) const;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -53,28 +53,28 @@ public:
                         int role = Qt::DisplayRole) const override;
 
 private:
-    QVector<core::Connection> connections_;
+    QVector<core::backend::Connection> connections_;
 };
 
 class ConnectionsPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ConnectionsPage(core::MihomoClient *client, QWidget *parent = nullptr);
+    explicit ConnectionsPage(core::backend::BackendBridge *bridge, QWidget *parent = nullptr);
 
 protected:
     void showEvent(QShowEvent *event) override;
 
 private slots:
-    void onConnectionsUpdated(const QVector<core::Connection> &connections, quint64 uploadTotal,
-                              quint64 downloadTotal);
+    void onConnectionsUpdated(const QVector<core::backend::Connection> &connections,
+                              quint64 uploadTotal, quint64 downloadTotal);
     void showContextMenu(const QPoint &pos);
 
 private:
     void renderConnections();
-    void showDetails(const core::Connection &connection);
+    void showDetails(const core::backend::Connection &connection);
 
-    core::MihomoClient *client_;
+    core::backend::BackendBridge *bridge_;
     ConnectionModel *model_;
     QSortFilterProxyModel *proxy_;
     QTableView *view_;
@@ -82,9 +82,9 @@ private:
     QComboBox *historyBox_;
     QElapsedTimer sampleClock_;
     qint64 lastSampleMs_ = -1;
-    QVector<core::Connection> current_;
-    QVector<core::Connection> closed_;
-    QHash<QString, core::Connection> previous_;
+    QVector<core::backend::Connection> current_;
+    QVector<core::backend::Connection> closed_;
+    QHash<QString, core::backend::Connection> previous_;
     QTimer *renderTimer_;
     bool currentDirty_ = false;
     bool closedDirty_ = false;

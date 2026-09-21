@@ -22,7 +22,7 @@
 #include <QTimer>
 #include <algorithm>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 #include "ui/theme/formatting.h"
 #include "ui/theme/theme.h"
 
@@ -41,7 +41,7 @@ int fittedWidth(const QFontMetrics &headerMetrics, const QString &title,
                 cellMetrics.horizontalAdvance(sample) + kCellPadding);
 }
 
-QString detailsText(const core::Connection &connection) {
+QString detailsText(const core::backend::Connection &connection) {
     return QStringList{
         QObject::tr("Host: %1").arg(connection.host),
         QObject::tr("Source: %1:%2").arg(connection.sourceIp, connection.sourcePort),
@@ -60,13 +60,13 @@ QString detailsText(const core::Connection &connection) {
     }.join('\n');
 }
 
-qlonglong durationSeconds(const core::Connection &connection) {
+qlonglong durationSeconds(const core::backend::Connection &connection) {
     if (!connection.start.isValid()) return 0;
     return qMax<qlonglong>(0, connection.start.secsTo(connection.end.isValid()
                                                        ? connection.end : QDateTime::currentDateTime()));
 }
 
-QString connectionDuration(const core::Connection &connection) {
+QString connectionDuration(const core::backend::Connection &connection) {
     if (!connection.start.isValid()) return QStringLiteral("—");
     const qlonglong seconds = durationSeconds(connection);
     if (seconds < 60) return QString::number(seconds) + "s";
@@ -78,7 +78,7 @@ QString connectionDuration(const core::Connection &connection) {
 
 ConnectionModel::ConnectionModel(QObject *parent) : QAbstractTableModel(parent) {}
 
-void ConnectionModel::setConnections(const QVector<core::Connection> &connections) {
+void ConnectionModel::setConnections(const QVector<core::backend::Connection> &connections) {
     beginResetModel();
     connections_ = connections;
     endResetModel();
@@ -89,7 +89,7 @@ QString ConnectionModel::idAt(int row) const {
     return connections_.at(row).id;
 }
 
-std::optional<core::Connection> ConnectionModel::connectionAt(int row) const {
+std::optional<core::backend::Connection> ConnectionModel::connectionAt(int row) const {
     if (row < 0 || row >= connections_.size()) return std::nullopt;
     return connections_.at(row);
 }
@@ -104,7 +104,7 @@ int ConnectionModel::columnCount(const QModelIndex &parent) const {
 
 QVariant ConnectionModel::data(const QModelIndex &index, int role) const {
     if (!index.isValid() || index.row() >= connections_.size()) return {};
-    const core::Connection &connection = connections_.at(index.row());
+    const core::backend::Connection &connection = connections_.at(index.row());
 
     // Sorting reads Qt::UserRole so byte and duration columns order numerically.
     if (role == Qt::UserRole) {
@@ -197,9 +197,9 @@ QVariant ConnectionModel::headerData(int section, Qt::Orientation orientation, i
     }
 }
 
-ConnectionsPage::ConnectionsPage(core::MihomoClient *client, QWidget *parent)
+ConnectionsPage::ConnectionsPage(core::backend::BackendBridge *bridge, QWidget *parent)
     : QWidget(parent),
-      client_(client),
+      bridge_(bridge),
       model_(new ConnectionModel(this)),
       proxy_(new QSortFilterProxyModel(this)), renderTimer_(new QTimer(this)) {
     renderTimer_->setSingleShot(true);
@@ -226,8 +226,8 @@ ConnectionsPage::ConnectionsPage(core::MihomoClient *client, QWidget *parent)
     totalLabel_->setObjectName("pageSummary");
 
     auto *closeAllButton = new QPushButton(tr("Close All"), this);
-    connect(closeAllButton, &QPushButton::clicked, client_,
-            &core::MihomoClient::closeAllConnections);
+    connect(closeAllButton, &QPushButton::clicked, bridge_,
+            &core::backend::BackendBridge::closeAllConnections);
 
     view_ = new QTableView(this);
     view_->setModel(proxy_);
@@ -313,7 +313,7 @@ ConnectionsPage::ConnectionsPage(core::MihomoClient *client, QWidget *parent)
     layout->addLayout(historyControls);
     layout->addWidget(view_, 1);
 
-    connect(client_, &core::MihomoClient::connectionsUpdated, this,
+    connect(bridge_, &core::backend::BackendBridge::connectionsUpdated, this,
             &ConnectionsPage::onConnectionsUpdated);
     const auto reset = [this] {
         previous_.clear();
@@ -323,20 +323,22 @@ ConnectionsPage::ConnectionsPage(core::MihomoClient *client, QWidget *parent)
         currentDirty_ = closedDirty_ = true;
         renderConnections();
     };
-    connect(client_, &core::MihomoClient::endpointChanged, this, reset);
-    connect(client_, &core::MihomoClient::connectedChanged, this, [reset](bool connected) {
+    connect(bridge_, &core::backend::BackendBridge::endpointChanged, this, reset);
+    connect(bridge_, &core::backend::BackendBridge::connectedChanged, this,
+            [reset](bool connected) {
         if (!connected) reset();
     });
 }
 
-void ConnectionsPage::onConnectionsUpdated(const QVector<core::Connection> &connections,
-                                           quint64 uploadTotal, quint64 downloadTotal) {
+void ConnectionsPage::onConnectionsUpdated(
+    const QVector<core::backend::Connection> &connections, quint64 uploadTotal,
+    quint64 downloadTotal) {
     const qint64 now = sampleClock_.elapsed();
     const double elapsed = lastSampleMs_ < 0 ? 0 : (now - lastSampleMs_) / 1000.0;
-    QHash<QString, core::Connection> next;
+    QHash<QString, core::backend::Connection> next;
     current_.clear();
     current_.reserve(connections.size());
-    for (core::Connection connection : connections) {
+    for (core::backend::Connection connection : connections) {
         connection.uploadRate = 0;
         connection.downloadRate = 0;
         const auto previous = previous_.constFind(connection.id);
@@ -349,12 +351,12 @@ void ConnectionsPage::onConnectionsUpdated(const QVector<core::Connection> &conn
         next.insert(connection.id, connection);
         current_.append(connection);
     }
-    QVector<core::Connection> endedConnections;
+    QVector<core::backend::Connection> endedConnections;
     endedConnections.reserve(qMin(previous_.size(), qsizetype(500)));
     const auto endedAt = QDateTime::currentDateTime();
     for (auto it = previous_.cbegin(); it != previous_.cend(); ++it) {
         if (next.contains(it.key())) continue;
-        core::Connection ended = it.value();
+        core::backend::Connection ended = it.value();
         ended.end = endedAt;
         ended.uploadRate = ended.downloadRate = 0;
         endedConnections.append(ended);
@@ -403,7 +405,7 @@ void ConnectionsPage::renderConnections() {
     view_->horizontalScrollBar()->setValue(horizontalScroll);
 }
 
-void ConnectionsPage::showDetails(const core::Connection &connection) {
+void ConnectionsPage::showDetails(const core::backend::Connection &connection) {
     auto *dialog = new QDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setWindowTitle(tr("Connection Details"));
@@ -427,13 +429,13 @@ void ConnectionsPage::showContextMenu(const QPoint &pos) {
 
     const auto connection = model_->connectionAt(proxy_->mapToSource(index).row());
     if (!connection) return;
-    const core::Connection snapshot = *connection;
+    const core::backend::Connection snapshot = *connection;
     QMenu menu(this);
     menu.addAction(tr("Details…"), this, [this, snapshot] { showDetails(snapshot); });
     menu.addAction(tr("Copy Host"), this, [snapshot] { QApplication::clipboard()->setText(snapshot.host); });
     menu.addAction(tr("Copy Details"), this, [snapshot] { QApplication::clipboard()->setText(detailsText(snapshot)); });
     if (historyBox_->currentIndex() == 0 && !snapshot.id.isEmpty())
-        menu.addAction(tr("Close Connection"), this, [this, snapshot] { client_->closeConnection(snapshot.id); });
+        menu.addAction(tr("Close Connection"), this, [this, snapshot] { bridge_->closeConnection(snapshot.id); });
     menu.exec(view_->viewport()->mapToGlobal(pos));
 }
 

@@ -14,6 +14,9 @@
     "'transitive_external'  closed allowlist over the evaluated transitive",
     "                       closure, which is what catches a dependency",
     "                       acquired through a broad umbrella target.",
+    "'sealed_modules'       modules that may be reached only through a baselined",
+    "                       exception site while the named debt is open; see",
+    "                       '_sealed_modules_note' below.",
     "'public_headers'       compiled standalone by the public-header probe in",
     "                       tests/architecture/CMakeLists.txt, in a consumer",
     "                       that links only this module."
@@ -393,6 +396,7 @@
         "clash_app_composition",
         "clash_app_lifecycle",
         "clash_app_runtime",
+        "clash_backend_bridge",
         "clash_backups",
         "clash_config",
         "clash_platform",
@@ -455,15 +459,24 @@
       ]
     },
     "tray-tests": {
-      "deps": [],
+      "deps": [
+        "clash_backend_bridge",
+        "clash_backend_fake"
+      ],
       "optional": true
     },
     "routing-controls-tests": {
-      "deps": [],
+      "deps": [
+        "clash_app_runtime",
+        "clash_backend_bridge",
+        "clash_backend_fake"
+      ],
       "optional": true
     },
     "dashboard-async-tests": {
       "deps": [
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_platform",
         "clash_preferences"
       ],
@@ -500,7 +513,6 @@
     "core-process-tests": {
       "_note": "Partitioned from the former runtime suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
         "clash_platform",
         "clash_test_support"
       ]
@@ -516,7 +528,8 @@
     "home-page-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_telemetry",
         "clash_test_support"
       ],
@@ -525,7 +538,6 @@
     "traffic-graph-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
         "clash_telemetry",
         "clash_test_support"
       ],
@@ -534,7 +546,8 @@
     "proxies-page-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_test_support"
       ],
       "optional": true
@@ -542,7 +555,8 @@
     "connections-page-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_test_support"
       ],
       "optional": true
@@ -550,7 +564,8 @@
     "providers-page-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_test_support"
       ],
       "optional": true
@@ -558,7 +573,8 @@
     "rules-page-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_test_support"
       ],
       "optional": true
@@ -566,7 +582,8 @@
     "logs-page-tests": {
       "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
       "deps": [
-        "clash_mihomo_impl",
+        "clash_backend_bridge",
+        "clash_backend_fake",
         "clash_test_support"
       ],
       "optional": true
@@ -608,6 +625,29 @@
         "clash_backend_fake"
       ],
       "optional": true
+    },
+    "backend-real-contract-tests": {
+      "_note": "MOD-CORE P3: the backend-r3 acceptance set against the real MihomoBackend with a fixture core. Links clash_mihomo_impl; that link is carried as a G2 site, not as a dep.",
+      "headless": true,
+      "deps": [
+        "clash_app_composition",
+        "clash_test_support"
+      ]
+    },
+    "backend-real-core-tests": {
+      "_note": "MOD-CORE P3: the same adapter against the locally built engine. Label-gated to the integration lane.",
+      "headless": true,
+      "deps": [
+        "clash_app_composition",
+        "clash_test_support"
+      ]
+    },
+    "engine-discovery-tests": {
+      "_note": "MOD-CORE P3: controller discovery against the real engine layout.",
+      "headless": true,
+      "deps": [
+        "clash_test_support"
+      ]
     }
   },
   "include_rules": [
@@ -681,21 +721,48 @@
       "hint": "MOD-CORE publishes the contract that displaces these includes"
     }
   ],
+  "_sealed_modules_note": [
+    "A sealed module may be reached only through the ledger, never around it.",
+    "",
+    "check_targets() consults 'deps' BEFORE it consults exceptions, so writing",
+    "a module into consumers[].deps permanently allows the edge: no owner, no",
+    "removal phase, invisible to the ratchet. That is how eight targets came to",
+    "link clash_mihomo_impl without appearing in G2 at all -- migration debt",
+    "turned into architecture by one line of JSON.",
+    "",
+    "While any exception matching 'sealed_while' is still open, arch_check.py",
+    "  (a) fails any modules/consumers entry that names the module in 'deps',",
+    "  (b) fails any target that links the module directly and is carried by no",
+    "      baselined site of those exceptions.",
+    "Clause (b) is what makes the site list DERIVED: it is checked against the",
+    "evaluated CMake graph on every run, so the ledger cannot understate the",
+    "debt again. Both clauses lift by themselves when the last named exception",
+    "is deleted -- the seal exists only for as long as the debt does."
+  ],
+  "sealed_modules": [
+    {
+      "module": "clash_mihomo_impl",
+      "sealed_while": [
+        "G2-*",
+        "E1-*"
+      ],
+      "exempt_linkers": [
+        "arch_probe_*"
+      ],
+      "reason": "Component-private per G2. Every link must be a baselined site with an owner and a removal phase until G2 and E1 are both discharged. arch_probe_* is exempt: it is the public-header probe generated by tests/architecture/CMakeLists.txt, which links each module alone to prove its published headers stand up -- it is the checker's own harness, not a consumer."
+    }
+  ],
   "exceptions": [
     {
       "id": "G2-consumers-link-component-private",
       "class": "migration-baseline",
       "kind": "target_edge",
-      "owner": "MOD-CORE",
-      "remove_in": "P3",
-      "reason": "G2 blocker at link level: these targets link the component-private implementation directly. Frozen; MOD-CORE's published contract displaces them. A ninth linker fails the check.",
+      "owner": "COMPONENT-ABI",
+      "remove_in": "P4",
+      "reason": "Down from 17 direct linkers to 8, after the UI migration. The residue is two kinds and only one is debt. DEBT (clears when COMPONENT-ABI's factory and module land in P4): clash-qt, routing-controls-tests. NOT DEBT: controller-tests, provider-tests, core-process-tests, backend-real-contract-tests, backend-real-core-tests, engine-discovery-tests -- their subject IS the implementation, so they link it on purpose and always will. They are listed here because the sealed-module rule requires every direct linker to be named; being named is not the same as being owed.",
       "sites": [
         {
           "from": "clash-qt",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "runtime-tests",
           "to": "clash_mihomo_impl"
         },
         {
@@ -707,19 +774,23 @@
           "to": "clash_mihomo_impl"
         },
         {
-          "from": "data-pages-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "tray-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
           "from": "routing-controls-tests",
           "to": "clash_mihomo_impl"
         },
         {
-          "from": "dashboard-async-tests",
+          "from": "core-process-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "backend-real-contract-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "backend-real-core-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "engine-discovery-tests",
           "to": "clash_mihomo_impl"
         }
       ]
@@ -729,89 +800,31 @@
       "class": "migration-baseline",
       "kind": "include",
       "rule": "IR-COMPONENT-PRIVATE",
-      "owner": "MOD-CORE",
-      "remove_in": "P3",
-      "reason": "PRE-ARCH 1b, the concrete G2 blocker: UI translation units include component-private mihomo headers, and src/ui/shell/main_window.h names core::CoreState in a slot signature. Frozen at 20 sites across 17 files; a 21st fails the check, and a site that disappears must be deleted from this list.",
+      "owner": "COMPONENT-ABI",
+      "remove_in": "P4",
+      "reason": "All 20 UI include sites are DISCHARGED: no file under src/ui/** reaches into core/mihomo/** any more. The single remaining site is the composition root constructing the implementation, which is legitimate until COMPONENT-ABI publishes a factory from clash_backend in P4. Frozen at one site: a second file reaching for the implementation fails the check.",
+      "_status": [
+        "IN FLIGHT, 2026-09-21. Two workers are migrating the UI onto the",
+        "published backend contract. As of this writing 10 of the 20 sites",
+        "below -- every site under src/ui/pages/ -- no longer match, and",
+        "arch-graph reports them as ARCH-R5-STALE-INCLUDE-EXCEPTION. That is",
+        "the ratchet working: the debt is being discharged and the ledger",
+        "has not caught up yet.",
+        "",
+        "The sites are deliberately NOT pruned here. Deleting a site is how",
+        "a discharge is recorded, and it belongs in the same change that",
+        "removes the include, by the worker who removes it -- pruning them",
+        "from outside mid-migration would both chase a number that moved",
+        "three times while this file was being edited and hide a re-added",
+        "include behind an already-deleted site. The remaining 10 (src/ui/",
+        "shell/, src/ui/pages/settings/, src/ui/pages/backups/, src/main.cpp)",
+        "have not been started. The clause is discharged when the entry is",
+        "deleted outright, not when it is trimmed."
+      ],
       "sites": [
         {
-          "file": "src/ui/shell/routing_controls.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/shell/tray_proxy_menu.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/shell/tray_icon.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/shell/main_window.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/shell/main_window.h",
-          "include": "core/mihomo/process/core_process.h"
-        },
-        {
-          "file": "src/ui/shell/dashboard_button.h",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/settings/settings_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/settings/settings_page.cpp",
-          "include": "core/mihomo/process/core_process.h"
-        },
-        {
-          "file": "src/ui/pages/settings/service_settings.cpp",
-          "include": "core/mihomo/process/core_process.h"
-        },
-        {
-          "file": "src/ui/pages/connections/connections_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/providers/providers_page.h",
-          "include": "core/mihomo/provider_client.h"
-        },
-        {
-          "file": "src/ui/pages/providers/providers_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/rules/rules_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/logs/logs_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/proxies/proxies_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/overview/home_page.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/ui/pages/backups/backup_page.cpp",
-          "include": "core/mihomo/process/core_process.h"
-        },
-        {
           "file": "src/main.cpp",
-          "include": "core/mihomo/controller_discovery.h"
-        },
-        {
-          "file": "src/main.cpp",
-          "include": "core/mihomo/mihomo_client.h"
-        },
-        {
-          "file": "src/main.cpp",
-          "include": "core/mihomo/process/core_process.h"
+          "include": "core/mihomo/mihomo_backend.h"
         }
       ]
     },
@@ -822,8 +835,8 @@
       "from": "clash_profiles",
       "to": "clash_mihomo_impl",
       "owner": "CFG-CORE",
-      "remove_in": "P4",
-      "reason": "PRE-ARCH edge 1. ProfileStore::prepareRuntime calls core::vergeConfigPath() from controller_discovery.cpp to seed runtime data -- a SINGLE call site, src/core/profiles/profile_store.cpp:722. The edge was previously invisible because every consuming executable linked both libraries directly; partitioning the runtime suite exposed it. Declared rather than linked around, because the library genuinely cannot link standalone without it. Removing that one call site removes this exception AND both transitive-external entries below at once."
+      "remove_in": "P3",
+      "reason": "PRE-ARCH edge 1. ProfileStore::prepareRuntime calls core::vergeConfigPath() from controller_discovery.cpp to seed runtime data -- a SINGLE call site, src/core/profiles/profile_store.cpp:722. The edge was previously invisible because every consuming executable linked both libraries directly; partitioning the runtime suite exposed it. Declared rather than linked around, because the library genuinely cannot link standalone without it. Removing that one call site removes this exception AND both transitive-external entries below at once. RE-PHASED P4 -> P3 by P3-LEDGER: this edge propagates into clash-qt, and check_targets()'s is_propagated() exempts a propagated edge, so G2's link clause could be declared closed on a false green while the application still reached the private implementation. Verified in build-p3ledger: arch_probe_clash_profiles links only clash_profiles and has clash_mihomo_impl in its closure, and clash-qt's direct-dep closure still reaches clash_mihomo_impl through clash_profiles and through clash_app_runtime -> clash_profiles. G2 cannot be signed off before this is gone. The call site is CFG-CORE's file and a separate package; only the phase moved here."
     }
   ]
 }

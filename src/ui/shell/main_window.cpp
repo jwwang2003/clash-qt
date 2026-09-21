@@ -17,7 +17,8 @@
 #include <unistd.h>
 #endif
 
-#include "core/mihomo/mihomo_client.h"
+#include "app/runtime/routing_controller.h"
+#include "core/backend/backend_bridge.h"
 #include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "platform/system/hotkeys.h"
@@ -39,20 +40,26 @@
 namespace ui {
 namespace {
 
+namespace cb = core::backend;
+
 constexpr int kNavWidth = 176;
 constexpr int kGlyphRole = Qt::UserRole + 1;
 
-QColor coreStateColor(core::CoreState state) {
+QColor coreStateColor(cb::CoreState state) {
     const theme::Tokens &t = theme::tokens();
     switch (state) {
-        case core::CoreState::Running:
+        case cb::CoreState::Running:
             return t.success;
-        case core::CoreState::Starting:
-        case core::CoreState::Stopping:
+        case cb::CoreState::Starting:
+        case cb::CoreState::Stopping:
             return t.warning;
-        case core::CoreState::Failed:
+        case cb::CoreState::Failed:
             return t.danger;
-        case core::CoreState::Stopped:
+        case cb::CoreState::Stopped:
+            break;
+        default:
+            // The published enum reserves values a newer backend may send;
+            // "unknown" is Failed's conservative neighbour, never "usable".
             break;
     }
     return t.textFaint;
@@ -60,19 +67,20 @@ QColor coreStateColor(core::CoreState state) {
 
 }  // namespace
 
-MainWindow::MainWindow(const app::Context &context, QWidget *parent)
-    : QMainWindow(parent), context_(context), client_(context.client) {
+MainWindow::MainWindow(const app::Context &context, cb::BackendBridge *backend,
+                       app::runtime::RoutingController *routing, QWidget *parent)
+    : QMainWindow(parent), context_(context), backend_(backend), routing_(routing) {
     buildUi();
 
     connect(settingsPage_, &SettingsPage::serviceInstallationBusyChanged, this, [this](bool busy) {
         setProperty("serviceInstallationBusy", busy);
-        updateCoreState(context_.coreProcess->state());
+        updateCoreState(backend_->coreState());
     });
 
-    connect(client_, &core::MihomoClient::versionReceived, this, [this](const QString &version) {
+    connect(backend_, &cb::BackendBridge::versionReceived, this, [this](const QString &version) {
         versionLabel_->setText(tr("mihomo %1").arg(version));
     });
-    connect(client_, &core::MihomoClient::connectedChanged, this, [this](bool connected) {
+    connect(backend_, &cb::BackendBridge::connectedChanged, this, [this](bool connected) {
         modeBox_->setEnabled(connected);
         if (connected) statusBar()->clearMessage();
         if (!connected) {
@@ -80,10 +88,13 @@ MainWindow::MainWindow(const app::Context &context, QWidget *parent)
             trafficLabel_->setText("↑ —  ↓ —");
             memoryLabel_->setText(tr("mem —"));
         }
-        updateCoreState(context_.coreProcess->state());
+        updateCoreState(backend_->coreState());
     });
-    connect(client_, &core::MihomoClient::modeChanged, this, [this](const QString &mode) {
-        if (context_.coreProcess->state() != core::CoreState::Running) return;
+    // The CONFIRMED mode, not the requested one: an override is persisted only
+    // once the controller reported the change actually took.
+    connect(routing_, &app::runtime::RoutingController::modeConfirmed, this,
+            [this](const QString &mode) {
+        if (backend_->coreState() != cb::CoreState::Running) return;
         auto overrides = context_.profiles->runtimeOverrides();
         overrides.insert("mode", mode);
         context_.profiles->setRuntimeOverrides(overrides);
@@ -94,30 +105,30 @@ MainWindow::MainWindow(const app::Context &context, QWidget *parent)
             });
     connect(context_.profiles, &core::ProfileStore::errorOccurred, this,
             [this](const QString &message) { statusBar()->showMessage(message, 15000); });
-    connect(client_, &core::MihomoClient::trafficSample, this, [this](quint64 up, quint64 down) {
+    connect(backend_, &cb::BackendBridge::trafficSample, this, [this](quint64 up, quint64 down) {
         trafficLabel_->setText(QString("↑ %1  ↓ %2").arg(formatRate(up), formatRate(down)));
     });
-    connect(client_, &core::MihomoClient::memorySample, this, [this](quint64 inuse, quint64) {
+    connect(backend_, &cb::BackendBridge::memorySample, this, [this](quint64 inuse, quint64) {
         memoryLabel_->setText(tr("mem %1").arg(formatBytes(inuse)));
     });
-    connect(client_, &core::MihomoClient::configReceived, this,
-            [this](const core::BaseConfig &config) {
-                QSignalBlocker blocker(modeBox_);
-                modeBox_->setCurrentIndex(modeBox_->findData(config.mode));
-            });
-    connect(client_, &core::MihomoClient::errorOccurred, this, [this](const QString &message) {
+    // The box follows the one confirmed mode every routing surface reads.
+    connect(routing_, &app::runtime::RoutingController::routingStateChanged, this, [this] {
+        QSignalBlocker blocker(modeBox_);
+        modeBox_->setCurrentIndex(modeBox_->findData(routing_->mode()));
+    });
+    connect(backend_, &cb::BackendBridge::errorOccurred, this, [this](const QString &message) {
         statusBar()->showMessage(message, 8000);
     });
 
-    connect(context_.coreProcess, &core::CoreProcess::stateChanged, this, &MainWindow::updateCoreState);
-    connect(client_, &core::MihomoClient::endpointChanged, this, [this] {
-        updateCoreState(context_.coreProcess->state());
+    connect(backend_, &cb::BackendBridge::coreStateChanged, this, &MainWindow::updateCoreState);
+    connect(backend_, &cb::BackendBridge::endpointChanged, this, [this] {
+        updateCoreState(backend_->coreState());
     });
     connect(context_.profiles, &core::ProfileStore::runtimeBusyChanged, this, [this] {
-        updateCoreState(context_.coreProcess->state());
+        updateCoreState(backend_->coreState());
     });
-    connect(context_.coreProcess, &core::CoreProcess::logLine, logsPage_, &LogsPage::appendCoreLine);
-    connect(context_.coreProcess, &core::CoreProcess::failed, this, [this](const QString &reason) {
+    connect(backend_, &cb::BackendBridge::coreLogLine, logsPage_, &LogsPage::appendCoreLine);
+    connect(backend_, &cb::BackendBridge::coreFailed, this, [this](const QString &reason) {
         coreLabel_->setToolTip(reason);
         logsPage_->appendCoreLine(reason);
         statusBar()->showMessage(reason, 15000);
@@ -125,15 +136,15 @@ MainWindow::MainWindow(const app::Context &context, QWidget *parent)
     connect(context_.hotkeys, &platform::Hotkeys::triggered, this, &MainWindow::onHotkey);
     connect(theme::notifier(), &theme::Notifier::changed, this, [this] {
         applyNavIcons();
-        updateCoreState(context_.coreProcess->state());
+        updateCoreState(backend_->coreState());
     });
-    updateCoreState(context_.coreProcess->state());
+    updateCoreState(backend_->coreState());
 
-    client_->fetchRules();
-    client_->fetchConfigs();
-    client_->openConnectionsStream();
-    client_->openLogStream();
-    client_->openMemoryStream();
+    backend_->refreshRules();
+    backend_->refreshConfig();
+    backend_->openConnectionsStream();
+    backend_->openLogStream(QStringLiteral("info"));
+    backend_->openMemoryStream();
 }
 
 void MainWindow::buildUi() {
@@ -144,9 +155,9 @@ void MainWindow::buildUi() {
     const QByteArray geometry = core::preferences::open().value("window/geometry").toByteArray();
     if (!geometry.isEmpty()) restoreGeometry(geometry);
 
-    proxiesPage_ = new ProxiesPage(client_, this);
-    logsPage_ = new LogsPage(client_, this);
-    settingsPage_ = new SettingsPage(context_, this);
+    proxiesPage_ = new ProxiesPage(backend_, this);
+    logsPage_ = new LogsPage(backend_, this);
+    settingsPage_ = new SettingsPage(context_, backend_, routing_, this);
     auto *settingsShortcut = new QShortcut(QKeySequence::Preferences, this);
     connect(settingsShortcut, &QShortcut::activated, this, [this] {
         nav_->setCurrentRow(pages_->indexOf(settingsPage_));
@@ -162,14 +173,15 @@ void MainWindow::buildUi() {
     nav_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     pages_ = new QStackedWidget(this);
-    addPage(theme::Glyph::Home, tr("Home"), new HomePage(client_, this));
+    addPage(theme::Glyph::Home, tr("Home"), new HomePage(backend_, this));
     addPage(theme::Glyph::Profiles, tr("Profiles"), new ProfilesPage(context_.profiles, this));
     addPage(theme::Glyph::Proxies, tr("Proxies"), proxiesPage_);
-    addPage(theme::Glyph::Connections, tr("Connections"), new ConnectionsPage(client_, this));
+    addPage(theme::Glyph::Connections, tr("Connections"), new ConnectionsPage(backend_, this));
     addPage(theme::Glyph::Logs, tr("Logs"), logsPage_);
-    addPage(theme::Glyph::Rules, tr("Rules"), new RulesPage(client_, this));
-    addPage(theme::Glyph::Providers, tr("Providers"), new ProvidersPage(client_, this));
-    addPage(theme::Glyph::Backups, tr("Backups"), new BackupPage(context_, this));
+    addPage(theme::Glyph::Rules, tr("Rules"), new RulesPage(backend_, this));
+    addPage(theme::Glyph::Providers, tr("Providers"), new ProvidersPage(backend_, this));
+    addPage(theme::Glyph::Backups, tr("Backups"),
+            new BackupPage(context_, *context_.backups, this));
     addPage(theme::Glyph::Settings, tr("Settings"), settingsPage_);
 
     connect(nav_, &QListWidget::currentRowChanged, pages_, &QStackedWidget::setCurrentIndex);
@@ -216,46 +228,37 @@ void MainWindow::buildToolBar() {
     toolbar->addWidget(modeLabel);
 
     modeBox_ = new ComboBox(toolbar);
-    modeBox_->setEnabled(client_->isConnected());
+    modeBox_->setEnabled(backend_->isConnected());
     modeBox_->setAccessibleName(tr("Routing mode"));
     modeBox_->addItem(tr("Rule"), "rule");
     modeBox_->addItem(tr("Global"), "global");
     modeBox_->addItem(tr("Direct"), "direct");
     connect(modeBox_, &QComboBox::currentIndexChanged, this,
-            [this] { client_->patchMode(modeBox_->currentData().toString()); });
+            [this] { routing_->requestMode(modeBox_->currentData().toString()); });
     toolbar->addWidget(modeBox_);
 
     toolbar->addSeparator();
-    routingControls_ = new RoutingControls(client_, toolbar);
+    routingControls_ = new RoutingControls(routing_, toolbar);
     toolbar->addWidget(routingControls_);
-    connect(routingControls_, &RoutingControls::systemProxyRequested,
-            settingsPage_, &SettingsPage::setSystemProxyEnabled);
-    connect(settingsPage_, &SettingsPage::systemProxyStateChanged,
-            routingControls_, &RoutingControls::setSystemProxyState);
-    routingControls_->setSystemProxyState(settingsPage_->systemProxyEnabled(),
-                                         settingsPage_->systemProxyAvailable());
-    connect(routingControls_, &RoutingControls::tunApplied, this, [this](bool enabled) {
-        if (context_.coreProcess->state() != core::CoreState::Running) return;
+    // CONFIRMED, never requested: a read-back that disagreed with the request
+    // must not be persisted as the new default.
+    connect(routing_, &app::runtime::RoutingController::tunConfirmed, this, [this](bool enabled) {
+        if (backend_->coreState() != cb::CoreState::Running) return;
         auto overrides = context_.profiles->runtimeOverrides();
         auto tun = overrides.value("tun").toObject();
         tun.insert("enable", enabled);
         overrides.insert("tun", tun);
         context_.profiles->setRuntimeOverrides(overrides);
     });
-    const auto routingError = [this](const QString &error) {
-        statusBar()->showMessage(error, 15000);
-        auto *message = new QMessageBox(QMessageBox::Warning, tr("Routing Settings"),
-                                        error, QMessageBox::Ok, this);
-        message->setAttribute(Qt::WA_DeleteOnClose);
-        message->open();
-    };
-    connect(routingControls_, &RoutingControls::errorOccurred, this, routingError);
-    connect(settingsPage_, &SettingsPage::systemProxyError, this, routingError);
+    // NOTE: RoutingController::errorOccurred is now the single routing error
+    // channel and deliberately has no consumer yet - the composition root wires
+    // it in the coordinator package. Neither RoutingControls nor SettingsPage
+    // republishes a routing failure, so it can only ever be reported once.
 
     auto *spacer = new QWidget(toolbar);
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     toolbar->addWidget(spacer);
-    toolbar->addWidget(new DashboardButton(client_, toolbar));
+    toolbar->addWidget(new DashboardButton(backend_, toolbar));
 }
 
 void MainWindow::addPage(theme::Glyph glyph, const QString &title, QWidget *page) {
@@ -281,18 +284,18 @@ void MainWindow::onHotkey(const QString &id) {
         raise();
         activateWindow();
     } else if (id == hotkey::kToggleProxy) {
-        settingsPage_->toggleSystemProxy();
+        routing_->toggleSystemProxy();
     } else if (id == hotkey::kCycleMode) {
         if (!modeBox_->isEnabled()) return;
         modeBox_->setCurrentIndex((modeBox_->currentIndex() + 1) % modeBox_->count());
     }
 }
 
-void MainWindow::toggleSystemProxy() { settingsPage_->toggleSystemProxy(); }
+void MainWindow::toggleSystemProxy() { routing_->toggleSystemProxy(); }
 
 void MainWindow::refreshRoutingState() {
-    settingsPage_->refreshSystemProxy();
-    client_->fetchConfigs();
+    routing_->refreshSystemProxy();
+    backend_->refreshConfig();
 }
 
 void MainWindow::changeEvent(QEvent *event) {
@@ -314,37 +317,42 @@ void MainWindow::startCore() {
 
 void MainWindow::stopCore() {
     context_.profiles->cancelRuntimeGeneration();
-    context_.coreProcess->stop();
+    backend_->stopCore();
 }
 
-void MainWindow::updateCoreState(core::CoreState state) {
+void MainWindow::updateCoreState(cb::CoreState state) {
 #ifdef Q_OS_MACOS
     // Only gate a known direct child; the service and external controllers
-    // may have privileges the desktop process does not.
-    const auto managed = context_.coreProcess->endpoint();
-    const auto connected = client_->endpoint();
-    const bool unprivilegedManaged = geteuid() != 0 && !context_.coreProcess->usesPrivilegedService()
-        && state == core::CoreState::Running
-        && managed.isValid() && managed.host == connected.host && managed.port == connected.port;
+    // may have privileges the desktop process does not. "Is the attachment the
+    // managed child?" is the backend's answer now, not an address comparison
+    // this window performs by hand.
+    const bool unprivilegedManaged = geteuid() != 0
+        && !backend_->backend().usesPrivilegedService()
+        && state == cb::CoreState::Running
+        && backend_->endpointOwnership() == cb::Ownership::Managed;
     routingControls_->setTunEnableBlockedReason(unprivilegedManaged
         ? tr("This core is running without TUN privileges. Open Settings → Privileged Service to install and enable service mode, then restart the core. System Proxy remains available.")
         : QString());
 #endif
     QString text;
     switch (state) {
-        case core::CoreState::Stopped:
-            text = client_->isConnected() ? tr("external core connected") : tr("core stopped");
+        case cb::CoreState::Stopped:
+            text = backend_->isConnected() ? tr("external core connected") : tr("core stopped");
             break;
-        case core::CoreState::Starting:
+        case cb::CoreState::Starting:
             text = tr("core starting…");
             break;
-        case core::CoreState::Stopping:
+        case cb::CoreState::Stopping:
             text = tr("core stopping…");
             break;
-        case core::CoreState::Running:
-            text = context_.coreProcess->usesPrivilegedService() ? tr("service core running") : tr("core running");
+        case cb::CoreState::Running:
+            text = backend_->backend().usesPrivilegedService() ? tr("service core running")
+                                                              : tr("core running");
             break;
-        case core::CoreState::Failed:
+        case cb::CoreState::Failed:
+            text = tr("core failed");
+            break;
+        default:
             text = tr("core failed");
             break;
     }
@@ -353,11 +361,11 @@ void MainWindow::updateCoreState(core::CoreState state) {
     if (preparing) text = tr("preparing configuration…");
     coreLabel_->setText(
         QString("<b style=\"color:%1\">● %2</b>").arg(coreStateColor(state).name(), text));
-    if (state != core::CoreState::Failed) coreLabel_->setToolTip(QString());
+    if (state != cb::CoreState::Failed) coreLabel_->setToolTip(QString());
 
-    const bool live = state == core::CoreState::Starting || state == core::CoreState::Running;
-    startCoreAction_->setEnabled(!live && !preparing && !installingService && state != core::CoreState::Stopping);
-    stopCoreAction_->setEnabled((live || preparing) && state != core::CoreState::Stopping);
+    const bool live = state == cb::CoreState::Starting || state == cb::CoreState::Running;
+    startCoreAction_->setEnabled(!live && !preparing && !installingService && state != cb::CoreState::Stopping);
+    stopCoreAction_->setEnabled((live || preparing) && state != cb::CoreState::Stopping);
     restartCoreAction_->setEnabled(live && !preparing);
 }
 

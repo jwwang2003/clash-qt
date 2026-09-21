@@ -4,16 +4,17 @@
 // Partition of the former `data-pages` suite (tests/ui/data_pages_test.cpp). The
 // case is carried over verbatim; see tests/README.md for the original-to-new map.
 //
-// The QTcpServer here only gives the client a valid endpoint to hold; nothing is
-// served over it.
+// The request gate is HELD for the same reason the QTcpServer fixture used to be
+// here and answer nothing: the page fetches on every show, and a fetch that
+// completes would deliver the fake's own (empty) provider set over the payload
+// the case just published.
 #include <QtTest>
 #include <QApplication>
 #include <QTableView>
-#include <QTcpServer>
 #include <memory>
 
-#include "core/mihomo/mihomo_client.h"
-#include "core/mihomo/provider_client.h"
+#include "core/backend/backend_bridge.h"
+#include "support/backend/fake_backend.h"
 #include "ui/pages/providers/providers_page.h"
 #include "support/preference_isolation.h"
 #include "support/scoped_environment.h"
@@ -37,29 +38,27 @@ private slots:
     }
 
     void providersSkipHiddenAndUnchangedRebuilds() {
-        QTcpServer fixture;
-        QVERIFY(fixture.listen(QHostAddress::LocalHost));
-        core::MihomoClient client;
-        client.setEndpoint({"127.0.0.1", fixture.serverPort(), {}});
-        ui::ProvidersPage page(&client);
-        auto *backend = page.findChild<core::ProviderClient *>();
+        testsupport::backend::FakeBackend backend;
+        backend.setRequestGate(testsupport::backend::Gate::Held);
+        core::backend::BackendBridge bridge(backend);
+        ui::ProvidersPage page(&bridge);
         auto *view = page.findChild<QTableView *>();
-        QVERIFY(backend && view);
-        core::Provider provider;
+        QVERIFY(view);
+        core::backend::Provider provider;
         provider.name = "Test provider";
         provider.vehicle = "HTTP";
         provider.count = 25;
-        backend->providersReceived(false, {provider});
+        bridge.providersReceived(false, {provider});
         QCOMPARE(view->model()->rowCount(), 0);
         page.show();
         QTRY_COMPARE(view->model()->rowCount(), 1);
         QSignalSpy resets(view->model(), &QAbstractItemModel::modelReset);
-        backend->providersReceived(false, {provider});
+        bridge.providersReceived(false, {provider});
         QTest::qWait(30);
         QCOMPARE(resets.size(), 0);
         page.hide();
         provider.count = 30;
-        backend->providersReceived(false, {provider});
+        bridge.providersReceived(false, {provider});
         QCOMPARE(view->model()->index(0, 3).data().toInt(), 25);
         page.show();
         QTRY_COMPARE(view->model()->index(0, 3).data().toInt(), 30);

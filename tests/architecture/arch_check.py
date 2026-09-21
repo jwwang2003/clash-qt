@@ -54,6 +54,9 @@ R3_TRANSITIVE_CREEP = "ARCH-R3-TRANSITIVE-EXTERNAL-CREEP"
 R4_STALE_EXCEPTION = "ARCH-R4-STALE-EXCEPTION"
 R4_MISSING_TARGET = "ARCH-R4-DECLARED-TARGET-MISSING"
 R4_UNDECLARED_TARGET = "ARCH-R4-UNDECLARED-TARGET"
+R4_ZOMBIE_SITE = "ARCH-R4-EXCEPTION-SITE-TARGET-MISSING"
+R4_SEALED_DECLARED_DEP = "ARCH-R4-SEALED-MODULE-DECLARED-DEP"
+R4_SEALED_UNBASELINED_LINK = "ARCH-R4-SEALED-MODULE-UNBASELINED-LINK"
 R5_INCLUDE = "ARCH-R5-INCLUDE"
 R5_STALE_INCLUDE_EXCEPTION = "ARCH-R5-STALE-INCLUDE-EXCEPTION"
 
@@ -713,6 +716,134 @@ def check_targets(graph, targets, exceptions, allow_missing):
 
 
 # --------------------------------------------------------------------------
+# Ledger integrity rules
+#
+# These do not ask "is this edge allowed" -- check_targets does that.  They ask
+# whether the *ledger itself* still describes reality.  Both exist because a
+# baseline that drifts away from the graph stops being a ratchet while still
+# printing a reassuring site count.
+# --------------------------------------------------------------------------
+def check_exception_sites(graph, exceptions):
+    """Every baselined site must name a target the project declares.
+
+    A site whose subject is not in modules/ or consumers/ names nothing: the
+    target was renamed or deleted and the site was left behind.  Such a site is
+    indistinguishable from discharged debt -- it inflates the count in the
+    summary while matching nothing -- and the stale rule cannot see it, because
+    a subject that is absent from the evaluated graph is deliberately excused
+    there (a UI test in a headless build is absent but not dead).  The
+    discriminator is the declaration, not the build: a live-but-unbuilt target
+    is still declared; a deleted one is not.
+    """
+    declared = set(_spec_entries(graph["modules"]))
+    declared |= set(_spec_entries(graph.get("consumers", {})))
+    violations = []
+    for entry in exceptions.entries:
+        if entry["kind"] == "include":
+            continue
+        for site in Exceptions._sites(entry):
+            for role, subject in (("from", site.get("from")),
+                                  ("to", site.get("to")),
+                                  ("target", site.get("target"))):
+                if subject is None or subject in declared:
+                    continue
+                violations.append(
+                    Violation(
+                        R4_ZOMBIE_SITE,
+                        "%s: %s" % (entry["id"],
+                                    exceptions.describe_site(entry, site)),
+                        "the site's %r target %r is declared nowhere in "
+                        "architecture.json (owner %s, removal %s)"
+                        % (role, subject, entry["owner"], entry["remove_in"]),
+                        "the target was deleted or renamed; delete the site "
+                        "too -- a dead site reads as discharged debt and "
+                        "understates the ledger",
+                    )
+                )
+    return violations
+
+
+def _seal_specs(graph):
+    for spec in graph.get("sealed_modules", []) or []:
+        if str(spec.get("module", "")).startswith("_"):
+            continue
+        yield spec
+
+
+def check_seals(graph, targets, exceptions):
+    """A sealed module may only be reached through the ledger, never around it.
+
+    ``check_targets`` consults ``deps`` BEFORE it consults exceptions, so a
+    target that declares a sealed module in ``consumers[].deps`` is permanently
+    allowed: no owner, no removal phase, invisible to the ratchet.  That
+    converts migration debt into architecture by editing one line.  While the
+    exceptions named in ``sealed_while`` are still open, this rule closes that
+    route and, in the other direction, requires that every target which
+    actually links the module in the evaluated graph is carried as a baselined
+    site.  The ledger therefore derives from the graph rather than from memory,
+    and both clauses lift automatically when the last named exception is
+    deleted.
+    """
+    violations = []
+    for spec in _seal_specs(graph):
+        module = spec["module"]
+        patterns = spec.get("sealed_while", [])
+        covering = [e for e in exceptions.entries
+                    if e["kind"] == "target_edge"
+                    and any(_glob_match(e["id"], p) for p in patterns)]
+        if not covering:
+            continue  # the debt this seal guarded is discharged; seal lifted.
+
+        # Clause 1 -- declaration.  No spec may name the sealed module as a dep.
+        for section in ("modules", "consumers"):
+            for name, entry in sorted(_spec_entries(graph.get(section, {})).items()):
+                if module not in (entry.get("deps") or []):
+                    continue
+                violations.append(
+                    Violation(
+                        R4_SEALED_DECLARED_DEP,
+                        "%s -> %s" % (name, module),
+                        "%r declares the sealed module %r in its deps while %s "
+                        "is open; deps is consulted before exceptions, so this "
+                        "edge would be permanently allowed"
+                        % (name, module, ", ".join(e["id"] for e in covering)),
+                        "move it to a baselined site under %s, with the owner "
+                        "and removal phase the debt already has"
+                        % covering[0]["id"],
+                    )
+                )
+
+        # Clause 2 -- reality.  Every direct linker must be in the ledger.
+        baselined = set()
+        for e in covering:
+            for site in Exceptions._sites(e):
+                if site.get("to") == module:
+                    baselined.add(site.get("from"))
+        exempt = spec.get("exempt_linkers", [])
+        for name in sorted(targets):
+            t = targets[name]
+            if name == module or module not in t.direct_deps:
+                continue
+            if name in baselined:
+                continue
+            if any(_glob_match(name, p) for p in exempt):
+                continue
+            violations.append(
+                Violation(
+                    R4_SEALED_UNBASELINED_LINK,
+                    "%s -> %s" % (name, module),
+                    "target links the sealed module %r but is carried by no "
+                    "baselined site of %s"
+                    % (module, ", ".join(e["id"] for e in covering)),
+                    "add the site to %s with its owner and removal phase, or "
+                    "drop the link; the ledger is derived from this graph"
+                    % covering[0]["id"],
+                )
+            )
+    return violations
+
+
+# --------------------------------------------------------------------------
 # Include scan (supplement -- see the note printed in the summary)
 # --------------------------------------------------------------------------
 def _glob_match(path, pattern):
@@ -953,8 +1084,11 @@ def main(argv=None):
     checked = []
     if targets:
         violations += check_targets(graph, targets, exceptions, args.allow_missing_targets)
+        violations += check_exception_sites(graph, exceptions)
+        violations += check_seals(graph, targets, exceptions)
         checked += ["R1 module edge allowlist", "R2 acyclicity",
-                    "R3 external dependency allowlist", "R4 exception ratchet"]
+                    "R3 external dependency allowlist", "R4 exception ratchet",
+                    "R4 exception-site liveness", "R4 sealed-module seals"]
     if not args.no_include_scan:
         qt_index = qt_header_index(qt_roots)
         violations += check_includes(graph, repo_root, src_root, exceptions, qt_index)
@@ -973,6 +1107,9 @@ def main(argv=None):
         if entry["kind"] in ("target_edge", "external_dependency"):
             # A site whose target this configuration does not build (a UI test
             # in a headless build, say) was not observable, so it is not stale.
+            # This excuse is what let deleted targets linger as dead sites, so
+            # it is paid for by check_exception_sites(), which fails any site
+            # naming a target the project no longer declares at all.
             subject = site.get("from") or site.get("target")
             if subject not in targets:
                 continue

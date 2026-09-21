@@ -1,0 +1,112 @@
+{
+  "_about": "Variant of the ALLOWED case. The baselined exception is still live -- its first site matches a real edge -- but a second site names 'synth_ghost', a target that is declared nowhere. The stale rule cannot see it: a subject that is absent from the evaluated graph is deliberately excused there, because a UI test in a headless build is absent without being dead. Expected: ARCH-R4-EXCEPTION-SITE-TARGET-MISSING.",
+  "ignore_external": [
+    "Qt6::Platform"
+  ],
+  "forbidden_external": [
+    "Qt6::Widgets",
+    "Qt6::Quick",
+    "Qt6::Graphs"
+  ],
+  "modules": {
+    "synth_types": {
+      "deps": [],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_yaml": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_config": {
+      "_note": "Qt6::Qml is allowed (D4). Qt6::Network is listed only because Qt6::Qml re-exports it.",
+      "deps": [
+        "synth_types",
+        "synth_yaml"
+      ],
+      "external": [
+        "Qt6::Qml"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Qml",
+        "Qt6::QmlIntegration",
+        "Qt6::Network"
+      ]
+    },
+    "synth_telemetry": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_platform": {
+      "_note": "Qt6::Gui PUBLIC is allowed for a platform adapter (D4).",
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Gui"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui"
+      ]
+    },
+    "synth_impl": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Network"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui",
+        "Qt6::Network"
+      ]
+    }
+  },
+  "consumers": {
+    "synth_app": {
+      "deps": [
+        "synth_impl",
+        "synth_config",
+        "synth_telemetry"
+      ]
+    }
+  },
+  "include_rules": [],
+  "exceptions": [
+    {
+      "id": "SELFTEST-D2-shaped-edge",
+      "class": "architecture",
+      "kind": "target_edge",
+      "owner": "SELFTEST",
+      "remove_in": "never",
+      "reason": "Two sites. The first is the live D2-shaped edge. The second is a zombie left behind by a deleted target: it inflates the site count in the summary while matching nothing, which is exactly how a ledger comes to understate the debt it exists to track.",
+      "sites": [
+        {
+          "from": "synth_impl",
+          "to": "synth_platform"
+        },
+        {
+          "from": "synth_ghost",
+          "to": "synth_platform"
+        }
+      ]
+    }
+  ]
+}

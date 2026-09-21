@@ -4,7 +4,7 @@
 #include <QVector>
 #include <QWidget>
 
-#include "core/types.h"
+#include "core/backend/types.h"
 
 class QLabel;
 class QLineEdit;
@@ -13,8 +13,8 @@ class QListWidget;
 class QPushButton;
 class QTimer;
 
-namespace core {
-class MihomoClient;
+namespace core::backend {
+class BackendBridge;
 }
 
 namespace ui {
@@ -23,7 +23,7 @@ class ProxiesPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ProxiesPage(core::MihomoClient *client, QWidget *parent = nullptr);
+    explicit ProxiesPage(core::backend::BackendBridge *bridge, QWidget *parent = nullptr);
 
     void refresh();
     void testActiveGroup();
@@ -32,8 +32,8 @@ protected:
     void showEvent(QShowEvent *event) override;
 
 private slots:
-    void onProxiesUpdated(const QVector<core::ProxyGroup> &groups,
-                          const QHash<QString, core::ProxyNode> &nodes);
+    void onProxiesUpdated(const QVector<core::backend::ProxyGroup> &groups,
+                          const QHash<QString, core::backend::ProxyNode> &nodes);
     void onGroupRowChanged(int row);
     void onNodeActivated(int row);
 
@@ -42,7 +42,7 @@ private:
     void renderPending();
     void renderGroups();
 
-    core::MihomoClient *client_;
+    core::backend::BackendBridge *bridge_;
     QListWidget *groupList_;
     QListWidget *nodeList_;
     QLabel *summaryLabel_;
@@ -50,8 +50,8 @@ private:
     QLineEdit *filterEdit_;
     QComboBox *sortBox_;
 
-    QVector<core::ProxyGroup> groups_;
-    QHash<QString, core::ProxyNode> nodes_;
+    QVector<core::backend::ProxyGroup> groups_;
+    QHash<QString, core::backend::ProxyNode> nodes_;
     QString activeGroup_;
     QTimer *renderTimer_;
     QTimer *filterTimer_;

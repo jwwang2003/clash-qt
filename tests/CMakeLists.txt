@@ -61,7 +61,8 @@ if(CLASH_QT_BUILD_APP)
     qt_add_executable(tray-tests ui/tray_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/shell/proxy_environment.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/shell/tray_proxy_menu.cpp")
-    target_link_libraries(tray-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network clash_mihomo_impl)
+    target_link_libraries(tray-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+    clash_backend_bridge clash_backend_fake)
     add_test(NAME tray COMMAND tray-tests)
 
     qt_add_executable(routing-controls-tests ui/routing_controls_test.cpp
@@ -70,17 +71,17 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(routing-controls-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl)
+        clash_app_runtime clash_backend_bridge clash_backend_fake)
     add_test(NAME routing-controls COMMAND routing-controls-tests)
 
     # Injects BrowserOperations through DashboardButton's constructor, so it links
     # the real platform library. clash_platform is named explicitly rather than
-    # relied on transitively: today it arrives via clash_mihomo_impl's PUBLIC D2
-    # edge, and that edge is removed in P3.
+    # relied on transitively. It used to arrive through clash_mihomo_impl's
+    # PUBLIC D2 edge, which P3 discharged.
     qt_add_executable(dashboard-async-tests ui/dashboard_async_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/shell/dashboard_button.cpp")
     target_link_libraries(dashboard-async-tests PRIVATE Qt6::Test Qt6::Widgets
-        Qt6::Concurrent clash_mihomo_impl clash_platform clash_preferences)
+        Qt6::Concurrent clash_backend_bridge clash_backend_fake clash_platform clash_preferences)
     add_test(NAME dashboard-async COMMAND dashboard-async-tests)
 endif()
 
@@ -191,7 +192,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/settings_section.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(home-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_test_support clash_telemetry)
+        clash_backend_bridge clash_backend_fake clash_test_support clash_telemetry)
     add_traffic_graph_module(home-page-tests)
     add_test(NAME home-page COMMAND home-page-tests)
 
@@ -201,7 +202,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(traffic-graph-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_test_support clash_telemetry)
+        clash_test_support clash_telemetry)
     add_traffic_graph_module(traffic-graph-tests)
     add_test(NAME traffic-graph COMMAND traffic-graph-tests)
 
@@ -212,7 +213,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(proxies-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_test_support)
+        clash_backend_bridge clash_backend_fake clash_test_support)
     add_test(NAME proxies-page COMMAND proxies-page-tests)
 
     qt_add_executable(connections-page-tests ui/connections_page_test.cpp
@@ -222,7 +223,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(connections-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_test_support)
+        clash_backend_bridge clash_backend_fake clash_test_support)
     add_test(NAME connections-page COMMAND connections-page-tests)
 
     qt_add_executable(providers-page-tests ui/providers_page_test.cpp
@@ -231,8 +232,8 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
-    target_link_libraries(providers-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::Network
-        clash_mihomo_impl clash_test_support)
+    target_link_libraries(providers-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_backend_bridge clash_backend_fake clash_test_support)
     add_test(NAME providers-page COMMAND providers-page-tests)
 
     qt_add_executable(rules-page-tests ui/rules_page_test.cpp
@@ -240,7 +241,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(rules-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_test_support)
+        clash_backend_bridge clash_backend_fake clash_test_support)
     add_test(NAME rules-page COMMAND rules-page-tests)
 
     qt_add_executable(logs-page-tests ui/logs_page_test.cpp
@@ -249,7 +250,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(logs-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::Concurrent
-        clash_mihomo_impl clash_test_support)
+        clash_backend_bridge clash_backend_fake clash_test_support)
     add_test(NAME logs-page COMMAND logs-page-tests)
 
     # Benchmark lane. These two measure native frame pacing and are gated on

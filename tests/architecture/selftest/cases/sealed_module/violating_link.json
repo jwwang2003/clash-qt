@@ -1,0 +1,84 @@
+{
+  "_about": "Variant of the SEALED-MODULE case in which synth_tool -- an executable that links the sealed module -- is neither declared as a consumer nor carried by a baselined site. Undeclared executables are skipped by the consumer allowlist, so nothing else in the checker looks at it; this is the shape of the three P3-created targets that linked clash_mihomo_impl without appearing in the ledger. Expected: ARCH-R4-SEALED-MODULE-UNBASELINED-LINK.",
+  "ignore_external": [
+    "Qt6::Platform"
+  ],
+  "forbidden_external": [
+    "Qt6::Widgets",
+    "Qt6::Quick",
+    "Qt6::Graphs"
+  ],
+  "modules": {
+    "synth_types": {
+      "deps": [],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_platform": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Gui"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui"
+      ]
+    },
+    "synth_impl": {
+      "_role": "Component-private. Stands in for clash_mihomo_impl.",
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    }
+  },
+  "consumers": {
+    "synth_app": {
+      "_note": "Links the sealed module. The link is carried by a SEAL site, not by a dep.",
+      "deps": []
+    },
+    "synth_probe": {
+      "deps": [
+        "synth_platform"
+      ]
+    }
+  },
+  "include_rules": [],
+  "sealed_modules": [
+    {
+      "module": "synth_impl",
+      "sealed_while": [
+        "SEAL-*"
+      ],
+      "exempt_linkers": [
+        "arch_probe_*"
+      ],
+      "reason": "While SEAL-baseline is open, synth_impl may be reached only through a baselined site: never through a 'deps' declaration, which check_targets() honours before it consults exceptions, and never by a target the ledger does not name."
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "SEAL-baseline",
+      "class": "migration-baseline",
+      "kind": "target_edge",
+      "owner": "SELFTEST",
+      "remove_in": "never",
+      "reason": "Stands in for G2-consumers-link-component-private: the targets that still link the component-private module, each with an owner and a removal phase.",
+      "sites": [
+        {
+          "from": "synth_app",
+          "to": "synth_impl"
+        }
+      ]
+    }
+  ]
+}

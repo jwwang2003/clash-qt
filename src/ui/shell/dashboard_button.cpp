@@ -9,21 +9,31 @@
 #include <QUrl>
 #include <QUrlQuery>
 
+#include "core/backend/backend_bridge.h"
 #include "core/preferences/preferences.h"
+#include "core/types.h"
 #include "platform/browser/browser_launcher.h"
 
 namespace {
 
+/// backend::Endpoint is deliberately behaviour-free (backend contract section 9),
+/// so URL construction belongs to whoever owns the transport - here, the widget.
+/// core::Endpoint already spells the same three fields and carries the tested
+/// bracket/IPv6 handling, so the helper borrows it rather than re-deriving it.
+QString httpBase(const core::backend::Endpoint &endpoint) {
+    return core::Endpoint{endpoint.host, endpoint.port, endpoint.secret}.httpBase();
+}
+
 /// The bundled dashboards are hash-routed, so their router reads connection
 /// details from the query that follows the fragment rather than the one before
 /// it. Without `hostname` they fall through to an empty setup form.
-QUrl dashboardUrl(const core::Endpoint &endpoint) {
+QUrl dashboardUrl(const core::backend::Endpoint &endpoint) {
     QUrlQuery query;
     query.addQueryItem("hostname", endpoint.host);
     query.addQueryItem("port", QString::number(endpoint.port));
     if (!endpoint.secret.isEmpty()) query.addQueryItem("secret", endpoint.secret);
 
-    QUrl url(endpoint.httpBase() + "/ui/");
+    QUrl url(httpBase(endpoint) + "/ui/");
     url.setFragment("/setup?" + query.toString(QUrl::FullyEncoded), QUrl::TolerantMode);
     return url;
 }
@@ -39,12 +49,12 @@ QSettings settings() { return core::preferences::open(); }
 
 }  // namespace
 
-DashboardButton::DashboardButton(core::MihomoClient *client, QWidget *parent)
-    : DashboardButton(client, platform::BrowserLauncher::operations(), parent) {}
+DashboardButton::DashboardButton(core::backend::BackendBridge *backend, QWidget *parent)
+    : DashboardButton(backend, platform::BrowserLauncher::operations(), parent) {}
 
-DashboardButton::DashboardButton(core::MihomoClient *client, platform::BrowserOperations *browsers,
-                                 QWidget *parent)
-    : QToolButton(parent), client_(client),
+DashboardButton::DashboardButton(core::backend::BackendBridge *backend,
+                                 platform::BrowserOperations *browsers, QWidget *parent)
+    : QToolButton(parent), backend_(backend),
       browserOps_(browsers ? browsers : platform::BrowserLauncher::operations()),
       menu_(new QMenu(this)) {
     setText(tr("Dashboard"));
@@ -57,19 +67,19 @@ DashboardButton::DashboardButton(core::MihomoClient *client, platform::BrowserOp
         rebuildMenu();
         refreshBrowsers();
     });
-    connect(client_, &core::MihomoClient::connectedChanged, this,
+    connect(backend_, &core::backend::BackendBridge::connectedChanged, this,
             &DashboardButton::applyConnectionState);
-    connect(client_, &core::MihomoClient::endpointChanged, this, [this] {
-        applyConnectionState(client_->isConnected());
+    connect(backend_, &core::backend::BackendBridge::endpointChanged, this, [this] {
+        applyConnectionState(backend_->isConnected());
     });
-    applyConnectionState(client_->isConnected());
+    applyConnectionState(backend_->isConnected());
     QTimer::singleShot(0, this, &DashboardButton::refreshBrowsers);
 }
 
 void DashboardButton::openDashboard() {
-    const core::Endpoint endpoint = client_->endpoint();
-    if (!endpoint.isValid()) return;
-    if (opening_ || !client_->isConnected()) return;
+    const core::backend::Endpoint endpoint = backend_->endpoint();
+    if (!core::backend::isValid(endpoint)) return;
+    if (opening_ || !backend_->isConnected()) return;
     opening_ = true;
     applyConnectionState(true);
     const QUrl url = dashboardUrl(endpoint);
@@ -79,7 +89,7 @@ void DashboardButton::openDashboard() {
         const bool opened = watcher->result();
         watcher->deleteLater();
         opening_ = false;
-        applyConnectionState(client_->isConnected());
+        applyConnectionState(backend_->isConnected());
         if (!opened) {
             auto *message = new QMessageBox(QMessageBox::Warning, tr("Dashboard"),
                 tr("No browser could open the dashboard."), QMessageBox::Ok, this);
@@ -140,7 +150,7 @@ void DashboardButton::applyConnectionState(bool connected) {
     setEnabled(connected && !opening_);
     setText(opening_ ? tr("Opening…") : tr("Dashboard"));
     setToolTip(connected ? tr("Open %1/ui/ (requires a dashboard installed on the core)")
-                              .arg(client_->endpoint().httpBase())
+                              .arg(httpBase(backend_->endpoint()))
                          : tr("Connect to a core to open its dashboard."));
 }
 

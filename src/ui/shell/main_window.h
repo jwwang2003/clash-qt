@@ -3,7 +3,7 @@
 #include <QMainWindow>
 
 #include "app/app_context.h"
-#include "core/mihomo/process/core_process.h"
+#include "core/backend/lifecycle.h"   // core::backend::CoreState, the published enum
 #include "ui/theme/theme.h"
 
 class QAction;
@@ -12,9 +12,16 @@ class QLabel;
 class QListWidget;
 class QStackedWidget;
 
+namespace app::runtime {
+class RoutingController;
+}
+
 namespace core {
-class MihomoClient;
 class ProfileStore;
+}
+
+namespace core::backend {
+class BackendBridge;
 }
 
 namespace ui {
@@ -28,8 +35,15 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(const app::Context &context, QWidget *parent = nullptr);
+    /// `backend` and `routing` must outlive the window; neither is owned. They
+    /// are injected rather than read off app::Context because the published Qt
+    /// bridge and the routing coordinator belong to the composition root, which
+    /// is also what keeps this header free of component-private includes.
+    MainWindow(const app::Context &context, core::backend::BackendBridge *backend,
+               app::runtime::RoutingController *routing, QWidget *parent = nullptr);
     const app::Context &context() const { return context_; }
+    core::backend::BackendBridge *backend() const { return backend_; }
+    app::runtime::RoutingController *routing() const { return routing_; }
     void startCore();
     void stopCore();
     void toggleSystemProxy();
@@ -46,10 +60,11 @@ private:
     void addPage(theme::Glyph glyph, const QString &title, QWidget *page);
     void applyNavIcons();
     void onHotkey(const QString &id);
-    void updateCoreState(core::CoreState state);
+    void updateCoreState(core::backend::CoreState state);
 
     app::Context context_;
-    core::MihomoClient *client_;
+    core::backend::BackendBridge *backend_;
+    app::runtime::RoutingController *routing_;
     QListWidget *nav_;
     QStackedWidget *pages_;
     ProxiesPage *proxiesPage_;

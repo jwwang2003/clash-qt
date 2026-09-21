@@ -2,13 +2,16 @@
 
 #include <QHBoxLayout>
 #include <QSignalBlocker>
-#include "core/mihomo/mihomo_client.h"
+
+#include "app/runtime/routing_controller.h"
 #include "ui/widgets/toggle_switch.h"
 
 namespace ui {
 
-RoutingControls::RoutingControls(core::MihomoClient *client, QWidget *parent)
-    : QWidget(parent), client_(client) {
+using app::runtime::RoutingController;
+
+RoutingControls::RoutingControls(RoutingController *routing, QWidget *parent)
+    : QWidget(parent), routing_(routing) {
     auto *row = new QHBoxLayout(this);
     row->setContentsMargins(4, 0, 4, 0);
     row->setSpacing(12);
@@ -24,83 +27,52 @@ RoutingControls::RoutingControls(core::MihomoClient *client, QWidget *parent)
     row->addWidget(tun_);
     connect(systemProxy_, &QCheckBox::toggled, this, &RoutingControls::requestSystemProxyChange);
     connect(tun_, &QCheckBox::toggled, this, &RoutingControls::requestTunChange);
-    connect(client_, &core::MihomoClient::configReceived, this, [this](const core::BaseConfig &config) {
-        configKnown_ = true;
-        tunEnabled_ = config.tunEnabled;
-        refreshTun();
-    });
-    const auto disconnected = [this] {
-        configKnown_ = false;
-        tunEnabled_ = false;
-        tunPending_ = false;
-        tunError_.clear();
-        refreshTun();
-    };
-    connect(client_, &core::MihomoClient::endpointChanged, this, disconnected);
-    connect(client_, &core::MihomoClient::connectedChanged, this, [this, disconnected](bool connected) {
-        if (!connected) disconnected();
-        else refreshTun();
-    });
-    connect(client_, &core::MihomoClient::tunChangeFinished, this,
-            [this](bool requested, bool actual, const QString &error) {
-        tunPending_ = false;
-        tunEnabled_ = actual;
-        tunError_ = error;
-        refreshTun();
-        if (!error.isEmpty()) emit errorOccurred(error);
-        else if (requested == actual) emit tunApplied(actual);
-    });
-    refreshTun();
+    connect(routing_, &RoutingController::routingStateChanged, this, &RoutingControls::refresh);
+    refresh();
 }
 
-bool RoutingControls::systemProxyEnabled() const { return systemProxy_->isChecked(); }
-bool RoutingControls::systemProxyAvailable() const { return systemProxy_->isEnabled(); }
-bool RoutingControls::tunAvailable() const { return tun_->isEnabled(); }
-
-void RoutingControls::setSystemProxyState(bool enabled, bool available) {
-    const QSignalBlocker blocker(systemProxy_);
-    systemProxy_->setChecked(enabled);
-    systemProxy_->setEnabled(available);
-    emit stateChanged();
-}
+bool RoutingControls::systemProxyEnabled() const { return routing_->systemProxyEnabled(); }
+bool RoutingControls::systemProxyAvailable() const { return routing_->systemProxyAvailable(); }
+bool RoutingControls::tunEnabled() const { return routing_->tunEnabled(); }
+bool RoutingControls::tunAvailable() const { return routing_->tunAvailable(); }
 
 void RoutingControls::requestSystemProxyChange(bool enabled) {
-    if (systemProxyAvailable()) emit systemProxyRequested(enabled);
+    // Inert while the change is not allowed, exactly as the disabled switch was.
+    if (!routing_->systemProxyAvailable()) {
+        refresh();
+        return;
+    }
+    routing_->requestSystemProxy(enabled);
 }
 
 void RoutingControls::requestTunChange(bool enabled) {
-    if (!client_->isConnected() || !configKnown_ || tunPending_ || enabled == tunEnabled_) {
-        refreshTun();
-        return;
-    }
-    if (enabled && !tunEnableBlockedReason_.isEmpty()) {
-        tunError_ = tunEnableBlockedReason_;
-        refreshTun();
-        emit errorOccurred(tunError_);
-        return;
-    }
-    tunPending_ = true;
-    tunError_.clear();
-    refreshTun();
-    client_->setTunEnabled(enabled);
+    // Every guard - not connected, no configuration yet, already pending, the
+    // request matches the confirmed value, the known permission block - belongs
+    // to the controller, which is what makes all four routing surfaces agree.
+    routing_->requestTun(enabled);
 }
 
 void RoutingControls::setTunEnableBlockedReason(const QString &reason) {
-    if (tunEnableBlockedReason_ == reason) return;
-    tunEnableBlockedReason_ = reason;
-    tunError_.clear();
-    refreshTun();
+    routing_->setTunBlockedReason(reason);
 }
 
-void RoutingControls::refreshTun() {
-    const QSignalBlocker blocker(tun_);
-    tun_->setChecked(tunEnabled_);
-    tun_->setEnabled(client_->isConnected() && configKnown_ && !tunPending_);
-    if (!tunError_.isEmpty()) tun_->setToolTip(tunError_);
-    else if (tunPending_) tun_->setToolTip(tr("Applying TUN mode…"));
-    else if (!client_->isConnected() || !configKnown_) tun_->setToolTip(tr("Waiting for a connected core’s configuration."));
-    else if (!tunEnabled_ && !tunEnableBlockedReason_.isEmpty()) tun_->setToolTip(tunEnableBlockedReason_);
-    else tun_->setToolTip(tr("Route traffic through a virtual network interface. The core needs permission to create interfaces and routes."));
+void RoutingControls::refresh() {
+    const bool available = routing_->tunAvailable();
+    const QString error = routing_->lastError();
+    const QString blocked = routing_->tunBlockedReason();
+    {
+        const QSignalBlocker proxyBlocker(systemProxy_);
+        systemProxy_->setChecked(routing_->systemProxyEnabled());
+        systemProxy_->setEnabled(routing_->systemProxyAvailable());
+        const QSignalBlocker tunBlocker(tun_);
+        tun_->setChecked(routing_->tunEnabled());
+        tun_->setEnabled(available);
+        if (!error.isEmpty()) tun_->setToolTip(error);
+        else if (routing_->tunPending()) tun_->setToolTip(tr("Applying TUN mode…"));
+        else if (!available) tun_->setToolTip(tr("Waiting for a connected core’s configuration."));
+        else if (!routing_->tunEnabled() && !blocked.isEmpty()) tun_->setToolTip(blocked);
+        else tun_->setToolTip(tr("Route traffic through a virtual network interface. The core needs permission to create interfaces and routes."));
+    }
     emit stateChanged();
 }
 

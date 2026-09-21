@@ -3,7 +3,9 @@
 #include <QThread>
 #include <QTimer>
 #include <atomic>
+#include "core/backend/backend_bridge.h"
 #include "platform/browser/browser_launcher.h"
+#include "support/backend/fake_backend.h"
 #include "ui/shell/dashboard_button.h"
 
 namespace {
@@ -32,8 +34,9 @@ class DashboardAsyncTest : public QObject {
     Q_OBJECT
 private slots:
     void menuDiscoveryDoesNotBlockGui() {
-        core::MihomoClient client;
-        ui::DashboardButton button(&client, &browsers);
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::DashboardButton button(&bridge, &browsers);
         int ticks = 0;
         QTimer heartbeat;
         heartbeat.setInterval(5);
@@ -54,9 +57,10 @@ private slots:
     }
 
     void destructionDuringDiscoveryIsSafe() {
-        core::MihomoClient client;
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
         const int before = completed;
-        auto *button = new ui::DashboardButton(&client, &browsers);
+        auto *button = new ui::DashboardButton(&bridge, &browsers);
         QTRY_VERIFY(discoveries.load() > before);
         QElapsedTimer elapsed;
         elapsed.start();

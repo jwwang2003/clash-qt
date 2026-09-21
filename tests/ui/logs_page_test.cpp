@@ -11,7 +11,8 @@
 #include <QPlainTextEdit>
 #include <memory>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
+#include "support/backend/fake_backend.h"
 #include "ui/pages/logs/logs_page.h"
 #include "support/preference_isolation.h"
 #include "support/scoped_environment.h"
@@ -35,10 +36,11 @@ private slots:
     }
 
     void logsFilterExistingHistoryAndEscapePayload() {
-        core::MihomoClient client;
-        ui::LogsPage page(&client);
-        client.logReceived({"info", "<hello>", QDateTime::currentDateTime()});
-        client.logReceived({"error", "failed", QDateTime::currentDateTime()});
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::LogsPage page(&bridge);
+        bridge.logReceived({"info", "<hello>", QDateTime::currentDateTime()});
+        bridge.logReceived({"error", "failed", QDateTime::currentDateTime()});
         auto *view = page.findChild<QPlainTextEdit *>();
         QVERIFY(view->toPlainText().contains("<hello>"));
         auto *filter = page.findChild<QLineEdit *>();
@@ -47,7 +49,7 @@ private slots:
         QVERIFY(view->toPlainText().contains("failed"));
         filter->clear();
         QTRY_VERIFY(view->toPlainText().contains("<hello>"));
-        client.endpointChanged();
+        bridge.endpointChanged({}, core::backend::Ownership::None);
         QVERIFY(view->toPlainText().isEmpty());
         filter->setText("hello");
         QVERIFY(view->toPlainText().isEmpty());

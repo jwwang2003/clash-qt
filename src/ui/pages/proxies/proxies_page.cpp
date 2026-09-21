@@ -20,7 +20,7 @@
 #include <QStyledItemDelegate>
 #include <QVBoxLayout>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 #include "core/preferences/preferences.h"
 #include "ui/theme/formatting.h"
 #include "ui/theme/theme.h"
@@ -40,14 +40,14 @@ constexpr int kGap = 12;
 constexpr int kHintWidth = 200;
 constexpr int kInkSlack = 2;
 
-bool sameGroups(const QVector<core::ProxyGroup> &a, const QVector<core::ProxyGroup> &b) {
+bool sameGroups(const QVector<core::backend::ProxyGroup> &a, const QVector<core::backend::ProxyGroup> &b) {
     return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](const auto &first, const auto &second) {
         return first.name == second.name && first.type == second.type && first.now == second.now &&
                first.all == second.all && first.fixed == second.fixed;
     });
 }
 
-bool sameNodes(const QHash<QString, core::ProxyNode> &a, const QHash<QString, core::ProxyNode> &b) {
+bool sameNodes(const QHash<QString, core::backend::ProxyNode> &a, const QHash<QString, core::backend::ProxyNode> &b) {
     if (a.size() != b.size()) return false;
     for (auto it = a.cbegin(); it != a.cend(); ++it) {
         const auto other = b.constFind(it.key());
@@ -174,8 +174,9 @@ private:
 
 }  // namespace
 
-ProxiesPage::ProxiesPage(core::MihomoClient *client, QWidget *parent)
-    : QWidget(parent), client_(client), renderTimer_(new QTimer(this)), filterTimer_(new QTimer(this)) {
+ProxiesPage::ProxiesPage(core::backend::BackendBridge *bridge, QWidget *parent)
+    : QWidget(parent), bridge_(bridge), renderTimer_(new QTimer(this)),
+      filterTimer_(new QTimer(this)) {
     renderTimer_->setSingleShot(true);
     connect(renderTimer_, &QTimer::timeout, this, &ProxiesPage::renderPending);
     filterTimer_->setSingleShot(true);
@@ -212,7 +213,7 @@ ProxiesPage::ProxiesPage(core::MihomoClient *client, QWidget *parent)
         if (group.type != "URLTest" && group.type != "Fallback") return;
         QMenu menu(this);
         menu.addAction(tr("Use Automatic Selection"), this,
-                       [this, group] { client_->resetGroupSelection(group.name); });
+                       [this, group] { bridge_->resetGroupSelection(group.name); });
         menu.exec(groupList_->viewport()->mapToGlobal(pos));
     });
 
@@ -233,7 +234,7 @@ ProxiesPage::ProxiesPage(core::MihomoClient *client, QWidget *parent)
         if (!item) return;
         const QString name = item->text();
         QMenu menu(this);
-        menu.addAction(tr("Test Node Latency"), this, [this, name] { client_->testNodeDelay(name); });
+        menu.addAction(tr("Test Node Latency"), this, [this, name] { bridge_->testNodeDelay(name); });
         menu.exec(nodeList_->viewport()->mapToGlobal(pos));
     });
 
@@ -268,17 +269,18 @@ ProxiesPage::ProxiesPage(core::MihomoClient *client, QWidget *parent)
     layout->addLayout(filters);
     layout->addWidget(splitter, 1);
 
-    connect(client_, &core::MihomoClient::proxiesUpdated, this, &ProxiesPage::onProxiesUpdated);
+    connect(bridge_, &core::backend::BackendBridge::proxiesUpdated, this,
+            &ProxiesPage::onProxiesUpdated);
 }
 
-void ProxiesPage::refresh() { client_->fetchProxies(); }
+void ProxiesPage::refresh() { bridge_->refreshProxies(); }
 
 void ProxiesPage::testActiveGroup() {
-    if (!activeGroup_.isEmpty()) client_->testGroupDelay(activeGroup_);
+    if (!activeGroup_.isEmpty()) bridge_->testGroupDelay(activeGroup_);
 }
 
-void ProxiesPage::onProxiesUpdated(const QVector<core::ProxyGroup> &groups,
-                                   const QHash<QString, core::ProxyNode> &nodes) {
+void ProxiesPage::onProxiesUpdated(const QVector<core::backend::ProxyGroup> &groups,
+                                   const QHash<QString, core::backend::ProxyNode> &nodes) {
     const bool changedGroups = !sameGroups(groups_, groups);
     const bool changedNodes = !sameNodes(nodes_, nodes);
     if (!changedGroups && !changedNodes) return;
@@ -307,7 +309,7 @@ void ProxiesPage::renderGroups() {
     {
         QSignalBlocker blocker(groupList_);
         groupList_->clear();
-        for (const core::ProxyGroup &group : groups_) {
+        for (const core::backend::ProxyGroup &group : groups_) {
             auto *item = new QListWidgetItem(group.name, groupList_);
             item->setData(kSubtitleRole,
                           group.now.isEmpty() ? tr("no member") : "→ " + group.now);
@@ -346,7 +348,7 @@ void ProxiesPage::renderNodes() {
     const QSignalBlocker blocker(nodeList_);
     nodeList_->clear();
 
-    const auto it = std::find_if(groups_.begin(), groups_.end(), [this](const core::ProxyGroup &g) {
+    const auto it = std::find_if(groups_.begin(), groups_.end(), [this](const core::backend::ProxyGroup &g) {
         return g.name == activeGroup_;
     });
     testButton_->setEnabled(it != groups_.end());
@@ -372,7 +374,7 @@ void ProxiesPage::renderNodes() {
         });
     }
     for (const QString &member : members) {
-        const core::ProxyNode node = nodes_.value(member);
+        const core::backend::ProxyNode node = nodes_.value(member);
         auto *item = new QListWidgetItem(member, nodeList_);
         item->setData(kTrailingRole, node.type);
         item->setData(kDelayRole, node.delay);
@@ -395,14 +397,14 @@ void ProxiesPage::renderNodes() {
 }
 
 void ProxiesPage::onNodeActivated(int row) {
-    const auto it = std::find_if(groups_.begin(), groups_.end(), [this](const core::ProxyGroup &g) {
+    const auto it = std::find_if(groups_.begin(), groups_.end(), [this](const core::backend::ProxyGroup &g) {
         return g.name == activeGroup_;
     });
     if (it == groups_.end() || !it->selectable()) return;
     if (row < 0 || row >= nodeList_->count()) return;
     const QString node = nodeList_->item(row)->text();
-    if (it->type != "Selector" && node == it->fixed) client_->resetGroupSelection(activeGroup_);
-    else if (node != it->now || it->type != "Selector") client_->selectNode(activeGroup_, node);
+    if (it->type != "Selector" && node == it->fixed) bridge_->resetGroupSelection(activeGroup_);
+    else if (node != it->now || it->type != "Selector") bridge_->selectNode(activeGroup_, node);
 }
 
 }  // namespace ui

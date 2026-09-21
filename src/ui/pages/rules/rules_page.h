@@ -4,13 +4,13 @@
 #include <QVector>
 #include <QWidget>
 
-#include "core/types.h"
+#include "core/backend/types.h"
 
 class QSortFilterProxyModel;
 class QTableView;
 
-namespace core {
-class MihomoClient;
+namespace core::backend {
+class BackendBridge;
 }
 
 namespace ui {
@@ -23,7 +23,7 @@ public:
 
     explicit RuleModel(QObject *parent = nullptr);
 
-    void setRules(const QVector<core::Rule> &rules);
+    void setRules(const QVector<core::backend::Rule> &rules);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -32,17 +32,17 @@ public:
                         int role = Qt::DisplayRole) const override;
 
 private:
-    QVector<core::Rule> rules_;
+    QVector<core::backend::Rule> rules_;
 };
 
 class RulesPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit RulesPage(core::MihomoClient *client, QWidget *parent = nullptr);
+    explicit RulesPage(core::backend::BackendBridge *bridge, QWidget *parent = nullptr);
 
 private:
-    core::MihomoClient *client_;
+    core::backend::BackendBridge *bridge_;
     RuleModel *model_;
     QSortFilterProxyModel *proxy_;
     QTableView *view_;

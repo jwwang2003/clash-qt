@@ -1,7 +1,6 @@
 #include "ui/pages/backups/backup_page.h"
 
 #include <QFileDialog>
-#include <QCoreApplication>
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -15,19 +14,17 @@
 #include <QSettings>
 #include <QVBoxLayout>
 
+#include "app/backup/backup_coordinator.h"
 #include "core/backups/backup_store.h"
-#include "core/config/enhance/config_enhancer.h"
-#include "core/mihomo/process/core_process.h"
 #include "core/preferences/preferences.h"
-#include "core/profiles/profile_store.h"
 #include "ui/widgets/settings_section.h"
 #include "ui/theme/theme.h"
 
 namespace ui {
 
-BackupPage::BackupPage(const app::Context &context, QWidget *parent)
-    : QWidget(parent), context_(context), store_(new core::BackupStore(context.profiles->dataDir(), this)) {
-    store_->requirePreparation(true);
+BackupPage::BackupPage(const app::Context &context, app::backup::BackupCoordinator &backups,
+                       QWidget *parent)
+    : QWidget(parent), context_(context), store_(backups.store()) {
     auto *column = new QVBoxLayout;
     column->setContentsMargins(0, 0, theme::kPageSpacing, 0);
     column->setSpacing(theme::kPageSpacing);
@@ -134,10 +131,10 @@ BackupPage::BackupPage(const app::Context &context, QWidget *parent)
         importButton->setEnabled(!busy);
         restore_->setEnabled(!busy && list_->currentItem() != nullptr);
     });
+    // The progress dialog only: the maintenance gate moved to
+    // app::backup::BackupCoordinator, which reads an explicit shutdown query
+    // instead of the QCoreApplication "shuttingDown" property.
     connect(store_, &core::BackupStore::localBusyChanged, this, [this](bool busy, bool restoring) {
-        const bool maintenance = busy || QCoreApplication::instance()->property("shuttingDown").toBool();
-        context_.profiles->setMaintenanceMode(maintenance);
-        context_.enhancer->setMaintenanceMode(maintenance);
         if (busy && restoring) {
             progress_ = new QProgressDialog(tr("Preparing and validating backup…"), {}, 0, 0, this);
             progress_->setWindowTitle(tr("Restore Backup"));
@@ -147,46 +144,22 @@ BackupPage::BackupPage(const app::Context &context, QWidget *parent)
             progress_->setCancelButton(nullptr);
             progress_->show();
         } else if (!busy) {
-            waitingForCore_ = false;
-            waitingForFiles_ = false;
             if (progress_) { progress_->close(); progress_->deleteLater(); progress_ = nullptr; }
         }
     });
-    const auto continueWhenIdle = [this] {
-        if (!waitingForFiles_ || context_.profiles->isFileBusy() || context_.enhancer->isFileBusy()) return;
-        waitingForFiles_ = false;
-        store_->continuePreparation();
-    };
-    connect(store_, &core::BackupStore::operationPreparing, this, [this, continueWhenIdle] {
-        waitingForFiles_ = true;
-        status_->setText(tr("Waiting for pending profile changes to finish…"));
-        continueWhenIdle();
+    // Every sentence the restore sequence produces now arrives from the
+    // coordinator, on the two channels it publishes: one for the status label
+    // (and the dialog while one is up), one for the dialog alone.
+    connect(&backups, &app::backup::BackupCoordinator::statusMessage, this,
+            [this](const QString &text) {
+        status_->setText(text);
+        if (progress_) progress_->setLabelText(text);
     });
-    connect(context_.profiles, &core::ProfileStore::fileBusyChanged, this, continueWhenIdle);
-    connect(context_.enhancer, &core::ConfigEnhancer::fileBusyChanged, this, continueWhenIdle);
+    connect(&backups, &app::backup::BackupCoordinator::restoreProgressMessage, this,
+            [this](const QString &text) { if (progress_) progress_->setLabelText(text); });
     connect(store_, &core::BackupStore::backupsChanged, this, &BackupPage::refresh);
     connect(store_, &core::BackupStore::errorOccurred, status_, &QLabel::setText);
     connect(store_, &core::BackupStore::statusChanged, status_, &QLabel::setText);
-    connect(store_, &core::BackupStore::restorePrepared, this, [this] {
-        waitingForCore_ = true;
-        status_->setText(tr("Stopping the core before restoring…"));
-        if (progress_) progress_->setLabelText(status_->text());
-        context_.coreProcess->stop();
-        if (waitingForCore_ && context_.coreProcess->state() == core::CoreState::Stopped) {
-            waitingForCore_ = false;
-            store_->continueRestore(true);
-        }
-    });
-    connect(context_.coreProcess, &core::CoreProcess::stopped, this, [this] {
-        if (!waitingForCore_) return;
-        waitingForCore_ = false;
-        if (progress_) progress_->setLabelText(tr("Restoring files and preferences…"));
-        store_->continueRestore(true);
-    });
-    connect(store_, &core::BackupStore::restored, this, [this] {
-        context_.enhancer->load();
-        context_.profiles->load();
-    });
     refresh();
 }
 

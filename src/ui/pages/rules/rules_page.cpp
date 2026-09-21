@@ -9,14 +9,14 @@
 #include <QTableView>
 #include <QVBoxLayout>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
 #include "ui/theme/theme.h"
 
 namespace ui {
 
 RuleModel::RuleModel(QObject *parent) : QAbstractTableModel(parent) {}
 
-void RuleModel::setRules(const QVector<core::Rule> &rules) {
+void RuleModel::setRules(const QVector<core::backend::Rule> &rules) {
     beginResetModel();
     rules_ = rules;
     endResetModel();
@@ -34,7 +34,7 @@ QVariant RuleModel::data(const QModelIndex &index, int role) const {
     if (!index.isValid() || index.row() >= rules_.size() ||
         (role != Qt::DisplayRole && role != Qt::ToolTipRole)) return {};
 
-    const core::Rule &rule = rules_.at(index.row());
+    const core::backend::Rule &rule = rules_.at(index.row());
     switch (index.column()) {
         case Type:
             return rule.type;
@@ -61,9 +61,9 @@ QVariant RuleModel::headerData(int section, Qt::Orientation orientation, int rol
     }
 }
 
-RulesPage::RulesPage(core::MihomoClient *client, QWidget *parent)
+RulesPage::RulesPage(core::backend::BackendBridge *bridge, QWidget *parent)
     : QWidget(parent),
-      client_(client),
+      bridge_(bridge),
       model_(new RuleModel(this)),
       proxy_(new QSortFilterProxyModel(this)) {
     proxy_->setSourceModel(model_);
@@ -94,14 +94,15 @@ RulesPage::RulesPage(core::MihomoClient *client, QWidget *parent)
     controls->setSpacing(theme::kPageSpacing);
     controls->addWidget(filterEdit, 1);
     auto *refreshButton = new QPushButton(tr("Refresh"), this);
-    connect(refreshButton, &QPushButton::clicked, client_, &core::MihomoClient::fetchRules);
+    connect(refreshButton, &QPushButton::clicked, bridge_,
+            &core::backend::BackendBridge::refreshRules);
     controls->addWidget(refreshButton);
     auto *layout = theme::pageLayout(this);
     layout->addLayout(controls);
     layout->addWidget(view_, 1);
 
-    connect(client_, &core::MihomoClient::rulesUpdated, this,
-            [this](const QVector<core::Rule> &rules) { model_->setRules(rules); });
+    connect(bridge_, &core::backend::BackendBridge::rulesUpdated, this,
+            [this](const QVector<core::backend::Rule> &rules) { model_->setRules(rules); });
 }
 
 }  // namespace ui

@@ -1,11 +1,15 @@
 #pragma once
 
 #include <QToolButton>
+#include <QVector>
 
-#include "core/mihomo/mihomo_client.h"
 #include "platform/browser/browser_launcher.h"
 
 class QMenu;
+
+namespace core::backend {
+class BackendBridge;
+}
 
 namespace ui {
 
@@ -14,11 +18,11 @@ class DashboardButton : public QToolButton {
     Q_OBJECT
 
 public:
-    explicit DashboardButton(core::MihomoClient *client, QWidget *parent = nullptr);
+    explicit DashboardButton(core::backend::BackendBridge *backend, QWidget *parent = nullptr);
     /// `browsers` must outlive the discovery/open work this button starts, which
     /// continues on a worker after the button is gone. Production passes
     /// platform::BrowserLauncher::operations(), which lives for the process.
-    DashboardButton(core::MihomoClient *client, platform::BrowserOperations *browsers,
+    DashboardButton(core::backend::BackendBridge *backend, platform::BrowserOperations *browsers,
                     QWidget *parent = nullptr);
 
 private:
@@ -28,7 +32,7 @@ private:
     void refreshBrowsers();
     void applyConnectionState(bool connected);
 
-    core::MihomoClient *client_;
+    core::backend::BackendBridge *backend_;
     platform::BrowserOperations *browserOps_;
     QMenu *menu_;
     QString browserId_;

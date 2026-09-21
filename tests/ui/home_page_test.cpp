@@ -26,7 +26,8 @@
 #include <algorithm>
 #include <memory>
 
-#include "core/mihomo/mihomo_client.h"
+#include "core/backend/backend_bridge.h"
+#include "support/backend/fake_backend.h"
 #include "ui/pages/overview/home_page.h"
 #include "ui/theme/theme.h"
 #include "ui/widgets/settings_section.h"
@@ -63,28 +64,29 @@ private slots:
         // This only renders synthetic test widgets; it never captures the OS screen.
         QFETCH(QSize, pageSize);
         ui::theme::install();
-        core::MihomoClient client;
-        ui::HomePage page(&client);
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::HomePage page(&bridge);
         QFont font = page.font();
         font.setPointSizeF(13);
         page.setFont(font);
         page.resize(pageSize);
-        core::BaseConfig config;
+        core::backend::BaseConfig config;
         config.mode = "rule";
         config.mixedPort = 7897;
         config.httpPort = 7890;
         config.socksPort = 7891;
-        client.configReceived(config);
-        client.versionReceived("v1.19.0 · synthetic audit fixture");
-        client.memorySample(42 * 1024 * 1024, 0);
+        bridge.configReceived(config);
+        bridge.versionReceived("v1.19.0 · synthetic audit fixture");
+        bridge.memorySample(42 * 1024 * 1024, 0);
         for (int i = 0; i < 60; ++i)
-            client.trafficSample(10000 + ((i * 17) % 31) * 1300, 40000 + ((i * 13) % 29) * 12000);
-        client.connectionsUpdated(QVector<core::Connection>(12), 12500000, 482000000);
-        client.dnsQueryFinished("example.com", QJsonObject{
+            bridge.trafficSample(10000 + ((i * 17) % 31) * 1300, 40000 + ((i * 13) % 29) * 12000);
+        bridge.connectionsUpdated(QVector<core::backend::Connection>(12), 12500000, 482000000);
+        bridge.dnsQueryFinished("example.com", QJsonObject{
             {"Status", 0},
             {"Answer", QJsonArray{QJsonObject{{"name", "example.com."}, {"TTL", 60}, {"data", "192.0.2.10"}}}}
         }, {});
-        client.connectedChanged(true);
+        bridge.connectedChanged(true);
         page.show();
         QCoreApplication::processEvents();
         QCoreApplication::processEvents();
@@ -163,8 +165,9 @@ private slots:
     }
 
     void trafficWheelScrollsHomePage() {
-        core::MihomoClient client;
-        ui::HomePage page(&client);
+        testsupport::backend::FakeBackend backend;
+        core::backend::BackendBridge bridge(backend);
+        ui::HomePage page(&bridge);
         page.resize(700, 500);
         page.show();
         auto *quick = page.windowHandle()->findChild<QQuickView *>("trafficGraphsView");
