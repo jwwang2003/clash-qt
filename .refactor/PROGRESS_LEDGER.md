@@ -140,3 +140,27 @@ Status values: `queued`, `running`, `ready-for-integration`, `verified`, `blocke
 P1 relocation (MOVE-UI, MOVE-CORE, MOVE-TEST) once P0 findings are consolidated and
 ownership is published. Relocation is a mandatory whole-tree barrier: no dependent
 package starts against the intermediate tree.
+
+## Open correction — commit `096addf` has a mismatched message
+
+**What happened.** `096addf` is messaged as the D1–D6 decisions document but its tree
+also contains ~90 in-flight `R100` renames belonging to MOVE-UI, MOVE-CORE and
+MOVE-TEST. Cause: workers relocate with `git mv`, which *stages*. The index is shared
+across the whole checkout, so a bare `git commit` by the coordinator swept their
+staged renames in even though only `.refactor/DECISIONS.md` was explicitly `git add`ed.
+
+**Impact: no work lost.** Every rename is `R100` (byte-identical content) and the
+workers' unstaged in-file include rewrites are untouched in the working tree. The
+damage is purely that one commit's message does not describe its contents.
+
+**Not repaired immediately, deliberately.** `git reset --soft` / `--amend` would both
+mutate the index while three workers are concurrently running `git mv` against it.
+Repairing now risks a genuine race and real loss; the mismatched message risks nothing.
+
+**Repair at BARRIER 1**, once all three workers are quiescent and before Step 2:
+`git reset --soft 2a6f3ed` (non-destructive; index and working tree keep everything),
+then recommit as two honest commits — the decisions document via an explicit pathspec,
+then the phase-1 relocation. Step 2's CMake reconciliation becomes a third commit.
+
+**Rule adopted:** while any worker holds a lease, the coordinator commits only with an
+explicit pathspec (`git commit -- <path>`), never a bare `git commit`.
