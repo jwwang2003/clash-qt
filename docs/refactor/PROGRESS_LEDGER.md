@@ -84,7 +84,7 @@ will own the real staged build under `build/<preset>/`.
 
 | Contract | Revision | Owner | Status |
 | --- | --- | --- | --- |
-| Component object model (`src/core/component/`) | — | coordinator | not yet published |
+| Component object model (`src/core/component/`) | `component-r1` | coordinator | **published** — [COMPONENT_CONTRACT.md](COMPONENT_CONTRACT.md) |
 | MihomoBackend (`src/core/backend/`) | — | coordinator | not yet published |
 
 ## Package ledger
