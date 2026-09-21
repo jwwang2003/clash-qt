@@ -30,6 +30,10 @@ endif()
 
 add_subdirectory(src/platform)
 add_subdirectory(src/core)
+add_subdirectory(src/app/lifecycle)
+add_subdirectory(src/app/backup)
+add_subdirectory(src/app/runtime)
+add_subdirectory(src/app/composition)
 
 if(CLASH_QT_BUILD_APP)
     qt_add_executable(clash-qt src/main.cpp)
@@ -41,6 +45,10 @@ if(CLASH_QT_BUILD_APP)
         clash_platform
         clash_config
         clash_preferences
+        clash_app_lifecycle
+        clash_app_backup
+        clash_app_runtime
+        clash_app_composition
         Qt6::Widgets
         Qt6::Network
         Qt6::WebSockets
