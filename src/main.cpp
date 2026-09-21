@@ -17,17 +17,17 @@
 #include <QSettings>
 #include <QTimer>
 
-#include "core/controller_discovery.h"
-#include "app_context.h"
-#include "core/enhance/config_enhancer.h"
-#include "core/mihomo_client.h"
-#include "core/process/core_process.h"
-#include "core/profile/profile_store.h"
+#include "core/mihomo/controller_discovery.h"
+#include "app/app_context.h"
+#include "core/config/enhance/config_enhancer.h"
+#include "core/mihomo/mihomo_client.h"
+#include "core/mihomo/process/core_process.h"
+#include "core/profiles/profile_store.h"
 #include "platform/system/hotkeys.h"
 #include "platform/proxy/system_proxy_service.h"
-#include "core/backup_store.h"
-#include "ui/main_window.h"
-#include "ui/tray_icon.h"
+#include "core/backups/backup_store.h"
+#include "ui/shell/main_window.h"
+#include "ui/shell/tray_icon.h"
 
 // Keep the event loop alive while shutdown restores OS state and stops the
 // child. QEvent::Quit also covers the native application menu and tray action.
