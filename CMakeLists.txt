@@ -42,6 +42,7 @@ if(CLASH_QT_BUILD_APP)
         clash_backups
         clash_telemetry
         clash_mihomo_impl
+        clash_backend_bridge
         clash_platform
         clash_config
         clash_preferences
