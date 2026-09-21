@@ -1,5 +1,5 @@
 # Owned by the ui/shell module.
-target_sources(clash-qt PRIVATE
+target_sources(${clash_ui_target} PRIVATE
     src/ui/shell/main_window.cpp
     src/ui/shell/tray_icon.cpp
     src/ui/shell/tray_proxy_menu.cpp

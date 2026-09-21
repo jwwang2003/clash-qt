@@ -1,5 +1,5 @@
 # Owned by the UI module. Each substantial group keeps its own source manifest.
-target_sources(clash-qt PRIVATE
+target_sources(${clash_ui_target} PRIVATE
     src/ui/resources/resources.qrc
 )
 
