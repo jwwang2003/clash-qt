@@ -332,3 +332,27 @@ clash_qt_label(logs-page           ui pages)
 clash_qt_label(traffic-graph-frames  benchmark ui)
 clash_qt_label(traffic-frame-pacing  benchmark ui)
 clash_qt_label(backend-contract    unit contract backend)
+
+# ---------------------------------------------------------------------------
+# Harness-level preference isolation.
+#
+# core::preferences falls back to the developer's real native store when
+# CLASH_QT_DATA_DIR is unset -- correct for a real user, dangerous for a test.
+# Isolation was previously opt-in per test via ScopedEnvironment, so any new
+# suite that forgot it wrote into ~/Library/Preferences. That happened: a new
+# app-layer suite modified the real store during P3.
+#
+# Every registered test now gets its own data directory by default. A suite that
+# also uses ScopedEnvironment simply overrides this with something narrower. The
+# point is that forgetting is no longer sufficient to reach the real store.
+# ---------------------------------------------------------------------------
+get_property(clash_qt_all_tests DIRECTORY PROPERTY TESTS)
+foreach(test_name IN LISTS clash_qt_all_tests)
+    get_test_property(${test_name} ENVIRONMENT existing_env)
+    if(existing_env STREQUAL "NOTFOUND")
+        set(existing_env "")
+    endif()
+    list(APPEND existing_env
+        "CLASH_QT_DATA_DIR=${CMAKE_BINARY_DIR}/test-data/${test_name}")
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${existing_env}")
+endforeach()
