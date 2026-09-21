@@ -154,11 +154,22 @@ Fresh build directory `build-p1`, macOS 26.6.2 arm64, Qt 6.11.1, CMake 4.4.2, Ni
 | QML | qmldir reads `TrafficGraph 1.0 TrafficGraph.qml`, so `QT_RESOURCE_ALIAS` still applies from the new path; `clash-qt` and `data-pages-tests` each get their own `ClashQt` output directory |
 | QRC | `/ui` prefix and both aliases unchanged; `:/ui/chevron-down-*.png` registered in the binary; assets resolve from the new depth |
 | macOS helper | `macos_helper.mm` moved byte-identically; present at `Contents/Helpers/`; the bundle-relative path literal untouched |
+| Native app launch | `--data-dir` isolated, `--no-autostart`: starts, runs, no crash; stdout **identical** to the pre-refactor build (3 pre-existing `QNativeSocketEngine::write()` warnings in both). Real user preferences untouched; only `instance.lock` written to the isolated directory. |
 
 The 2 skips are pre-existing and are the native-GPU graph cases behind
 `CLASH_QT_VERIFY_GRAPH_FRAMES` / `CLASH_QT_MEASURE_FRAMES`. They have never run under
 CTest. **No skip is visible at the CTest level today** — surfacing them is P2 work, and
 until then a skipped case must not be counted as a pass.
+
+### Explicitly NOT verified after P1
+
+| Gap | Why it is still open |
+| --- | --- |
+| Normal quit path | The launch check terminated the app with SIGTERM, so the `finishQuit` gate ordering, owned-proxy restoration and "no owned child remains" are **not** exercised. F10/W01 have zero coverage; killing a process is not a quit. |
+| Windows, Linux | No runner. Zero evidence. G5 gates stay open. |
+| App driving the locally built core | G1 produced a binary and G2's component does not exist yet. No real-core integration path has been run end to end. |
+| Skip visibility | `data-pages` reports "Passed" at the CTest level while silently skipping 2 native-GPU cases. |
+| Native rendering | Everything ran offscreen or unattended. QML view reaching Ready on a real display, tray menu population and graph rendering are unconfirmed. |
 
 ## Next ready packages
 
