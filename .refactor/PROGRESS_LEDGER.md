@@ -81,7 +81,7 @@ G5 acceptance gates stay open.
 
 | Finding | Consequence |
 | --- | --- |
-| System `make` is GNU Make **3.81** (macOS stock, 2006) | The G3 Make facade must run on 3.81 or declare GNU Make 4.x a prerequisite. Decision recorded in the build package. |
+| System `make` is GNU Make **3.81** (macOS stock, 2006; Apple will not ship GPLv3). Only `/usr/bin/make` is present — no Homebrew `make`/`gmake`. | **Decision: GNU Make 3.81 is the supported floor.** The facade delegates to CMake/Ninja/Go and needs no 4.x feature. Verified on 3.81: `else if` chains, `.DEFAULT_GOAL`, `$(abspath)`, `patsubst`, `$(shell)`, `&&` chaining and failing-recipe propagation (exit 2, later lines skipped) all work. Verified absent: `.ONESHELL` (**silently ignored** — each line still runs in its own shell, no diagnostic) and `--output-sync`/`-O` (4.0+). Recipes are therefore written as single `&&`-chained commands, never relying on `.ONESHELL` or `.SHELLFLAGS`. This coincides with the Windows requirement to avoid `/bin/sh`. `make doctor` reports the detected version; the Makefile states 3.81 as the floor so a 4.x-only feature cannot creep in unnoticed. |
 | `3rdparty/mihomo` `go.mod` declares `go 1.20`; local Go is 1.26.5 | Actual minimum must be established by building, not read off `go.mod` (G1 requires this). |
 | Upstream mihomo Makefile derives `VERSION` from `git branch --show-current`; a submodule is in detached HEAD, so that branch is empty and it falls back to `git describe --tags` | A project-owned Go build wrapper with explicit flags is required; do not rely on upstream target semantics silently. |
 | Upstream generic amd64 targets select `GOAMD64=v3` | Project wrapper pins an explicit v1 baseline for x86_64 desktop compatibility. |
