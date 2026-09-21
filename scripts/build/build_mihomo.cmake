@@ -78,7 +78,13 @@ file(MAKE_DIRECTORY "${output_dir}")
 message(STATUS "Building mihomo ${version_string} (${source_commit}, ${dirty_state})")
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E env ${go_env}
-        "${GO}" build -mod=readonly -tags "${build_tags}" -trimpath
+        # -buildvcs=false: Go otherwise walks up from the submodule and stamps the
+        # SUPERPROJECT's revision and dirty state into the engine, which records
+        # clash-qt's commit where the engine's own provenance belongs, contradicts
+        # the manifest below, and changes the artifact hash on every unrelated
+        # commit to this repository. Provenance comes from the ldflags and the
+        # manifest, both of which describe the engine source.
+        "${GO}" build -mod=readonly -buildvcs=false -tags "${build_tags}" -trimpath
         -ldflags "-X github.com/metacubex/mihomo/constant.Version=${version_string} -X github.com/metacubex/mihomo/constant.BuildTime=source-build -w -s -buildid="
         -o "${OUTPUT}" .
     WORKING_DIRECTORY "${SOURCE_DIR}"

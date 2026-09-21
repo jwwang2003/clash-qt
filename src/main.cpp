@@ -101,7 +101,13 @@ int main(int argc, char *argv[]) {
         [&startupErrors](const QString &message) { startupErrors.append(message); });
     const auto chainErrors = QObject::connect(enhancer, &core::ConfigEnhancer::errorOccurred, &app,
         [&startupErrors](const QString &message) { startupErrors.append(message); });
-    coreProcess->setBinaryPath(core::preferences::open().value("core/binary").toString());
+    // An explicit user setting wins; CLASH_QT_CORE_BINARY is the development
+    // fallback that lets "make run" point the app at the locally built engine
+    // without writing to the user's settings.
+    QString coreBinary = core::preferences::open().value("core/binary").toString();
+    if (coreBinary.isEmpty())
+        coreBinary = qEnvironmentVariable("CLASH_QT_CORE_BINARY");
+    coreProcess->setBinaryPath(coreBinary);
     coreProcess->setUseService(core::preferences::open().value("core/useService", false).toBool());
     enhancer->load();
     profiles->setEnhancer(enhancer);

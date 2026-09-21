@@ -1,5 +1,4 @@
 # Developer command facade over CMake presets, Go and CTest.
-#
 # Requires GNU Make 3.81 or newer. 3.81 is the floor because it is what macOS
 # ships and Apple will not ship GPLv3; Linux and Windows both carry 4.x. Recipes
 # are therefore single, &&-chained commands: 3.81 silently ignores .ONESHELL and
@@ -9,6 +8,18 @@
 # Run `make help` for the command list.
 
 PRESET ?= dev
+
+# Dependency prefix. A machine can easily have two copies of a dependency -- on
+# this one, Anaconda ships a yaml-cpp that shadows Homebrew's and links against
+# Qt from a different prefix, which fails at link time with undefined YAML
+# symbols rather than at configure time. Presets stay free of local paths;
+# resolving the prefix is the adapter layer's job.
+ifeq ($(origin CMAKE_PREFIX_PATH), undefined)
+CMAKE_PREFIX_PATH := $(shell brew --prefix 2>/dev/null)
+endif
+ifneq ($(strip $(CMAKE_PREFIX_PATH)),)
+PREFIX_ARG := -DCMAKE_PREFIX_PATH=$(CMAKE_PREFIX_PATH)
+endif
 BUILD_DIR = build/$(PRESET)
 JOBS ?= 8
 CMAKE ?= cmake
@@ -28,7 +39,8 @@ help:
 	@echo "  configure         Configure the selected preset."
 	@echo "  core              Build mihomo from 3rdparty/mihomo only."
 	@echo "  module            Build the component and the engine artifacts it needs."
-	@echo "  build             Build the application and all runtime dependencies."
+	@echo "  build             Build the application and all runtime dependencies.
+#"
 	@echo "  run               Build if necessary and launch with the staged core."
 	@echo "  test              Build and run portable feature/architecture/UI tests."
 	@echo "  test-integration  Build the local engine and run real component/core workflows."
@@ -37,23 +49,23 @@ help:
 	@echo "  clean             Remove generated output for PRESET. Never touches source,"
 	@echo "                    user data or the submodule checkout."
 	@echo ""
-	@echo "Variables:  PRESET (default dev)   JOBS (default 8)"
+	@echo "Variables:  PRESET (default dev)   JOBS (default 8)   CMAKE_PREFIX_PATH"
 	@echo "Prerequisites: GNU Make >= 3.81, CMake >= 3.21, Ninja, Go, Git, Qt 6.9+, yaml-cpp."
 	@echo "Windows: use GNU Make from an initialised MSVC/Qt environment, not NMake."
 	@echo ""
 	@echo "Not in this milestone: capture-addons, test-capture (delivered by P8/P9)."
 
 doctor:
-	@$(CMAKE) -S scripts/build/doctor -B build/doctor -DSOURCE_ROOT=$(CURDIR) -DMAKE_VERSION_REPORT="$(MAKE_VERSION)" > build/doctor.log 2>&1 || (cat build/doctor.log && exit 1) && grep -E "^-- " build/doctor.log
+	@$(CMAKE) -S scripts/build/doctor -B build/doctor $(PREFIX_ARG) -DSOURCE_ROOT=$(CURDIR) -DMAKE_VERSION_REPORT="$(MAKE_VERSION)" > build/doctor.log 2>&1 || (cat build/doctor.log && exit 1) && grep -E "^-- " build/doctor.log
 
 setup:
 	@$(GIT) submodule update --init --recursive 3rdparty/mihomo && echo "setup: recorded submodules initialised."
 
 configure:
-	@$(CMAKE) --preset $(PRESET)
+	@$(CMAKE) --preset $(PRESET) $(PREFIX_ARG)
 
 $(BUILD_DIR)/CMakeCache.txt:
-	@$(CMAKE) --preset $(PRESET)
+	@$(CMAKE) --preset $(PRESET) $(PREFIX_ARG)
 
 core: $(BUILD_DIR)/CMakeCache.txt
 	@$(CMAKE) --build $(BUILD_DIR) --target clash-qt-core -j $(JOBS)
