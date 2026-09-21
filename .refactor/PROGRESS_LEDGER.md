@@ -140,9 +140,10 @@ Status values: `queued`, `running`, `ready-for-integration`, `verified`, `blocke
 | P1-STEP2 | coordinator | all MOVE-* | `CMakeLists.txt`, all manifests, `README.md` | verified | configure+build clean; 131 passed / 0 failed / 2 skipped, identical to baseline |
 | P2-BUILD | coordinator | P1 | root+per-dir CMake, `cmake/**`, `scripts/build/**`, `Makefile`, `CMakePresets.json`, `tests/CMakeLists.txt` | verified | 8 libraries build; headless configure registers 10/14; `make core` produces provenance; facade verified on Make 3.81 **and** 4.4.1; `doctor` failure path tested |
 | BASE-SEAM | worker A / Opus | P1 | named proxy/browser/dashboard/helper-client files + their suites | verified | 3 seams removed; 14/14; per-suite totals identical to baseline |
-| BASE-FIXTURE | worker B / Opus | P1 | `tests/support/**`, `tests/fixtures/**` | running | — |
+| BASE-FIXTURE | worker B / Opus | P1 | `tests/support/**`, `tests/fixtures/**` | verified | scoped env, loopback server, compiled fake core; found and fixed 2 bugs in itself |
 | BASE-ARCH | worker C / Opus | P1 | `tests/architecture/**` | verified | 6 rules, 10 self-tests, all failing-when-violated; ratchet verified independently at integration; 17/17 CTest |
-| COMPONENT-BASE | worker A / Opus | `component-r1` | `src/core/component/**`, `tests/contracts/component/**` | running | dispatched into the slot BASE-SEAM freed |
+| COMPONENT-BASE | worker A / Opus | `component-r1` | `src/core/component/**`, `tests/contracts/component/**` | verified | 32 cases; 21/21 mutations killed; archive has zero undefined symbols |
+| SETTINGS-ISOLATION | worker B / Opus | P2 | `src/core/preferences/**`, 15 call sites, `src/main.cpp` (leased) | verified | full run leaves real preferences byte-identical; guard demonstrated failing |
 
 ## P1 relocation evidence (verified)
 
@@ -211,7 +212,14 @@ was used instead, defaulting to the internal single-shot timer. Accepted.
 **P1 is complete and verified.** The relocation barrier is cleared, so dependent
 packages may now start against the integrated tree.
 
-P2 (three slots): BASE-FIXTURE (scoped settings/environment fixtures, loopback servers,
+**P2 is complete.** P3 is next (three slots): MOD-CORE (MihomoBackend behind the
+reviewed contract, severing the 12 UI includes of the component-private header),
+MOD-RUNTIME (runtime/routing coordinators), MOD-LIFECYCLE (shutdown/backup
+coordinators, and the ownership inversion that removes widget-tree service discovery).
+The coordinator must first publish the MihomoBackend contract revision and build the
+in-process fake backend under `tests/support/backend/` that all three consume.
+
+Superseded plan for P2 (three slots): BASE-FIXTURE (scoped settings/environment fixtures, loopback servers,
 portable fake-core executable), BASE-SEAM (replace the three intrusive seams that
 PRE-TEST located with injected dependencies), BASE-ARCH (dependency checker plus its own
 positive/negative self-tests, carrying D2's baselined exception pre-registered).
@@ -306,3 +314,51 @@ therefore too weak to support the claim.
 Needs its own package; it is not a test-only fix and must not be smuggled into an
 unrelated one. Until it lands, treat every full-suite run as writing to the developer's
 preferences.
+
+
+## P2 closed
+
+`ctest` **22/22** on macOS arm64, and a full run now leaves
+`~/Library/Preferences/com.clash-qt.clash-qt.plist` byte-identical by sha256 with no
+test sentinel present. That is the acceptance criterion the settings defect needed.
+
+### Settings isolation — mechanism established, not assumed
+
+`setDefaultFormat()` applies only to the `QSettings(QObject*)` and
+`QSettings(Scope, QObject*)` constructors. On Darwin `QSettings(organization,
+application)` is hard-wired to `NativeFormat`, and `setPath` on `NativeFormat` is a
+no-op. `main.cpp`'s bootstrap therefore never isolated anything. 15 call sites (not
+the 14 first counted) now route through `core::preferences`, a leaf beside
+`clash_yaml`. With `CLASH_QT_DATA_DIR` unset the accessor returns literally
+`QSettings(organization, application)`, so **existing users keep their settings** —
+switching the default to Ini would have orphaned every current user's preferences.
+
+### Coordinator error during integration, recorded
+
+While integrating, the coordinator changed `ScopedEnvironment::productionSettingsFilePath()`
+to call the new accessor. That conflated two distinct concepts — *the native store
+that must stay untouched* versus *where production currently resolves* — and broke
+three passing tests. The change was **not required by the fix**; it was opportunistic
+cleanup during integration. Reverted rather than patched further.
+
+**Remaining, with an owner:** `ScopedEnvironment::productionSettingsAreIsolated()`
+compares against `settingsDir()` (`<root>/settings`) while the accessor lays out
+`<root>/data/settings/<org>/<app>.ini`, so the predicate no longer describes
+production. Its sibling `realPreferencesUnchanged()` is correct and is what the
+guards actually use. Owner: BASE-FIXTURE's scope, to be reconciled with the accessor
+in a bounded follow-up — not during an unrelated integration.
+
+### Known flake, pre-existing
+
+`system-proxy-async` → `slowOperationDoesNotBlockGuiAndRefreshesDeduplicate` asserts
+`heartbeats >= 3` and fails under parallel load. 5/5 standalone, and the pre-refactor
+baseline build behaves identically, so it is not a regression. It is exactly the
+timing assumption the test strategy says to replace with an explicit gate.
+
+### Your preferences file
+
+Backed up to `~/clash-qt-preferences-backup-20260921-131458.plist` (9 keys) and the
+domain deleted at the user's instruction. It reappeared at 13:28:42 containing only a
+66-byte `window.geometry` blob, with `~/Library/Application Support/clash-qt/` changing
+at 13:28:46 — a real application launch against the default data directory, not a test
+run. No test sentinel is present in it.
