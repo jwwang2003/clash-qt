@@ -3,7 +3,42 @@
 Coordinator-owned. Resume from this file plus `git status` after any context loss;
 do not repeat completed analysis.
 
+This file and its siblings live in `.refactor/`, **not** in `docs/`. See the binding
+cutover rule below.
+
 Last updated: 2026-09-21.
+
+## Binding rule — what `docs/` may contain on `main`
+
+At the DOCS-CUTOVER gate, `docs/` on the merged `main` contains **only the newly
+written implementation documentation**. Two separate categories are removed from the
+refactor branch by explicit reviewed file list before the merge:
+
+1. **The 13 pre-refactor planning/audit documents** currently in `docs/`
+   (`AUDIT.md`, `BUILD_RELEASE_PLAN.md`, `CAPTURE_MODULE_PLAN.md`, `COM_MODULE_PLAN.md`,
+   `FEATURE_PARITY.md`, `IMPLEMENTATION_ROADMAP.md`, `MACOS_SERVICE_PROTOCOL.md`,
+   `MODULAR_MANAGEMENT_PLAN.md`, `PARALLEL_EXECUTION_PLAN.md`, `PROJECT_GOALS.md`,
+   `QCLASH_REFERENCE.md`, `STRUCTURE_REFACTOR_PLAN.md`, `TEST_STRATEGY.md`).
+   Their archive is `legacy-v1` (`28ce5f4`), which must be verified retrievable first.
+
+2. **This refactor's own working notes**, the whole of `.refactor/` — the progress
+   ledger, published contract revisions, package dispatch records and handoffs.
+   These are process artifacts, not product documentation. Their archive is the
+   `codex/refactor-v2` commit history, which the normal merge preserves.
+
+They are kept in `.refactor/` rather than `docs/refactor/` precisely so that no
+cleanup step has to remember to carve a subfolder out of the documentation set, and
+so that an obsolete plan can never be mistaken for current documentation. Nothing in
+`.refactor/` may be linked from the final `README.md` or from any `docs/` page.
+
+The replacement documentation set is written fresh against the actual implementation:
+`docs/architecture.md`, `docs/build.md`, `docs/development.md`, `docs/testing.md`,
+`docs/packaging.md`, `docs/module-api.md`, `docs/migration.md` — consolidated further
+if shorter documents suffice. Every command, link, platform claim and branch reference
+in them is checked before the merge.
+
+Neither removal happens early. Old documents stay in place on the refactor branch
+until foundation acceptance, because the packages still in flight are specified by them.
 
 ## Branch and archival identities
 
