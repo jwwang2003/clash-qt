@@ -96,27 +96,6 @@ if(APPLE)
     add_test(NAME privileged-helper-ipc COMMAND privileged-helper-ipc-tests --ipc-self-test)
 endif()
 
-set(offscreen_tests controller provider backup proxy tray routing-controls
-    traffic-history dashboard-async system-proxy-async privileged-service
-    config-generation profile-store core-process runtime-maintenance preferences)
-if(CLASH_QT_BUILD_APP)
-    # The benchmark entries are deliberately absent: with their measurement flag
-    # set, QT_QPA_PLATFORM=offscreen turns their skip into a failure.
-    list(APPEND offscreen_tests home-page traffic-graph proxies-page
-        connections-page providers-page rules-page logs-page)
-endif()
-foreach(name IN LISTS offscreen_tests)
-    if(TEST ${name})
-        set_tests_properties(${name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    endif()
-endforeach()
-# The QQuickView-embedding suites additionally need the software backend.
-foreach(name home-page traffic-graph)
-    if(TEST ${name})
-        set_tests_properties(${name} PROPERTIES
-            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
-    endif()
-endforeach()
 
 # The settings-isolation regression guard: fails if production preference access
 # escapes the isolated location. Without it the defect returns silently.
@@ -379,3 +358,41 @@ foreach(test_name IN LISTS clash_qt_all_tests)
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${existing_env}")
 endforeach()
 clash_qt_label(backend-bridge     unit contract backend)
+
+# ---------------------------------------------------------------------------
+# Offscreen platform for every widget-constructing suite.
+#
+# Applied HERE, at the end, on purpose. This block used to sit above the suite
+# registrations, where `if(TEST ...)` was simply false for anything not yet
+# defined -- so seven widget suites silently ran against the real display and
+# would have failed on a headless runner. A guard that quietly does nothing is
+# worse than no guard.
+#
+# The benchmark entries are deliberately excluded: with their measurement flag
+# set, offscreen turns their skip into a failure.
+# ---------------------------------------------------------------------------
+set(clash_qt_widget_tests
+    controller provider backup proxy tray routing-controls traffic-history
+    dashboard-async system-proxy-async privileged-service preferences
+    config-generation profile-store core-process runtime-maintenance
+    home-page traffic-graph proxies-page connections-page providers-page
+    rules-page logs-page)
+foreach(name IN LISTS clash_qt_widget_tests)
+    if(TEST ${name})
+        get_test_property(${name} ENVIRONMENT existing_env)
+        if(existing_env STREQUAL "NOTFOUND")
+            set(existing_env "")
+        endif()
+        list(APPEND existing_env "QT_QPA_PLATFORM=offscreen")
+        set_tests_properties(${name} PROPERTIES ENVIRONMENT "${existing_env}")
+    endif()
+endforeach()
+
+# The QQuickView-embedding suites additionally need the software backend.
+foreach(name home-page traffic-graph)
+    if(TEST ${name})
+        get_test_property(${name} ENVIRONMENT existing_env)
+        list(APPEND existing_env "QT_QUICK_BACKEND=software")
+        set_tests_properties(${name} PROPERTIES ENVIRONMENT "${existing_env}")
+    endif()
+endforeach()
