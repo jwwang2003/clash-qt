@@ -418,3 +418,37 @@ Required of MOD-CORE, which owns `core_process.cpp`: the managed path resolves t
 staged engine or fails with an actionable message. Any discovery of an unrelated
 installation becomes an explicit, separately labelled user choice — never a silent
 fallback — and whatever is resolved must be reported so provenance cannot be implied.
+
+
+## Correction — the G2 link ledger understates the debt, and I caused it
+
+**Claimed:** 8 baselined link sites, owner MOD-CORE, removed in P3, with "a ninth
+linker fails the check".
+
+**Actual:** **16 test targets** link `clash_mihomo_impl` directly, plus the
+application. Of the exception's 8 listed sites, **2 are zombies** — `runtime-tests`
+and `data-pages-tests`, targets deleted by the suite partition — and the checker does
+not flag a dead site inside a live exception.
+
+**How the gap opened, twice, both mine.** When registering the partitioned suites and
+the P3 test targets, I declared `clash_mihomo_impl` in each consumer's `deps` rather
+than adding it to the exception's `sites`. The checker honours `consumers[].deps`
+*before* consulting exceptions, so those eight became **permanently allowed** — no
+owner, no removal phase, invisible to the ratchet. Migration debt was silently
+converted into architecture.
+
+**The "ninth linker" claim was incomplete, not false.** Verified directly: adding
+`clash_mihomo_impl` to `backup-tests` without declaring it fails with
+`ARCH-R1-UNDECLARED-CONSUMER`. The ratchet does bite an *accidental* addition. What it
+does not catch is a *deliberate* declaration in `deps`, which is the path I took eight
+times. I verified the include ratchet earlier and generalised to links without testing
+that path.
+
+**Consequence.** The G2 link clause cannot be closed on the current ledger: it would
+report success while seventeen targets still link the component-private implementation.
+
+**Required before P3 closes:** re-derive the site list from the evaluated build graph
+rather than maintaining it by hand; remove the zombies; move the eight `deps`
+declarations back under the exception with their owner and removal phase; and add a
+checker rule that a target may not reach `clash_mihomo_impl` through `deps` while the
+G2 exception is open.
