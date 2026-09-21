@@ -1,4 +1,4 @@
-# MihomoBackend — contract revision `backend-r1`
+# MihomoBackend — contract revision `backend-r2`
 
 Coordinator-owned. MOD-CORE implements it against the real engine, MOD-RUNTIME and
 MOD-LIFECYCLE consume it, and the fake backend under `tests/support/backend/`
@@ -220,3 +220,85 @@ MOD-CORE reports which. Whether `Generation` is global or per-subject (endpoint,
 managed lifecycle, TUN) is a genuine design question: r1 specifies **one global
 generation**, and MOD-CORE must report if any current behaviour cannot be expressed
 that way, rather than silently adding a second counter.
+
+
+---
+
+# Amendments: `backend-r1` → `backend-r2`
+
+BACKEND-FAKE implemented r1 and reported five defects rather than working around
+them. Four are accepted and change the contract; consumers code against **r2**.
+
+## A1 — Completion stamping (supersedes §2's last paragraph)
+
+r1 said every event and completion "carries the `Generation` current when it was
+produced". **That is self-defeating**: a completion stamped at delivery time always
+looks current, so the consumer's rejection rule can never fire. Corrected:
+
+- A **completion** carries the generation **current when its operation was submitted**.
+  That is what makes it comparable against the consumer's last-observed value.
+- Any **other event** carries the generation current when it was produced.
+- The **terminal outcome of an operation that itself bumps** the generation (start,
+  stop, managed failure) carries the **post-bump** value. Otherwise a consumer would
+  reject the very failure it has to act on.
+
+## A2 — Superseded completions must be marked (supersedes §10 bullet 2)
+
+r1 asked consumers to reject a completion stamped with a superseded generation. With
+r1's own non-re-entrant delivery (§7) that is **not observable from generations
+alone**: the completions produced by an abort are queued *before* the invalidating
+event, so the consumer's "older than last observed" test cannot catch them.
+
+The backend must therefore mark them explicitly, with a `Superseded` completion
+status. Generation comparison remains the consumer's second line of defence, not its
+only one. §10 bullet 3 (bump before abort) is observable and stays as written — it is
+what the ordering test asserts.
+
+## A3 — `Endpoint` is standard-layout, not "POD" (refines §9)
+
+r1 demanded `Endpoint` "becomes POD" while also permitting Qt types in r1's
+implementation; those cannot both hold. r2 requires: standard-layout,
+behaviour-free, `static_assert`ed, with URL construction removed from the type.
+Strict trivial-copyability is a P4 layout change under COMPONENT-ABI, not an r2
+claim.
+
+## A4 — `StopCompleted` and `TunChangeCompleted` carry a `Generation` (fixes §6)
+
+§2 requires a generation on every completion; §6's `StopCompleted` omitted it. Both
+now carry one.
+
+## Answers to the two open questions
+
+**`ProviderClient::pending_` does not reduce to `RequestId`.** Evidence:
+`provider_client.cpp:67,125` key it as `epoch + ':' + path`, and `:68,126` return
+**without issuing anything and without minting an id**. Per-submission ids would mint
+two and issue both. It is `(Generation, operation identity) → coalescing`. Published
+rule: **a duplicate submission returns the outstanding request's id.** `busyChanged`
+(`:59-62`) needs only cardinality, which ids supply. `sameEndpoint()` is redundant:
+`endpoint_` changes only in `setEndpoint`, which always emits `endpointChanged`,
+which bumps `epoch_`.
+
+**One global `Generation` suffices — with one obligation.** `endpointEpoch_` and
+`requestEpoch_` collapse cleanly, since `isCurrentReply` requires both to match and
+either bump invalidates. `tunChangeId_` is **not** a generation at all — it is
+incremented per operation and is a `RequestId`. `launchGeneration_` folds in, but a
+single global counter means a managed start/stop/fail invalidates in-flight
+*controller* replies, which does **not** happen today.
+
+That difference is not benign. `fetchVersion`/`fetchProxies` recover via the 5 s poll
+at `main.cpp:277-283`, but **`fetchRules` and `fetchConfigs` do not** — they are
+issued only from `refreshState` and `main_window.cpp:132-133`, so a discarded
+`/rules` or `/configs` reply would leave the rules list and `BaseConfig` stale until
+the next endpoint change.
+
+**Obligation, in place of a second counter:** any generation bump that is *not* an
+endpoint change must re-issue the snapshot set. No case requires a second counter.
+
+## Known surviving mutant, with justification
+
+Of 15 inversions, 14 failed the suite. One survived: removing **one** of the two
+observer skip-guards in the fake's `drain()`. They are genuinely redundant —
+`removeObserver` erases from both containers — so the single-guard build is still
+correct. Removing **both**, or iterating the live list, does fail. Recorded rather
+than papered over, because a surviving mutant is either a coverage gap or a
+redundancy, and here it is demonstrably the latter.
