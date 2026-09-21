@@ -82,6 +82,33 @@ private slots:
         QCOMPARE(stopped.size(), 2);
 #endif
     }
+    // REGRESSION. P3 replaced CoreProcess's default-constructed
+    // platform::PrivilegedServiceClient with NullPrivilegedCoreService, whose
+    // isSupported() is false. main.cpp passed no service, so service mode became
+    // silently unavailable on macOS: setUseService(true) returned false and the
+    // saved core/useService preference was discarded without a word. Nothing
+    // covered it, and the suite stayed green. These two cases pin both halves of
+    // the seam: an un-injected process must refuse, and an injected one must not.
+    void anUninjectedProcessHasNoPrivilegedServiceAndSaysSo() {
+        core::CoreProcess process;
+        QVERIFY(!process.isServiceSupported());
+        QVERIFY(!process.setUseService(true));
+        QVERIFY(!process.isServiceMode());
+    }
+
+    void anInjectedAdapterMakesServiceModeAvailableWhereThePlatformSupportsIt() {
+#ifndef Q_OS_MACOS
+        QSKIP("privileged service mode is macOS-only");
+#else
+        platform::PrivilegedServiceClient client;
+        core::PrivilegedServiceClientAdapter service(&client, QStringLiteral("/tmp/clash-qt-seam-probe.socket"));
+        core::CoreProcess process(nullptr, &service);
+        QVERIFY(process.isServiceSupported());
+        QVERIFY(process.setUseService(true));
+        QVERIFY(process.isServiceMode());
+#endif
+    }
+
     void privilegedServiceLifecycleUsesLeaseAndWaitsForStopAck() {
 #ifdef Q_OS_WIN
         QSKIP("Uses a POSIX fake validator");

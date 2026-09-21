@@ -18,6 +18,7 @@
 
 #include "core/mihomo/controller_discovery.h"
 #include "app/app_context.h"
+#include "app/composition/privileged_service_adapter.h"
 #include "core/config/enhance/config_enhancer.h"
 #include "core/mihomo/mihomo_client.h"
 #include "core/mihomo/process/core_process.h"
@@ -93,7 +94,16 @@ int main(int argc, char *argv[]) {
     instance.listen(instanceName);
 
     auto *client = new core::MihomoClient(&app);
-    auto *coreProcess = new core::CoreProcess(&app);
+    // The composition root owns the privileged client and adapts it to the seam
+    // CoreProcess publishes (D2). Without this injection CoreProcess falls back to
+    // NullPrivilegedCoreService, whose isSupported() is false, and service mode is
+    // silently unavailable: setUseService(true) returns false and the user's saved
+    // core/useService preference is discarded without a word.
+    auto *privilegedClient = new platform::PrivilegedServiceClient(&app);
+    auto *privilegedService = new core::PrivilegedServiceClientAdapter(privilegedClient);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &app,
+                     [privilegedService] { delete privilegedService; });
+    auto *coreProcess = new core::CoreProcess(&app, privilegedService);
     auto *enhancer = new core::ConfigEnhancer(&app);
     auto *hotkeys = new platform::Hotkeys(&app);
     QStringList startupErrors;
