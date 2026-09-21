@@ -648,6 +648,98 @@
       "deps": [
         "clash_test_support"
       ]
+    },
+    "w01-first-launch-tests": {
+      "_note": "W01 first launch: import, start, real readiness, stop, quit, reopen. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "deps": [
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backend_fake",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "w03-routing-controls-tests": {
+      "_note": "W03 routing: the only journey that builds the real shell. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "deps": [
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backend_bridge",
+        "clash_backend_fake",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "w04-restore-tests": {
+      "_note": "W04 restore while services are live and a write is in flight. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "deps": [
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backend_fake",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "w05-recovery-tests": {
+      "_note": "W05 crash, restart, latest-request-wins, bounded shutdown. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "deps": [
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backend_fake",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "app-smoke-tests": {
+      "_note": "Launches the shipping binary; the lane that can see a component nothing wires up. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "deps": [
+        "clash-qt",
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backend_fake",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
     }
   },
   "include_rules": [
@@ -759,7 +851,7 @@
       "kind": "target_edge",
       "owner": "COMPONENT-ABI",
       "remove_in": "P4",
-      "reason": "Down from 17 direct linkers to 8, after the UI migration. The residue is two kinds and only one is debt. DEBT (clears when COMPONENT-ABI's factory and module land in P4): clash-qt, routing-controls-tests. NOT DEBT: controller-tests, provider-tests, core-process-tests, backend-real-contract-tests, backend-real-core-tests, engine-discovery-tests -- their subject IS the implementation, so they link it on purpose and always will. They are listed here because the sealed-module rule requires every direct linker to be named; being named is not the same as being owed.",
+      "reason": "Down from 17 direct linkers to 8, after the UI migration. The residue is two kinds and only one is debt. DEBT (clears when COMPONENT-ABI's factory and module land in P4): clash-qt, routing-controls-tests. NOT DEBT: controller-tests, provider-tests, core-process-tests, backend-real-contract-tests, backend-real-core-tests, engine-discovery-tests -- their subject IS the implementation, so they link it on purpose and always will. They are listed here because the sealed-module rule requires every direct linker to be named; being named is not the same as being owed. The five workflow suites assemble the whole application, so they construct MihomoBackendImpl exactly as the composition root does and clear with the same P4 factory. They were caught automatically by the sealed-module rule rather than noticed by a human, which is the point of it.",
       "sites": [
         {
           "from": "clash-qt",
@@ -791,6 +883,26 @@
         },
         {
           "from": "engine-discovery-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "w01-first-launch-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "w03-routing-controls-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "w04-restore-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "w05-recovery-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "app-smoke-tests",
           "to": "clash_mihomo_impl"
         }
       ]

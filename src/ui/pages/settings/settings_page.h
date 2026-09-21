@@ -58,6 +58,7 @@ private:
     void buildStartup(QVBoxLayout *column);
     void buildHotkeys(QVBoxLayout *column);
     void buildChain(QVBoxLayout *column);
+    void publishProxyTarget();
     void applySystemProxy(bool enabled);
     void renderSystemProxy();
     void runAutostartOperation(std::optional<bool> enabled);

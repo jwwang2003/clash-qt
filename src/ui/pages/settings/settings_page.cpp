@@ -212,21 +212,31 @@ void SettingsPage::setSystemProxyEnabled(bool enabled) {
     renderSystemProxy();
 }
 
-void SettingsPage::applySystemProxy(bool enabled) {
-    // The controller owns every guard the page used to apply by hand - shutting
-    // down, not connected, no reported port - and raises the one error for it.
-    proxyRequest_ = enabled;
+void SettingsPage::publishProxyTarget() {
+    // Kept current whenever the core's endpoint, ports or the bypass list move,
+    // NOT only when the user toggles. Publishing it on toggle alone deadlocked a
+    // fresh data directory: the controller reports the proxy unavailable until a
+    // target exists, renderSystemProxy() disables the checkbox while it is
+    // unavailable, and the checkbox was the only thing that set the target.
     platform::ProxyConfig config;
     config.host = backend_->endpoint().host;
     config.port = corePort_;
     config.socksPort = coreSocksPort_;
     config.bypass = bypassEdit_->text().trimmed();
     routing_->setProxyTarget(config);
+}
+
+void SettingsPage::applySystemProxy(bool enabled) {
+    // The controller owns every guard the page used to apply by hand - shutting
+    // down, not connected, no reported port - and raises the one error for it.
+    proxyRequest_ = enabled;
+    publishProxyTarget();
     routing_->requestSystemProxy(enabled);
     renderSystemProxy();
 }
 
 void SettingsPage::refreshSystemProxy() {
+    publishProxyTarget();
     renderSystemProxy();
     routing_->refreshSystemProxy();
 }

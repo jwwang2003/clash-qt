@@ -284,6 +284,7 @@ add_subdirectory(app/lifecycle)
 add_subdirectory(app/backup)
 add_subdirectory(app/runtime)
 add_subdirectory(core/mihomo)
+add_subdirectory(workflows)
 
 # Architecture checks. Reads evaluated CMake target dependencies through the File
 # API, so transitive and generated edges are included rather than guessed at from
@@ -377,7 +378,7 @@ set(clash_qt_widget_tests
     dashboard-async system-proxy-async privileged-service preferences
     config-generation profile-store core-process runtime-maintenance
     home-page traffic-graph proxies-page connections-page providers-page
-    rules-page logs-page)
+    rules-page logs-page w03-routing-controls)
 foreach(name IN LISTS clash_qt_widget_tests)
     if(TEST ${name})
         get_test_property(${name} ENVIRONMENT existing_env)
@@ -390,7 +391,7 @@ foreach(name IN LISTS clash_qt_widget_tests)
 endforeach()
 
 # The QQuickView-embedding suites additionally need the software backend.
-foreach(name home-page traffic-graph)
+foreach(name home-page traffic-graph w03-routing-controls)
     if(TEST ${name})
         get_test_property(${name} ENVIRONMENT existing_env)
         list(APPEND existing_env "QT_QUICK_BACKEND=software")
