@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QSettings>
 
+#include "core/preferences/preferences.h"
 #include "platform/system/hotkeys.h"
 #include "ui/theme/theme.h"
 
@@ -13,7 +14,7 @@ namespace {
 
 constexpr int kEditWidth = 220;
 
-QSettings settings() { return QSettings("clash-qt", "clash-qt"); }
+QSettings settings() { return core::preferences::open(); }
 
 QString settingsKey(const QString &id) { return "hotkeys/" + id; }
 

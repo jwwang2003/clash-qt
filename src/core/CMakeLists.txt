@@ -43,12 +43,21 @@ target_link_libraries(clash_profiles
     PUBLIC  clash_types clash_config
     PRIVATE Qt6::Network Qt6::Concurrent yaml-cpp::yaml-cpp)
 
+# The one accessor for the application's preference store. A leaf beside
+# clash_yaml: Qt6::Core and nothing else in the project, so clash_backups, the UI
+# and the composition root can each read a setting without depending on one
+# another. Without CLASH_QT_DATA_DIR it is byte-for-byte the previous native
+# store, so existing users keep their settings.
+add_library(clash_preferences STATIC preferences/preferences.cpp)
+target_include_directories(clash_preferences PUBLIC "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(clash_preferences PUBLIC Qt6::Core)
+
 add_library(clash_backups STATIC backups/backup_store.cpp)
 # Uses QThread + QSemaphore directly, not QtConcurrent: the old backup-tests
 # target linked Qt6::Concurrent unnecessarily.
 target_link_libraries(clash_backups
     PUBLIC  clash_types
-    PRIVATE Qt6::Network yaml-cpp::yaml-cpp)
+    PRIVATE Qt6::Network yaml-cpp::yaml-cpp clash_preferences)
 
 add_library(clash_telemetry STATIC telemetry/traffic_history.cpp)
 target_link_libraries(clash_telemetry PUBLIC clash_types)

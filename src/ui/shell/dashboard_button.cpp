@@ -9,6 +9,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 
+#include "core/preferences/preferences.h"
 #include "platform/browser/browser_launcher.h"
 
 namespace {
@@ -34,7 +35,7 @@ namespace {
 
 constexpr auto kBrowserKey = "dashboard/browser";
 
-QSettings settings() { return QSettings("clash-qt", "clash-qt"); }
+QSettings settings() { return core::preferences::open(); }
 
 }  // namespace
 

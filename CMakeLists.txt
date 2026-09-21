@@ -40,6 +40,7 @@ if(CLASH_QT_BUILD_APP)
         clash_mihomo_impl
         clash_platform
         clash_config
+        clash_preferences
         Qt6::Widgets
         Qt6::Network
         Qt6::WebSockets

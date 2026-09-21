@@ -18,6 +18,7 @@
 #include "core/backups/backup_store.h"
 #include "core/config/enhance/config_enhancer.h"
 #include "core/mihomo/process/core_process.h"
+#include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "ui/widgets/settings_section.h"
 #include "ui/theme/theme.h"
@@ -59,7 +60,7 @@ BackupPage::BackupPage(const app::Context &context, QWidget *parent)
     password_ = new QLineEdit(remote);
     password_->setEchoMode(QLineEdit::Password);
     password_->setPlaceholderText(tr("Used for this session only"));
-    QSettings preferences("clash-qt", "clash-qt");
+    QSettings preferences = core::preferences::open();
     url_->setText(preferences.value("backup/webdavUrl").toString());
     username_->setText(preferences.value("backup/webdavUser").toString());
     auto *form = new QFormLayout;
@@ -106,7 +107,7 @@ BackupPage::BackupPage(const app::Context &context, QWidget *parent)
         restore_->setEnabled(!store_->isBusy() && list_->currentItem() != nullptr);
     });
     const auto saveAddress = [this] {
-        QSettings preferences("clash-qt", "clash-qt");
+        QSettings preferences = core::preferences::open();
         preferences.setValue("backup/webdavUrl", url_->text().trimmed());
         preferences.setValue("backup/webdavUser", username_->text());
     };

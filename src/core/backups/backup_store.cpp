@@ -24,6 +24,8 @@
 #include <memory>
 #include <atomic>
 
+#include "core/preferences/preferences.h"
+
 #include <yaml-cpp/yaml.h>
 
 namespace core {
@@ -275,7 +277,7 @@ QByteArray BackupStore::snapshot(QString *error) const {
         entries.append(QJsonObject{{"path", it.key()}, {"data", QString::fromLatin1(it.value().toBase64())},
                                    {"sha256", QString::fromLatin1(QCryptographicHash::hash(it.value(), QCryptographicHash::Sha256).toHex())}});
     }
-    QSettings preferences("clash-qt", "clash-qt");
+    QSettings preferences = core::preferences::open();
     QJsonObject settings;
     for (const auto &key : preferences.allKeys()) {
         if (!settingAllowed(key)) continue;
@@ -423,7 +425,7 @@ bool BackupStore::restoreLocal(const QString &source) {
     for (auto it = files.begin(); it != files.end(); ++it) {
         if (!writeFile(stage.path() + '/' + it.key(), it.value(), &error)) { emit errorOccurred(error); return false; }
     }
-    QSettings preferences("clash-qt", "clash-qt");
+    QSettings preferences = core::preferences::open();
     QMap<QString, QVariant> oldSettings;
     for (const auto &key : preferences.allKeys()) if (settingAllowed(key)) oldSettings.insert(key, preferences.value(key));
     QStringList moved, installed;

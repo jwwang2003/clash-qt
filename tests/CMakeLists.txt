@@ -18,7 +18,8 @@ target_link_libraries(provider-tests PRIVATE Qt6::Test Qt6::Network clash_mihomo
 add_test(NAME provider COMMAND provider-tests)
 
 qt_add_executable(backup-tests core/backup_test.cpp)
-target_link_libraries(backup-tests PRIVATE Qt6::Test Qt6::Network clash_backups)
+target_link_libraries(backup-tests PRIVATE Qt6::Test Qt6::Network clash_backups
+    clash_preferences clash_test_support)
 add_test(NAME backup COMMAND backup-tests)
 
 qt_add_executable(traffic-history-tests core/traffic_history_test.cpp)
@@ -55,7 +56,7 @@ if(CLASH_QT_BUILD_APP)
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
     target_link_libraries(data-pages-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_telemetry)
+        clash_mihomo_impl clash_telemetry clash_preferences clash_test_support)
     add_traffic_graph_module(data-pages-tests)
     add_test(NAME data-pages COMMAND data-pages-tests)
 
@@ -81,7 +82,7 @@ if(CLASH_QT_BUILD_APP)
     qt_add_executable(dashboard-async-tests ui/dashboard_async_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/shell/dashboard_button.cpp")
     target_link_libraries(dashboard-async-tests PRIVATE Qt6::Test Qt6::Widgets
-        Qt6::Concurrent clash_mihomo_impl clash_platform)
+        Qt6::Concurrent clash_mihomo_impl clash_platform clash_preferences)
     add_test(NAME dashboard-async COMMAND dashboard-async-tests)
 endif()
 
@@ -111,6 +112,13 @@ if(TEST data-pages)
     set_tests_properties(data-pages PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
 endif()
+
+# The settings-isolation regression guard: fails if production preference access
+# escapes the isolated location. Without it the defect returns silently.
+qt_add_executable(preferences-tests core/preferences_test.cpp)
+target_link_libraries(preferences-tests PRIVATE Qt6::Test clash_preferences clash_test_support)
+target_compile_definitions(preferences-tests PRIVATE CLASH_QT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+add_test(NAME preferences COMMAND preferences-tests)
 
 # Shared test infrastructure (BASE-FIXTURE). The fake core is a compiled helper,
 # not a shell script or an interpreter invocation, so the process tests are not
@@ -185,3 +193,4 @@ clash_qt_label(component-contract  unit contract component)
 clash_qt_label(scoped-environment  unit support)
 clash_qt_label(loopback-server     unit support)
 clash_qt_label(fake-core           unit support)
+clash_qt_label(preferences         unit core preferences)

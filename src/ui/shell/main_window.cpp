@@ -9,7 +9,6 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QShortcut>
-#include <QSettings>
 #include <QSystemTrayIcon>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -19,6 +18,7 @@
 #endif
 
 #include "core/mihomo/mihomo_client.h"
+#include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "platform/system/hotkeys.h"
 #include "ui/pages/connections/connections_page.h"
@@ -141,7 +141,7 @@ void MainWindow::buildUi() {
     setWindowTitle("clash-qt");
     resize(1120, 680);
     setMinimumSize(860, 540);
-    const QByteArray geometry = QSettings("clash-qt", "clash-qt").value("window/geometry").toByteArray();
+    const QByteArray geometry = core::preferences::open().value("window/geometry").toByteArray();
     if (!geometry.isEmpty()) restoreGeometry(geometry);
 
     proxiesPage_ = new ProxiesPage(client_, this);
@@ -362,7 +362,7 @@ void MainWindow::updateCoreState(core::CoreState state) {
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-    QSettings("clash-qt", "clash-qt").setValue("window/geometry", saveGeometry());
+    core::preferences::open().setValue("window/geometry", saveGeometry());
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         event->accept();
         qApp->quit();

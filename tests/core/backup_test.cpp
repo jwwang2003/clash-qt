@@ -1,16 +1,20 @@
 #include <QtTest>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <memory>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTimer>
 
 #include "core/backups/backup_store.h"
+#include "core/preferences/preferences.h"
+#include "support/scoped_environment.h"
 
 namespace {
 bool write(const QString &path, const QByteArray &bytes) {
@@ -67,18 +71,41 @@ public:
 
 class BackupTest : public QObject {
     Q_OBJECT
-    QTemporaryDir preferences_;
+    // This suite is where the settings-isolation defect was proved: its
+    // "do-not-export" sentinel turned up in the developer's real
+    // ~/Library/Preferences/com.clash-qt.clash-qt.plist. setDefaultFormat() and
+    // setPath(), which used to stand here, cannot redirect
+    // QSettings(organization, application) on macOS. The scoped environment
+    // exports CLASH_QT_DATA_DIR, which core::preferences does honour, and
+    // watches the real store for the rest of the run.
+    std::unique_ptr<testsupport::ScopedEnvironment> preferences_;
 private slots:
     void initTestCase() {
-        QVERIFY(preferences_.isValid());
-        QSettings::setDefaultFormat(QSettings::IniFormat);
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences_.path());
+        preferences_ = std::make_unique<testsupport::ScopedEnvironment>(QStringLiteral("backup"));
+        QVERIFY2(preferences_->isValid(), qPrintable(preferences_->errorString()));
+        QVERIFY(core::preferences::isIsolated());
+        QVERIFY2(core::preferences::fileName().startsWith(
+                     QFileInfo(preferences_->dataDir()).absoluteFilePath() + QLatin1Char('/')),
+                 qPrintable(core::preferences::fileName()));
+    }
+    void cleanupTestCase() {
+        // Read-only, and through CFPreferences rather than the plist's
+        // modification time, so a write cfprefsd has not yet flushed still
+        // shows up here.
+        const QSettings native(QString::fromLatin1(core::preferences::kOrganization),
+                               QString::fromLatin1(core::preferences::kApplication));
+        QVERIFY2(native.value("backup/password").toString() != QLatin1String("do-not-export"),
+                 "This suite's sentinel reached the real user preference store");
+        QVERIFY2(preferences_->realPreferencesUnchanged(),
+                 qPrintable(QStringLiteral("The real user preference store at %1 changed during this run")
+                                .arg(preferences_->productionSettingsFilePath())));
+        preferences_.reset();
     }
     void snapshotAndRestore() {
         QTemporaryDir directory;
         QVERIFY(seed(directory.path()));
         QVERIFY(write(directory.path() + "/Country.mmdb", "keep-cache"));
-        QSettings settings("clash-qt", "clash-qt");
+        QSettings settings = core::preferences::open();
         settings.setValue("startup/startCore", true);
         settings.setValue("window/geometry", QByteArray("binary\0geometry", 15));
         settings.setValue("backup/password", "do-not-export");

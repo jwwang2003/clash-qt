@@ -4,10 +4,10 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QSettings>
 #include <QSignalBlocker>
 #include <QTimer>
 #include "core/mihomo/process/core_process.h"
+#include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "platform/service/privileged_service_client.h"
 #include "platform/service/privileged_service_installer.h"
@@ -136,7 +136,7 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
 
 bool ServiceSettings::applyMode(bool enabled) {
     if (!context_.coreProcess->setUseService(enabled)) return false;
-    QSettings("clash-qt", "clash-qt").setValue("core/useService", enabled);
+    core::preferences::open().setValue("core/useService", enabled);
     if (!enabled) {
         auto overrides = context_.profiles->runtimeOverrides();
         auto tun = overrides.value("tun").toObject();

@@ -28,6 +28,7 @@
 #include "core/config/enhance/config_enhancer.h"
 #include "core/mihomo/mihomo_client.h"
 #include "core/mihomo/process/core_process.h"
+#include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "platform/proxy/system_proxy.h"
 #include "platform/proxy/system_proxy_service.h"
@@ -46,7 +47,7 @@ constexpr auto kDefaultBypass = "localhost, 127.0.0.1, ::1";
 
 struct AutostartResult { bool enabled = false; bool valid = false; bool success = true; QString error; };
 
-QSettings settings() { return QSettings("clash-qt", "clash-qt"); }
+QSettings settings() { return core::preferences::open(); }
 
 QString failureText(const QString &what, const QString &reason) {
     return reason.isEmpty() ? QObject::tr("%1 The platform reported no reason.").arg(what)

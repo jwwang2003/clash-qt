@@ -3,8 +3,6 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QDialog>
-#include <QSettings>
-#include <QTemporaryDir>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
@@ -27,6 +25,7 @@
 #include "ui/pages/overview/traffic_graph.h"
 #include <QtGraphs/QAreaSeries>
 #include <QDir>
+#include <QFileInfo>
 #include <QImage>
 #include <QJsonArray>
 #include <QLabel>
@@ -44,15 +43,31 @@
 #include "ui/pages/rules/rules_page.h"
 #include "ui/pages/providers/providers_page.h"
 #include "core/mihomo/provider_client.h"
+#include "core/preferences/preferences.h"
+#include "support/scoped_environment.h"
 
 class DataPagesTest : public QObject {
     Q_OBJECT
-    QTemporaryDir configDir_;
+    // ProxiesPage persists "proxies/sort". QSettings::setDefaultFormat() and
+    // setPath(), which used to stand here, cannot redirect
+    // QSettings(organization, application) on macOS, so that write reached the
+    // developer's real preferences. CLASH_QT_DATA_DIR, which core::preferences
+    // honours, does isolate it.
+    std::unique_ptr<testsupport::ScopedEnvironment> configDir_;
 private slots:
     void initTestCase() {
-        QVERIFY(configDir_.isValid());
-        QSettings::setDefaultFormat(QSettings::IniFormat);
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, configDir_.path());
+        configDir_ = std::make_unique<testsupport::ScopedEnvironment>(QStringLiteral("pages"));
+        QVERIFY2(configDir_->isValid(), qPrintable(configDir_->errorString()));
+        QVERIFY(core::preferences::isIsolated());
+        QVERIFY2(core::preferences::fileName().startsWith(
+                     QFileInfo(configDir_->dataDir()).absoluteFilePath() + QLatin1Char('/')),
+                 qPrintable(core::preferences::fileName()));
+    }
+    void cleanupTestCase() {
+        QVERIFY2(configDir_->realPreferencesUnchanged(),
+                 qPrintable(QStringLiteral("The real user preference store at %1 changed during this run")
+                                .arg(configDir_->productionSettingsFilePath())));
+        configDir_.reset();
     }
     void homeCardsDoNotOverlap_data() {
         QTest::addColumn<QSize>("pageSize");

@@ -14,7 +14,6 @@
 #include <QLocalSocket>
 #include <QLockFile>
 #include <QMessageBox>
-#include <QSettings>
 #include <QTimer>
 
 #include "core/mihomo/controller_discovery.h"
@@ -22,6 +21,7 @@
 #include "core/config/enhance/config_enhancer.h"
 #include "core/mihomo/mihomo_client.h"
 #include "core/mihomo/process/core_process.h"
+#include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "platform/system/hotkeys.h"
 #include "platform/proxy/system_proxy_service.h"
@@ -64,11 +64,12 @@ int main(int argc, char *argv[]) {
     parser.process(app);
     if (parser.isSet("data-dir"))
         qputenv("CLASH_QT_DATA_DIR", QDir(parser.value("data-dir")).absolutePath().toUtf8());
-    const QString isolatedDir = qEnvironmentVariable("CLASH_QT_DATA_DIR");
-    if (!isolatedDir.isEmpty()) {
-        QSettings::setDefaultFormat(QSettings::IniFormat);
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, isolatedDir);
-    }
+    // No QSettings global state is configured here. setDefaultFormat() and
+    // setPath() cannot redirect QSettings(organization, application) on macOS -
+    // that constructor is hard wired to NativeFormat - so this bootstrap used
+    // to leave the native store live while appearing to isolate it. The
+    // redirection now lives in core::preferences, which reads
+    // CLASH_QT_DATA_DIR (set just above from --data-dir) on every access.
 
     bool quitting = false;
     auto *profiles = new core::ProfileStore(&app);
@@ -100,8 +101,8 @@ int main(int argc, char *argv[]) {
         [&startupErrors](const QString &message) { startupErrors.append(message); });
     const auto chainErrors = QObject::connect(enhancer, &core::ConfigEnhancer::errorOccurred, &app,
         [&startupErrors](const QString &message) { startupErrors.append(message); });
-    coreProcess->setBinaryPath(QSettings("clash-qt", "clash-qt").value("core/binary").toString());
-    coreProcess->setUseService(QSettings("clash-qt", "clash-qt").value("core/useService", false).toBool());
+    coreProcess->setBinaryPath(core::preferences::open().value("core/binary").toString());
+    coreProcess->setUseService(core::preferences::open().value("core/useService", false).toBool());
     enhancer->load();
     profiles->setEnhancer(enhancer);
     profiles->load();
@@ -278,7 +279,7 @@ int main(int argc, char *argv[]) {
     if (!startupErrors.isEmpty())
         QMessageBox::warning(&window, "Could not load saved configuration", startupErrors.join('\n'));
     if (!parser.isSet("no-autostart") && !profiles->currentUid().isEmpty() &&
-        QSettings("clash-qt", "clash-qt").value("startup/startCore", false).toBool()) {
+        core::preferences::open().value("startup/startCore", false).toBool()) {
         QTimer::singleShot(0, profiles, &core::ProfileStore::requestRuntimeConfig);
     }
     const int result = app.exec();

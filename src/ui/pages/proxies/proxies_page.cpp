@@ -7,7 +7,6 @@
 #include <QMenu>
 #include <QScrollBar>
 #include <QSignalBlocker>
-#include <QSettings>
 #include <QShowEvent>
 #include <QTimer>
 #include <algorithm>
@@ -22,6 +21,7 @@
 #include <QVBoxLayout>
 
 #include "core/mihomo/mihomo_client.h"
+#include "core/preferences/preferences.h"
 #include "ui/theme/formatting.h"
 #include "ui/theme/theme.h"
 
@@ -243,9 +243,9 @@ ProxiesPage::ProxiesPage(core::MihomoClient *client, QWidget *parent)
     connect(filterEdit_, &QLineEdit::textChanged, this, [this] { filterTimer_->start(); });
     sortBox_ = new ComboBox(this);
     sortBox_->addItems({tr("Profile order"), tr("Name"), tr("Latency")});
-    sortBox_->setCurrentIndex(qBound(0, QSettings("clash-qt", "clash-qt").value("proxies/sort", 0).toInt(), 2));
+    sortBox_->setCurrentIndex(qBound(0, core::preferences::open().value("proxies/sort", 0).toInt(), 2));
     connect(sortBox_, &QComboBox::currentIndexChanged, this, [](int index) {
-        QSettings("clash-qt", "clash-qt").setValue("proxies/sort", index);
+        core::preferences::open().setValue("proxies/sort", index);
     });
     connect(sortBox_, &QComboBox::currentIndexChanged, this, [this] { nodesDirty_ = true; renderPending(); });
     auto *filters = new QHBoxLayout;

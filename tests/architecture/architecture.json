@@ -69,6 +69,19 @@
         "core/config/yaml_util.h"
       ]
     },
+    "clash_preferences": {
+      "_role": "The one accessor for the application's preference store. A leaf like clash_yaml: Qt6::Core only, so clash_backups, the UI and the composition root can each read a setting without depending on one another.",
+      "deps": [],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": [
+        "core/preferences/preferences.h"
+      ]
+    },
     "clash_config": {
       "_role": "Configuration composition and profile enhancement scripts.",
       "deps": [
@@ -122,7 +135,8 @@
     },
     "clash_backups": {
       "deps": [
-        "clash_types"
+        "clash_types",
+        "clash_preferences"
       ],
       "external": [
         "Qt6::Network",
@@ -258,7 +272,8 @@
         "clash_backups",
         "clash_telemetry",
         "clash_platform",
-        "clash-qt-service-helper"
+        "clash-qt-service-helper",
+        "clash_preferences"
       ],
       "optional": true
     },
@@ -286,7 +301,17 @@
     "backup-tests": {
       "headless": true,
       "deps": [
-        "clash_backups"
+        "clash_backups",
+        "clash_preferences",
+        "clash_test_support"
+      ]
+    },
+    "preferences-tests": {
+      "_note": "The settings-isolation regression guard.",
+      "headless": true,
+      "deps": [
+        "clash_preferences",
+        "clash_test_support"
       ]
     },
     "traffic-history-tests": {
@@ -315,7 +340,9 @@
     },
     "data-pages-tests": {
       "deps": [
-        "clash_telemetry"
+        "clash_telemetry",
+        "clash_preferences",
+        "clash_test_support"
       ],
       "optional": true
     },
@@ -329,7 +356,8 @@
     },
     "dashboard-async-tests": {
       "deps": [
-        "clash_platform"
+        "clash_platform",
+        "clash_preferences"
       ],
       "optional": true
     },
