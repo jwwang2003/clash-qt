@@ -134,6 +134,19 @@ add_test(NAME fake-core COMMAND fake-core-tests)
 set_tests_properties(fake-core PROPERTIES
     ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>")
 
+# Deterministic in-process backend plus its contract suite. The same contract
+# tests will run against the real backend; a passing fake proves the contract is
+# implementable and the consumers correct, not that the engine works.
+qt_add_library(clash_backend_fake STATIC
+    support/backend/fake_backend.cpp support/backend/recording_observer.cpp)
+set_target_properties(clash_backend_fake PROPERTIES AUTOMOC OFF)
+target_include_directories(clash_backend_fake PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(clash_backend_fake PUBLIC clash_backend Qt6::Core)
+
+qt_add_executable(backend-contract-tests contracts/backend/backend_contract_test.cpp)
+target_link_libraries(backend-contract-tests PRIVATE Qt6::Test clash_backend_fake)
+add_test(NAME backend-contract COMMAND backend-contract-tests)
+
 # Portable component object model contract (component-r1).
 qt_add_executable(component-contract-tests contracts/component/component_contract_test.cpp)
 target_link_libraries(component-contract-tests PRIVATE Qt6::Test clashqt_com)
@@ -318,3 +331,4 @@ clash_qt_label(rules-page          ui pages)
 clash_qt_label(logs-page           ui pages)
 clash_qt_label(traffic-graph-frames  benchmark ui)
 clash_qt_label(traffic-frame-pacing  benchmark ui)
+clash_qt_label(backend-contract    unit contract backend)

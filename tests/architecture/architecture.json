@@ -258,6 +258,26 @@
         "core/component/object_support.h",
         "core/component/result.h"
       ]
+    },
+    "clash_backend": {
+      "_role": "Published MihomoBackend contract (backend-r2). Header-only boundary between the application and the engine; both the real backend and the fake implement it.",
+      "deps": [
+        "clash_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": [
+        "core/backend/attachment.h",
+        "core/backend/backend.h",
+        "core/backend/capabilities.h",
+        "core/backend/control.h",
+        "core/backend/lifecycle.h",
+        "core/backend/observer.h",
+        "core/backend/telemetry.h",
+        "core/backend/types.h"
+      ]
     }
   },
   "consumers": {
@@ -461,6 +481,20 @@
       "deps": [
         "clash_telemetry",
         "clash_test_support"
+      ],
+      "optional": true
+    },
+    "clash_backend_fake": {
+      "_note": "Deterministic in-process backend for contract and coordinator tests.",
+      "deps": [
+        "clash_backend"
+      ],
+      "optional": true
+    },
+    "backend-contract-tests": {
+      "_note": "Runs the backend-r2 contract suite against the fake.",
+      "deps": [
+        "clash_backend_fake"
       ],
       "optional": true
     }

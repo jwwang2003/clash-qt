@@ -1,6 +1,19 @@
 # Reusable backend libraries. Each owns one responsibility and declares only the
 # dependencies its code actually has; see .refactor/DECISIONS.md D1.
 
+# Published MihomoBackend contract, revision backend-r2. Header-only: it is the
+# boundary the application codes against, and both the real backend and the fake
+# implement it. Depends on clash_types alone.
+add_library(clash_backend INTERFACE)
+target_sources(clash_backend INTERFACE FILE_SET HEADERS
+    BASE_DIRS "${PROJECT_SOURCE_DIR}/src"
+    FILES
+        backend/attachment.h backend/backend.h backend/capabilities.h
+        backend/control.h backend/lifecycle.h backend/observer.h
+        backend/telemetry.h backend/types.h)
+target_include_directories(clash_backend INTERFACE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(clash_backend INTERFACE clash_types)
+
 # Portable component object model, contract revision component-r1. Deliberately
 # links nothing -- not even Qt6::Core -- because it is the foundation every
 # component boundary is expressed in; a Qt type in a published signature would
