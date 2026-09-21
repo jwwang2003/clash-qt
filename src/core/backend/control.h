@@ -3,7 +3,9 @@
 
 // BackendControl: the mutating operations the application performs against the
 // attached controller.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1, section 2.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, section 2, with
+// amendments A4 and B2 (TunChangeCompleted carries a Generation and a
+// CompletionStatus, and a supersession is never reported as a protocol error).
 //
 // Every method here is a mutating call and returns a RequestId synchronously.
 // Every one of them can fail; none of them reports failure by throwing.
@@ -27,9 +29,17 @@ class BackendControl {
     virtual RequestId setMode(const QString &mode) noexcept = 0;
 
     // CONFIRMED asynchronous change: the completion's `actual` is a read-back
-    // of the controller's state, never an echo of `requested`.
+    // of the controller's state, never an echo of `requested`. A read-back that
+    // disagrees with `requested` is a refusal, not a success.
     // Completion: observer.tunChangeCompleted().
     // Further calls are rejected (RequestId::Invalid) while one is pending.
+    //
+    // backend-r3 B2. A change abandoned because the controller changed or
+    // disconnected completes with CompletionStatus::Superseded and
+    // ErrorCode::Superseded. It is NOT ErrorCode::Protocol: the controller
+    // never answered unusably, it stopped being the controller, and labelling
+    // every TUN error Protocol told the consumer the engine misbehaved when
+    // nothing of the sort had happened.
     virtual RequestId setTunEnabled(bool enabled) noexcept = 0;
     virtual bool isTunChangePending() const noexcept = 0;
 

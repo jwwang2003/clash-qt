@@ -22,6 +22,26 @@
 // The runtime configuration itself is delivered back asynchronously, through
 // RuntimeCoordinator::onRuntimeConfigReady(): a ProfileStore signal in
 // production, a direct call in a test.
+//
+// WHAT THIS PORT DELIBERATELY DOES NOT CARRY: the geo-data seed directory.
+// ProfileStore::prepareRuntime() needs one, and this port looks like the place
+// to hand it over, since ProfileStoreConfigSource is the adapter that drives
+// generation. It is not, for two reasons.
+//
+//   * It would not reach every generation. This port drives one of four
+//     entry points into ProfileStore's generator; main_window.cpp and
+//     settings_page.cpp call requestRuntimeConfig() on the store directly, and
+//     generateRuntimeConfig() is a synchronous path with no coordinator at all.
+//     A seed directory that rode in on this call would be absent from three of
+//     the four, and the symptom -- geo data quietly not copied -- is invisible
+//     until the engine is already running without it.
+//   * It would relocate the dependency rather than remove it. Answering the
+//     question here means clash_app_runtime asking core/mihomo where the
+//     engine's configuration lives, which is the same edge one module further
+//     up, and clash_app_runtime is linked by the application too.
+//
+// The seed directory is store configuration, not a property of a reload, so the
+// composition root sets it once on the store (ProfileStore::setSeedDir).
 
 #include <QString>
 

@@ -67,12 +67,10 @@ target_link_libraries(clash_config
 add_library(clash_profiles STATIC profiles/profile_store.cpp)
 target_link_libraries(clash_profiles
     PUBLIC  clash_types clash_config
-    # BASELINED EXCEPTION (PRE-ARCH edge 1, owner CFG-CORE/P4): a single call,
-    # profile_store.cpp requesting core::vergeConfigPath() to seed runtime data.
-    # It is removed when the composition root supplies seedDir instead. The edge
-    # was previously invisible because every consuming executable linked both
-    # libraries directly; declaring it is more honest than linking around it.
-    PRIVATE Qt6::Network Qt6::Concurrent yaml-cpp::yaml-cpp clash_mihomo_impl)
+    # PRE-ARCH edge 1 is GONE: the composition root supplies seedDir, so this
+    # library no longer reaches into the component-private implementation for it.
+    # That also removed the Qt Gui and WebSockets creep it was dragging in.
+    PRIVATE Qt6::Network Qt6::Concurrent yaml-cpp::yaml-cpp)
 
 # The one accessor for the application's preference store. A leaf beside
 # clash_yaml: Qt6::Core and nothing else in the project, so clash_backups, the UI

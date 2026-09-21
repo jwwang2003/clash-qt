@@ -6,7 +6,7 @@ do not repeat completed analysis.
 This file and its siblings live in `.refactor/`, **not** in `docs/`. See the binding
 cutover rule below.
 
-Last updated: 2026-09-21.
+Last updated: 2026-09-22 (R5-DOCS).
 
 ## Binding rule — what `docs/` may contain on `main`
 
@@ -120,7 +120,28 @@ will own the real staged build under `build/<preset>/`.
 | Contract | Revision | Owner | Status |
 | --- | --- | --- | --- |
 | Component object model (`src/core/component/`) | `component-r1` | coordinator | **published** — [COMPONENT_CONTRACT.md](COMPONENT_CONTRACT.md) |
-| MihomoBackend (`src/core/backend/`) | — | coordinator | not yet published |
+| MihomoBackend (`src/core/backend/`) | `backend-r1` | coordinator | **published** `fac0a58` — superseded |
+| MihomoBackend (`src/core/backend/`) | `backend-r2` | coordinator | **published** `8be0211` — amendments A1–A4, after BACKEND-FAKE reported five defects against r1 (four accepted) — superseded |
+| MihomoBackend (`src/core/backend/`) | **`backend-r3`** | coordinator | **published, current** `cd50da3` — amendments B1–B4, after an independent audit found the real backend violating two of r2's own rules — [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md) |
+
+`backend-r1`, `r2` and `r3` are one interface, not three: A1–A4 and B1–B4 corrected
+and tightened its semantics without adding or reordering a published method.
+`BackendIdentity::interfaceRevision` is therefore still **1**, and both contract
+suites assert it. The earlier row saying the MihomoBackend contract was "not yet
+published" was three revisions out of date.
+
+**Where the revision string is written down, and where it was wrong.** All eight
+published headers under `src/core/backend/` cited `backend-r1` until R5-DOCS;
+they now cite `backend-r3` and describe the amended semantics (A1 stamping, A2/B2
+marked supersession, A3 standard-layout `Endpoint`, A4 generations on
+`StopCompleted`/`TunChangeCompleted`, B1 post-bump stop stamping, B3 the re-issue
+obligation). `backend_bridge.h` already said r3. Two records still say **r2** and
+are not R5-DOCS's to edit:
+
+| File | Says | Should say | Owner |
+| --- | --- | --- | --- |
+| `src/core/CMakeLists.txt:4` (comment on `clash_backend`) | `backend-r2` | `backend-r3` | whoever holds the CMake lease |
+| `tests/architecture/architecture.json` — `clash_backend._role`, `backend-contract-tests._note` | `backend-r2` | `backend-r3` | coordinator (holds the file this wave) |
 
 ## Package ledger
 
@@ -144,6 +165,30 @@ Status values: `queued`, `running`, `ready-for-integration`, `verified`, `blocke
 | BASE-ARCH | worker C / Opus | P1 | `tests/architecture/**` | verified | 6 rules, 10 self-tests, all failing-when-violated; ratchet verified independently at integration; 17/17 CTest |
 | COMPONENT-BASE | worker A / Opus | `component-r1` | `src/core/component/**`, `tests/contracts/component/**` | verified | 32 cases; 21/21 mutations killed; archive has zero undefined symbols |
 | SETTINGS-ISOLATION | worker B / Opus | P2 | `src/core/preferences/**`, 15 call sites, `src/main.cpp` (leased) | verified | full run leaves real preferences byte-identical; guard demonstrated failing |
+
+### P3 — the backend seam, the UI migration, the composition root, the journeys
+
+Dispatched as the corrected plan at the end of this file. Build directory per
+package, so the evidence column names the tree each was verified in.
+
+| ID | Owner / model | Round | Depends on | Writable paths | Status | Evidence / gaps |
+| --- | --- | --- | --- | --- | --- | --- |
+| P3-CONTRACT-FIX | worker / Opus | R1 | `backend-r3` | `src/core/mihomo/**`, `src/core/backend/types.h`, `tests/core/mihomo/**` | verified | `07de9d6`. B1 and B2 closed in the real backend; the three mutation-surviving bullets addressed; B4 resolved by growing `backend-real-core` from 1 smoke case to **5** driving the locally built mihomo. `backend-real-contract` measured at 26 functions / 31 invocations. Tree `build-p3fix`. |
+| P3-FAKE-PARITY | worker / Opus | R1 | `backend-r3` | `tests/support/backend/**`, `tests/contracts/backend/**` | verified | `07de9d6`. B3 closed: the fake now honours the re-issue obligation, so §10's "the same contract tests" is true rather than asserted. `backend-contract` measured at 28 functions / 39 invocations. Tree `build-p3fake`. |
+| P3-BRIDGE | worker / Opus | R1 | `backend-r3` | `src/core/backend/backend_bridge.*`, `tests/contracts/backend/bridge/**` | verified | `07de9d6`, linked into the application by `6e8ccc4`. The QObject bridge the ~66 UI `connect()` sites needed; audit defect 7 closed. `backend-bridge` = 25 cases. Tree `build-p3bridge`. |
+| P3-UIDATA | worker / Opus | R2 | P3-BRIDGE | `src/ui/pages/**` and their suites | verified | `88ef6cd`. Also **found the offscreen ordering bug** — see the incident record below. Tree `build-p3uidata`. |
+| P3-UISHELL | worker / Opus | R2 | P3-BRIDGE | `src/ui/shell/**`, `src/ui/pages/settings/**` and their suites | verified | `88ef6cd`. All 20 UI include sites of `core/mihomo/**` discharged; the `G2-ui-includes-component-private` exception is frozen at **one** site, the composition root. Tree `build-p3uishell`. |
+| P3-LEDGER | worker / Opus | R2 | BASE-ARCH | `tests/architecture/**` | verified | The sealed-module rule: a target may no longer reach `clash_mihomo_impl` through `consumers[].deps` while G2 is open, the site list is re-derived from the evaluated graph on every run, the two zombie sites are gone, and E1 was re-phased P4 → P3. Tree `build-p3ledger`. **One site is still wrong** — see the G2 re-derivation below. |
+| P3-MAINWIRE | coordinator | R3 | R1, R2 | `src/main.cpp`, `src/app/composition/**` | verified | `88ef6cd`. The composition root now wires the coordinators; audit defects 10 and 11 closed. Tree `build-p3wire`. |
+| P3-WORKFLOWS | worker / Opus | R4 | R3 | `tests/workflows/**` | verified | `e592003`. W01, W03, W04, W05 and the application smoke harness: **5 suites, 11 test functions, 12 invocations**, all `RUN_SERIAL` on the fixed controller port 29097. Found and fixed the **cold-start system-proxy deadlock** — see the incident record. Tree `build-p3wf`. |
+| P3-AUDIT (×3) | independent readers / Opus | between R1 and R2 | — | read-only | verified | Three read-only audits produced the verdict recorded at the end of this file and defects 1–12. Trees `build-audit-contract`, `build-audit-gate`, `build-audit-exit`. |
+
+### R5 — the records the wave left wrong
+
+| ID | Owner / model | Writable paths | Status | Evidence / gaps |
+| --- | --- | --- | --- | --- |
+| R5-DOCS | worker / Opus 5 | `tests/README.md`, `.refactor/**`, **comments only** in `src/core/backend/*.h` | verified | This entry. `tests/README.md` reconciled against `ctest -N` (47 registered); eight headers moved from `backend-r1` to `backend-r3` with the amended semantics described, not just renumbered; this ledger brought current; the `src/integrations/component/**` deferral recorded; G2 re-derived from the evaluated graph. Changed no code: every header hunk is comment-only, verified by diffing with non-comment lines filtered out. Tree `build-r5d`. |
+| R5 — E1 discharge | worker / Opus (parallel) | `src/core/profiles/**`, `src/main.cpp`, `src/app/runtime/**`, `src/core/CMakeLists.txt`, `tests/architecture/architecture.json` | verified, **landed during this wave** | The single `core::vergeConfigPath()` call moved out of `clash_profiles` into the composition root as an injected `seedDir`: `ProfileStore` gained `setSeedDir()`/`seedDir()`, the call lives at `src/main.cpp:172`, the `clash_profiles → clash_mihomo_impl` link is gone from `src/core/CMakeLists.txt`, and the `E1-profiles-links-mihomo-impl` exception is deleted. Cost: a second `G2-ui-includes` site in `src/main.cpp`. Its package ID is not recorded here because R5-DOCS was not given it. |
 
 ## P1 relocation evidence (verified)
 
@@ -454,7 +499,12 @@ checker rule that a target may not reach `clash_mihomo_impl` through `deps` whil
 G2 exception is open.
 
 
-## P3 audit verdict — the wave is NOT complete
+## P3 audit verdict, as recorded on 2026-09-21 — the wave was NOT complete
+
+**Historical. Read the "P3 status now" section that follows it for the current
+state.** This verdict is kept verbatim because it is the record of what three
+independent read-only audits found, and because every package in the R1–R4 plan
+below was dispatched against it. Do not edit it to match today.
 
 Three independent read-only audits. Leading with what is not met.
 
@@ -525,3 +575,338 @@ behaviours and the five recipe conflicts explicitly.
 
 **R4:** `P3-WORKFLOWS` — W01/W03/W04/W05 plus the application smoke harness, without
 which the gate cannot close and the composition root stays untested.
+
+
+## P3 status now (2026-09-22) — what closed, and what did not
+
+The corrected plan above was executed in full. Taking the audit's own gate table
+clause by clause:
+
+| Clause | Verdict on 2026-09-21 | Verdict now | Evidence |
+| --- | --- | --- | --- |
+| App services run with a fake backend | met | **met** | `shutdown-coordinator` 16, `backup-coordinator` 11, `runtime-coordinator` 13, `routing-controller` 11 cases against `clash_backend_fake` |
+| Real backend passes lifecycle/control contracts | partially | **met** | B1/B2 fixed in the real backend, B3 in the fake, B4 resolved; `backend-real-contract` 26 functions / 31 invocations; `backend-real-core` 1 → 5 cases against the locally built mihomo |
+| W01/W03/W04/W05 exercise assembled behaviour | **NOT MET** — `tests/workflows/` does not exist | **met** | `tests/workflows/` exists with 5 suites; the `workflow` label is registered and carried by all five; W01 2 cases, W03 2, W04 1, W05 3, `app-smoke` 3 functions / 4 invocations |
+| Integration (the work package's other half) | **NOT MET** | **met** | `src/main.cpp` wires `app/{lifecycle,backup,runtime,composition}` and `core/backend`; `RoutingController` is consumed by the shell and by W03 |
+
+The twelve defects: 1 was already fixed when recorded; 2–5 (B1–B4) are closed by
+P3-CONTRACT-FIX and P3-FAKE-PARITY; 6 addressed by the same package; 7 closed by
+P3-BRIDGE; 10 and 11 closed by P3-MAINWIRE; and of defect 12's four unclaimed
+items, three are closed by R5-DOCS (`tests/README.md`, the `backend-r1`
+citations, and `src/integrations/component/**`, recorded as a deferral below).
+
+**Still open, with owners:**
+
+| Open item | Owner | Phase |
+| --- | --- | --- |
+| Defect 8 — the G2 link ledger. Re-derived by P3-LEDGER, but one site is still wrong; see the next section | coordinator (holds `architecture.json`) | P3 |
+| ~~Defect 9 / E1 — `clash_profiles → clash_mihomo_impl`~~ | CFG-CORE | **discharged 2026-09-22**, during this wave: the call site moved to the composition root, the CMake link is gone and the exception is deleted |
+| Defect 12, fourth item — D3's second privileged connection: `ui/service_settings.cpp` still opens its own `PrivilegedServiceClient` alongside the one the backend owns | MOD-CORE / UI | P3 |
+| W02 — subscription update. No journey suite; the only coverage is unit-level | CFG-CORE | **P4** |
+| `w03-routing-controls` gets neither `QT_QPA_PLATFORM=offscreen` nor `QT_QUICK_BACKEND=software` although it is named in both lists — the offscreen guard, recurring by scope instead of by order; see the incident record | holder of `tests/CMakeLists.txt` / `tests/workflows/CMakeLists.txt` | P3 |
+| `src/integrations/component/**` — the portable module loader | COMPONENT-ABI | **P4**, deferral recorded below |
+| Windows and Linux — still zero evidence | — | G5, unchanged since BASELINE |
+
+
+## Correction — the G2 link ledger, re-derived (supersedes the count above)
+
+The earlier correction in this file ("the G2 link ledger understates the debt,
+and I caused it") was right that the hand-maintained list was wrong, and
+P3-LEDGER re-derived it. The re-derived list is **still wrong, in the other
+direction**, and the coordinator's working figure of "13 direct linkers" is wrong
+twice over.
+
+**Derived independently by R5-DOCS** from the evaluated CMake File API graph, the
+same source `tests/architecture/arch_check.py` reads, in `build-r5d`:
+
+> **`clash_mihomo_impl` has 14 direct linkers**, not 13.
+
+```
+app-smoke-tests                 clash_profiles              provider-tests
+arch_probe_clash_mihomo_impl    clash-qt                    w01-first-launch-tests
+backend-real-contract-tests     controller-tests            w03-routing-controls-tests
+backend-real-core-tests         core-process-tests          w04-restore-tests
+engine-discovery-tests                                      w05-recovery-tests
+```
+
+They divide three ways, and that is why 14 and 13 were both being said:
+
+* **12 are carried by `G2-consumers-link-component-private`** — everything above
+  except `arch_probe_clash_mihomo_impl` and `clash_profiles`.
+* **`clash_profiles` is carried by `E1-profiles-links-mihomo-impl`**, a different
+  exception. The sealed-module rule accepts it because `sealed_while` names
+  `E1-*` as well as `G2-*`, so it is baselined — just not under G2.
+* **`arch_probe_clash_mihomo_impl` is exempt** under
+  `sealed_modules[].exempt_linkers: ["arch_probe_*"]`. It is the public-header
+  probe the checker generates for itself, not a consumer.
+
+**`routing-controls-tests` is not a linker at all.** It is listed as a G2 site
+and it should not be. Its direct dependencies in the evaluated graph are
+`clash_app_runtime`, `clash_backend_bridge` and `clash_backend_fake`. It reaches
+`clash_mihomo_impl` only transitively, through
+`clash_app_runtime → clash_profiles → clash_mihomo_impl` — **E1's edge,
+propagated**, which `check_targets()`'s `is_propagated()` exempts by design. It
+was classified as P4/COMPONENT-ABI debt that a module factory would clear. A
+factory will not clear it, because there is nothing to clear: when E1's edge goes,
+the reach goes with it, at no cost to this suite.
+
+**Which way it went: E1 was discharged while this was being written.** The
+14-linker measurement above was taken at the start of R5-DOCS's work, with the
+`clash_profiles → clash_mihomo_impl` link still declared in
+`src/core/CMakeLists.txt:75`. The parallel worker finished during the wave:
+`ProfileStore` now takes an injected `seedDir`, `core::vergeConfigPath()` is
+called from `src/main.cpp:172`, the CMake link is gone, and the
+`E1-profiles-links-mihomo-impl` exception has been deleted outright.
+
+**End state, re-measured from the evaluated graph after that landed:**
+
+> **13 direct linkers** — the 14 above, minus `clash_profiles`.
+> **12 are G2 sites**; the thirteenth is `arch_probe_clash_mihomo_impl`, exempt.
+> **`routing-controls-tests` now reaches `clash_mihomo_impl` by no path at all**,
+> direct or transitive: `clash_app_runtime → clash_profiles` no longer leads
+> anywhere near it. Its G2 site has been deleted, and `arch-graph` passes.
+
+So the misclassification resolved itself in the only way it could: not by a P4
+module factory clearing "debt", but by the removal of somebody else's edge.
+That is the point worth keeping. A site listed as one target's P4 debt was in
+fact another target's propagated edge, and the ledger could not tell the
+difference because it was maintained by hand. Deriving the list from the graph is
+what makes that visible; `check_targets()`'s `is_propagated()` exemption is what
+made it invisible before.
+
+**What `tests/architecture/architecture.json` should still say** (R5-DOCS does
+not hold that file this wave and has not edited it; two of the four items below
+were fixed by the E1 worker while R5-DOCS worked, and are marked as such):
+
+1. ~~Delete the `routing-controls-tests` site.~~ **Done** by the E1 worker;
+   `G2-consumers-link-component-private` now holds 12 sites, exactly the 12
+   non-exempt direct linkers in the graph.
+2. **Rewrite that exception's `reason` — still wrong.** It opens "Down from 17
+   direct linkers to 8" and still names `routing-controls-tests` alongside
+   `clash-qt` as the debt that COMPONENT-ABI's P4 factory clears. Both halves are
+   false now: the count is **13** direct linkers (12 carried here, 1
+   `arch_probe_clash_mihomo_impl` exempt as the checker's own harness), and
+   `routing-controls-tests` is not a linker and is no longer listed. It should
+   read: debt that clears with the P4 factory — `clash-qt` and the five workflow
+   suites, which construct `MihomoBackendImpl` exactly as the composition root
+   does; not debt — `controller-tests`, `provider-tests`, `core-process-tests`,
+   `backend-real-contract-tests`, `backend-real-core-tests`,
+   `engine-discovery-tests`, whose subject *is* the implementation.
+3. **`clash_backend._role` (line 265) and `backend-contract-tests._note`
+   (line 612) say `backend-r2`.** The contract is `backend-r3`. Still wrong.
+4. **`G2-ui-includes-component-private` now contradicts itself.** Its `reason`
+   says "Frozen at one site: a second file reaching for the implementation fails
+   the check", and it now has **two** sites — both in `src/main.cpp`, the second
+   being `core/mihomo/controller_discovery.h`, added by the E1 discharge. The
+   sentence appended to the `reason` explains the addition but the "frozen at one
+   site" clause was not updated, so the file states a rule it no longer applies.
+   Separately, its `_status` block is stale prose from 2026-09-21: "IN FLIGHT…
+   Two workers are migrating the UI… 10 of the 20 sites below no longer match",
+   against a `sites` list that now holds two entries and a `reason` that says all
+   20 UI sites are discharged. Delete `_status`, or replace it with "the UI
+   migration landed in `88ef6cd`; the two remaining sites are both the
+   composition root".
+5. **`sealed_modules[].sealed_while` still names `E1-*`**, which now matches no
+   exception. Harmless — `G2-*` still covers the seal — but it is dead prose in a
+   file whose whole value is that it is derived rather than remembered.
+
+
+## Recorded deferral — `src/integrations/component/**` to P4/COMPONENT-ABI
+
+**Recorded 2026-09-22 by R5-DOCS.** This is the fourth item of audit defect 12,
+and it was not merely incomplete: it had no owner, no phase and no note anywhere.
+A dropped scope item that nobody wrote down is indistinguishable from one that was
+never planned.
+
+**What it is.** The portable component *loader* — the half of the component story
+that actually loads a module at runtime. `docs/IMPLEMENTATION_ROADMAP.md:237`
+gives it the home `src/integrations/component/`, and
+`docs/COM_MODULE_PLAN.md:88` says what it owes: load only selected installed
+module artifacts, validate identity and version before activation, report
+missing or incompatible components, keep the library loaded while any object,
+callback, operation or weak-reference control block can still execute its code,
+and drain/cancel/close before unloading rather than inferring an asynchronous
+stop from a final `Release`.
+
+**Why it vanished.** `docs/PARALLEL_EXECUTION_PLAN.md:90` puts the loader inside
+**MOD-CORE's** declared writable scope, next to `src/core/mihomo/**`. MOD-CORE
+delivered the backend and the engine facade; the loader was never created and
+nothing flagged the omission, because the package it belonged to closed green on
+the work it did do.
+
+**Why it is not MOD-CORE's, and not P3's.** It cannot be: a loader needs a module
+factory, a module ABI version handshake and a shared-library artifact to load, and
+all three are COMPONENT-ABI's deliverables in P4
+(`docs/PARALLEL_EXECUTION_PLAN.md:39`, `:95`). `backend-r3` says the same thing in
+its own words — r3 is the semantic contract and explicitly *not* the binary
+boundary, and "`clashqt_com` is not yet threaded through it".
+
+> **Deferred to P4, owner COMPONENT-ABI**, alongside the module factory, loading
+> and lifetime work and the independent sample consumer. Acceptance is
+> `docs/COM_MODULE_PLAN.md`'s: an independently built sample consumer and a fake
+> module load, query, operate and close on macOS, Windows and Linux;
+> incompatible versions fail predictably. That plan states outright that a
+> static-library-only test is insufficient.
+
+**And a fact that makes the deferral concrete.** `clashqt_com` — the portable
+object model COMPONENT-BASE delivered and `component-contract` exercises with 30
+cases — has, in the entire evaluated build graph, **exactly one consumer: its own
+contract test.**
+
+```
+clashqt_com -> ['arch_probe_clashqt_com', 'component-contract-tests']
+```
+
+(`arch_probe_clashqt_com` is the checker's generated public-header probe, not a
+consumer.) Nothing in `src/**` links it. It is a well-tested foundation with
+nothing built on it yet, and the loader is the thing that would change that. That
+is not a criticism of COMPONENT-BASE, which was sequenced deliberately ahead of
+its consumers — but it should be visible in the ledger rather than discovered by
+someone grepping the link graph in P4.
+
+
+## Recorded incident — the offscreen guard that did nothing
+
+**Found by P3-UIDATA while migrating the pages; fixed in `447c381`. Cause: the
+coordinator's, from registering the partitioned suites.**
+
+`tests/CMakeLists.txt` applied `QT_QPA_PLATFORM=offscreen` from a block that sat
+*above* the suite registrations, so its `if(TEST ...)` guard was simply false for
+every suite defined later and the property was never set. Measured against the
+committed file: the loop ran at line 108, while `preferences` (126),
+`config-generation` (187), `home-page` (217), `logs-page` (274) and the rest of
+the page suites were registered after it.
+
+**Twelve suites were unguarded, seven of which construct widgets.** They passed
+only because this machine has a display. A headless runner would have failed
+them, and `traffic-graph` — which also lost `QT_QUICK_BACKEND=software` — is the
+suite a worker had seen flake once in 25 runs.
+
+**Why it is recorded.** A guard that quietly does nothing is worse than no guard:
+it converts "we verified this headless" into a sentence nobody can check. The
+block now runs at the end of the file, and the comment there says why it must
+stay there. The benchmark entries remain deliberately excluded: with their
+measurement flag set, forcing offscreen turns their skip into a failure.
+
+**It has recurred, and it is still open.** R5-DOCS found the same failure mode
+while reconciling `tests/README.md`, in the one workflow suite that builds
+widgets. `w03-routing-controls` is named in **both** lists at the end of
+`tests/CMakeLists.txt` and receives **neither** `QT_QPA_PLATFORM=offscreen` nor
+`QT_QUICK_BACKEND=software`. Verified from the evaluated tree:
+
+```
+tray                 => [CLASH_QT_DATA_DIR=..., QT_QPA_PLATFORM=offscreen]
+home-page            => [CLASH_QT_DATA_DIR=..., QT_QPA_PLATFORM=offscreen, QT_QUICK_BACKEND=software]
+w03-routing-controls => [CLASH_QT_FAKE_CORE=..., CLASH_QT_DATA_DIR=...]
+```
+
+The cause is different from the first occurrence but the shape is identical: the
+test is registered in the `tests/workflows/` subdirectory, so
+`if(TEST w03-routing-controls)` is false in the parent scope where the block
+runs, and CMake emits no warning at configure time. Moving the block to the end
+of the file fixed ordering; it does not fix scope. It passes today only because
+this machine has a display.
+
+**Owner:** whoever holds `tests/CMakeLists.txt` and `tests/workflows/CMakeLists.txt`.
+R5-DOCS holds neither and did not touch them. The fix belongs in the subdirectory,
+beside `clash_qt_isolate_test()`, which is already the mechanism the other
+subdirectory suites use for exactly this reason.
+
+
+## Recorded incident — the cold-start system-proxy deadlock
+
+**Found by P3-WORKFLOWS (`e592003`) while writing W03. A real user-facing defect,
+not a test artifact.**
+
+On a **fresh data directory** the system proxy was unreachable from every
+surface, and the cycle is why:
+
+1. the controller reports the system proxy *unavailable* until a proxy target is set;
+2. `SettingsPage::renderSystemProxy()` disables the checkbox while it is unavailable;
+3. the checkbox was the only thing that ever set a target.
+
+So a new install could not turn the system proxy on at all, from settings, from
+the toolbar or from the tray. **Fix:** `SettingsPage::publishProxyTarget()` is
+now called whenever the core's endpoint, ports or bypass list move, not only on a
+user toggle (`src/ui/pages/settings/settings_page.cpp:215-227`).
+
+**Why it took a journey to find it.** The case
+`aColdStartCanEnableTheSystemProxyFromTheSettingsSurface` was written as an
+*expected* failure. Publishing the target on every refresh broke the cycle, the
+expected failure became an unexpected pass, and it now asserts the behaviour
+directly. It is kept as a named regression case because the deadlock is invisible
+to every other test in the tree: each of them supplies a target as part of its
+own setup. This is exactly the class of defect the journey lane was added for —
+a component that builds, links, passes its unit tests and is unusable when
+assembled.
+
+
+## Recorded incident — privileged-service mode shipped dead
+
+**Recorded here for completeness; it is defect 1 of the P3 audit above, and it
+was already fixed in `d697d45` when the audit ran.**
+
+Discharging D2 replaced `CoreProcess`'s default-constructed
+`platform::PrivilegedServiceClient` with `NullPrivilegedCoreService`, whose
+`isSupported()` returns false. `main.cpp` still constructed `CoreProcess` with no
+service argument, so on macOS `setUseService(true)` failed at every call, the
+user's saved `core/useService` preference was discarded **silently**, the enable
+switch in service settings could never succeed, and `usesPrivilegedService()` was
+permanently false. `PrivilegedServiceClientAdapter` existed and was linked;
+nothing constructed it.
+
+**It shipped because nothing tested it — 38/38 passed throughout.** Two
+mutually-controlling regression cases in `core-process` now pin both halves of
+the seam. The residual gap the fix itself named — that nothing proved `main.cpp`
+performs the injection at all — was closed afterwards by `app-smoke`'s
+`theCompositionRootSelectsServiceModeWhenTheUserSavedIt`, which drives the
+shipped binary and distinguishes the two modes from outside the process.
+
+
+## Gate status — measured 2026-09-22 in `build-r5d`
+
+Configured and built fresh at `build-r5d` (Ninja, Debug, `BUILD_TESTING=ON`,
+`CMAKE_PREFIX_PATH=/opt/homebrew`) so that no other worker's build tree was
+touched. `ctest -N` registers **47** tests.
+
+| Lane | Selection | Registered | Result |
+| --- | --- | --- | --- |
+| `make test` | `--label-exclude "native\|privileged\|benchmark\|real-core"` | 44 | **44/44 passed** (final run, 2026-09-22, after the E1 discharge landed) |
+| `make test-integration` | `--label-regex "real-core\|integration"` | 15 | not run here: it needs `make core`, and `build-r5d` does not stage the engine. The coordinator's figure is 15/15 |
+| `make test-native` | `--label-regex "native\|privileged"` | **0** | both labels are reserved and carried by no registered test. The privileged suites carry `service` |
+
+**A transient failure seen mid-wave, recorded because it is instructive.** For
+most of R5-DOCS's work the lane read 43/44, with `arch-graph` failing:
+
+```
+ARCH-R5-INCLUDE-IR-COMPONENT-PRIVATE  src/main.cpp:56
+  #include core/mihomo/controller_discovery.h
+```
+
+`G2-ui-includes-component-private` was frozen at exactly one site — `src/main.cpp`
+including `core/mihomo/mihomo_backend.h` — precisely so that a second file, or a
+second include, reaching for the component-private implementation fails the
+check. The E1 discharge added one. The ratchet did its job, the worker finished,
+the site was baselined, and the lane returned to 44/44.
+
+**This is the P2 coordination lesson repeating, and it is worth re-reading:**
+separate build directories do **not** isolate concurrent source changes. A
+verification run during an open lease measures the lease, not the branch. Every
+number in this section is a measurement with a timestamp, not a property of the
+branch.
+
+**R5-DOCS changed no code.** The eight `src/core/backend/*.h` files were edited
+comment-only; verified by filtering the diff to non-comment lines, which is
+empty. `tests/README.md` and `.refactor/**` are not compiled.
+
+**Gate clauses that remain open and are nobody's oversight:**
+
+| Clause | State |
+| --- | --- |
+| Windows, Linux | Zero evidence. No runner in this environment. Unchanged since BASELINE; G5 stays open |
+| Native rendering | Everything still runs offscreen or unattended. The two benchmark cases that would exercise a real GPU display are `benchmark`-labelled and excluded, and skip without their flag |
+| W02 | No journey suite. P4/CFG-CORE |
+| `src/integrations/component/**` | Deferred to P4/COMPONENT-ABI; see the deferral record |
+| D3's second privileged connection | Still open |
+| E1 | In flight, not discharged |
+| `w03-routing-controls` unguarded against a headless runner | Open. It is the one widget-building workflow suite and it receives no `QT_QPA_PLATFORM`; it passes here only because this machine has a display |

@@ -5,7 +5,9 @@
 // Partition of the former `runtime` suite (tests/core/runtime_test.cpp). Cases are
 // carried over verbatim; see tests/README.md for the full original-to-new map.
 #include <QtTest>
+#include <QDir>
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QSignalSpy>
@@ -163,6 +165,73 @@ private slots:
         QCOMPARE(config["quoted"].Tag(), std::string("!"));
         QCOMPARE(config["hex"].Tag(), std::string("!"));
     }
+    // ---------------------------------------------------------- geo-data seeding
+    //
+    // The managed engine is launched with dataDir() as its home and looks there
+    // for Country.mmdb, geoip.dat and geosite.dat. Generation copies them in
+    // from a seed directory, which is what spares a first launch a ~29 MB
+    // download. The store used to find that directory itself, by calling
+    // core::vergeConfigPath() out of the component-private engine library; the
+    // caller supplies it now, and these two cases pin both halves of the new
+    // contract. They are worth their length because the failure is silent: the
+    // configuration still generates, the engine still starts, and only rule
+    // matching is wrong.
+    void runtimeSeedsGeoDataFromTheDirectoryTheCallerSupplies() {
+        core::ProfileStore store;
+        QCOMPARE(store.seedDir(), QString());  // nothing is assumed by default
+        QVERIFY(store.createLocalProfile("seeded", "proxies: []\nmode: rule\n"));
+
+        const QString seedDir = environment_->filePath("verge");
+        QVERIFY(QDir().mkpath(seedDir));
+        testsupport::writeFile(seedDir + "/Country.mmdb", "seed-mmdb");
+        testsupport::writeFile(seedDir + "/geoip.dat", "seed-geoip");
+        testsupport::writeFile(seedDir + "/geosite.dat", "seed-geosite");
+        // An engine that has already refreshed its own copy keeps it: seeding
+        // fills a gap, it never overwrites.
+        testsupport::writeFile(store.dataDir() + "/geosite.dat", "already-mine");
+
+        store.setSeedDir(seedDir);
+        QCOMPARE(store.seedDir(), seedDir);
+        QVERIFY(!store.generateRuntimeConfig().isEmpty());
+
+        QCOMPARE(testsupport::readFile(store.dataDir() + "/Country.mmdb"), QByteArray("seed-mmdb"));
+        QCOMPARE(testsupport::readFile(store.dataDir() + "/geoip.dat"), QByteArray("seed-geoip"));
+        QCOMPARE(testsupport::readFile(store.dataDir() + "/geosite.dat"), QByteArray("already-mine"));
+        // The seed directory is a source, not a scratch space.
+        QCOMPARE(testsupport::readFile(seedDir + "/Country.mmdb"), QByteArray("seed-mmdb"));
+    }
+
+    // The other half, and the point of the inversion: with no seed directory the
+    // store seeds nothing. It must not reach for a location of its own choosing
+    // - on a developer machine with Clash Verge Rev installed the old code
+    // copied that user's real 29 MB of geo data into every test run - and it
+    // must not probe the filesystem root for "/Country.mmdb" either.
+    void runtimeSeedsNothingWhenNoSeedDirectoryWasSupplied() {
+        core::ProfileStore store;
+        QVERIFY(store.createLocalProfile("unseeded", "proxies: []\nmode: rule\n"));
+        QVERIFY(store.seedDir().isEmpty());
+        QVERIFY(!store.generateRuntimeConfig().isEmpty());
+        for (const char *name : {"Country.mmdb", "geoip.dat", "geosite.dat"})
+            QVERIFY2(!QFileInfo::exists(store.dataDir() + '/' + name), name);
+    }
+
+    // The asynchronous path shares prepareRuntime() with the synchronous one, so
+    // it must seed identically. Asserted separately because the two entry points
+    // are what an injected seed directory could most easily fall between.
+    void requestedRuntimeGenerationSeedsGeoDataToo() {
+        core::ProfileStore store;
+        QVERIFY(store.createLocalProfile("seeded", "proxies: []\nmode: rule\n"));
+        const QString seedDir = environment_->filePath("verge-async");
+        QVERIFY(QDir().mkpath(seedDir));
+        testsupport::writeFile(seedDir + "/geoip.dat", "seed-geoip");
+        store.setSeedDir(seedDir);
+
+        QSignalSpy ready(&store, &core::ProfileStore::runtimeConfigReady);
+        store.requestRuntimeConfig();
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 5000);
+        QCOMPARE(testsupport::readFile(store.dataDir() + "/geoip.dat"), QByteArray("seed-geoip"));
+    }
+
     void runtimeGenerationKeepsEventLoopResponsiveAndDropsStaleResults() {
         core::ProfileStore store;
         core::ConfigEnhancer enhancer;

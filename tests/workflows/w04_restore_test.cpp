@@ -52,6 +52,7 @@
 #include "support/loopback_server.h"
 #include "support/preference_isolation.h"
 #include "support/scoped_environment.h"
+#include "workflows/composition_root_audit.h"
 #include "workflows/workflow_support.h"
 
 using testsupport::FakeCore;
@@ -104,6 +105,21 @@ class W04RestoreTest : public QObject {
         QVERIFY2(escape.isEmpty(), qPrintable(escape));
         environment_.reset();
         enginePath_.clear();
+    }
+
+    // --- the graph this journey assembles is the one the application ships ---
+    //
+    // wf::AssembledApp is a REBUILD of src/main.cpp's object graph, so every
+    // assertion in this suite is about a copy of the composition root. This case
+    // keeps the copy honest: it compares the wiring of the two files and fails
+    // the whole suite when they disagree. Until it existed, deleting the
+    // warningRaised -> QMessageBox connection from src/main.cpp - the one thing
+    // standing between an unacknowledged warning and a quit that never completes
+    // - left all five workflow suites green.
+
+    void theHarnessStillMirrorsTheCompositionRoot() {
+        const QString drift = wf::audit::compositionRootDrift();
+        QVERIFY2(drift.isEmpty(), qPrintable(drift));
     }
 
     void backupChangeRestoreWhileRunningThenReopen() {

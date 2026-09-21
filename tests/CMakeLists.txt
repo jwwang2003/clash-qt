@@ -372,13 +372,17 @@ clash_qt_label(backend-bridge     unit contract backend)
 #
 # The benchmark entries are deliberately excluded: with their measurement flag
 # set, offscreen turns their skip into a failure.
+#
+# Only tests defined in THIS directory can be listed: if(TEST ...) is false here
+# for a test registered in a subdirectory, so naming one would set nothing and
+# say nothing. Subdirectories set their own (see tests/workflows/).
 # ---------------------------------------------------------------------------
 set(clash_qt_widget_tests
     controller provider backup proxy tray routing-controls traffic-history
     dashboard-async system-proxy-async privileged-service preferences
     config-generation profile-store core-process runtime-maintenance
     home-page traffic-graph proxies-page connections-page providers-page
-    rules-page logs-page w03-routing-controls)
+    rules-page logs-page)
 foreach(name IN LISTS clash_qt_widget_tests)
     if(TEST ${name})
         get_test_property(${name} ENVIRONMENT existing_env)
@@ -391,7 +395,7 @@ foreach(name IN LISTS clash_qt_widget_tests)
 endforeach()
 
 # The QQuickView-embedding suites additionally need the software backend.
-foreach(name home-page traffic-graph w03-routing-controls)
+foreach(name home-page traffic-graph)
     if(TEST ${name})
         get_test_property(${name} ENVIRONMENT existing_env)
         list(APPEND existing_env "QT_QUICK_BACKEND=software")

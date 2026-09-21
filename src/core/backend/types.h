@@ -3,14 +3,21 @@
 
 // Shared vocabulary of the MihomoBackend facade: request identity, generations,
 // outcomes, and the value types that cross the boundary.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
 //
-// r1 is the SEMANTIC contract, not the binary boundary (COMPONENT-ABI owns that
+// r3 is r1's section text as amended by A1-A4 (r1 -> r2) and B1-B4 (r2 -> r3).
+// Four of those amendments are load-bearing in this file and are cited where
+// they apply: A1 (completion stamping), A2 and B2 (supersession is MARKED, not
+// merely inferred), A3 (Endpoint is standard-layout, not POD), A4 (StopCompleted
+// and TunChangeCompleted carry a Generation).
+//
+// r3 is the SEMANTIC contract, not the binary boundary (COMPONENT-ABI owns that
 // in P4), so Qt value types are permitted here. What is NOT permitted is listed
 // in the contract's section 9 and is enforced throughout:
 //   * no QObject *parent in any published signature;
 //   * no process-global statics - every capability query is an instance method;
-//   * Endpoint is returned by value and carries no behaviour;
+//   * Endpoint is returned by value, is standard-layout and carries no
+//     behaviour (section 9 as refined by A3);
 //   * no reference into the component's heap is returned;
 //   * no exception may unwind across the interface - every published method is
 //     noexcept, and yaml-cpp's exceptions are converted to ErrorInfo at the edge;
@@ -64,8 +71,11 @@ enum class RequestId : std::uint64_t {
 //     (start, stop, a managed failure) carries the generation AFTER that bump.
 //     It reports the managed core's new state and a consumer must act on it; it
 //     is not work that the bump invalidated.
-// This is a refinement of backend-r1 section 2, which says only "the Generation
-// current when it was produced" - see the report.
+// The three bullets above are amendment A1, which SUPERSEDES the last paragraph
+// of r1 section 2. r1 said every event and completion carries "the Generation
+// current when it was produced"; for a completion that is self-defeating,
+// because a completion stamped at delivery always looks current and the
+// rejection rule above could never fire.
 //
 // ORDERING RULE (contract section 2, inherited from mihomo_client.cpp:44). The
 // generation is bumped BEFORE in-flight work is aborted. finished() may run
@@ -79,6 +89,12 @@ constexpr std::uint64_t number(RequestId id) noexcept { return static_cast<std::
 constexpr std::uint64_t number(Generation g) noexcept { return static_cast<std::uint64_t>(g); }
 
 // True when `stamp` is older than `observed` and must therefore be rejected.
+//
+// Amendment A2: this test is the consumer's SECOND line of defence, not its
+// only one. Completions abandoned by an abort are queued BEFORE the event that
+// bumped the generation, so at the moment they are delivered `observed` is
+// still the pre-bump value and this comparison cannot catch them. The backend
+// marks them CompletionStatus::Superseded instead; a consumer checks both.
 constexpr bool isSuperseded(Generation stamp, Generation observed) noexcept {
     return stamp < observed;
 }
@@ -156,6 +172,15 @@ struct Completion {
 // quit (main.cpp:195-210) and that behaviour must survive.
 struct StopCompleted {
     RequestId request = RequestId::Invalid;
+    // Amendment A4 added this field: section 2 requires a generation on every
+    // completion and section 6's StopCompleted omitted one.
+    //
+    // backend-r3 B1. stop() is an operation that bumps the generation itself,
+    // so per A1 this carries the POST-bump value. It is not the generation
+    // captured when stop() was submitted: the real backend emits coreFailed
+    // (which bumps) before stopFinished, so a submit-time stamp is delivered as
+    // coreFailed(N+1) then stopCompleted(N), and a consumer applying section 2's
+    // mandatory rejection rule drops the very unconfirmed stop that blocks quit.
     Generation generation = Generation::Initial;
     // backend-r3 B2. Every completion type carries a status, because A2 requires
     // an abandoned completion to be MARKED and a bare `confirmed` flag cannot
@@ -205,8 +230,11 @@ enum class Ownership : std::uint8_t {
 // owns the transport; it is not part of the published surface.
 //
 // Strictly POD is unreachable while the struct carries QString (section 9 also
-// permits Qt types in r1). What is guaranteed here, and asserted below, is
-// standard layout with no virtuals and no behaviour. P4 replaces the QStrings
+// permits Qt types in an in-process C++ interface), and amendment A3 settled
+// that: r1 demanded both and the two cannot hold together. What r3 requires,
+// and what is asserted below, is standard layout with no virtuals and no
+// behaviour; trivial copyability is a P4 layout change under COMPONENT-ABI and
+// is not claimed here. P4 replaces the QStrings
 // with UTF-8 pointer+length pairs, which is a layout change inside one struct
 // rather than a change to any signature.
 struct Endpoint {

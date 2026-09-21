@@ -26,8 +26,6 @@
 #include <QUrl>
 #include <QUuid>
 
-#include "core/mihomo/controller_discovery.h"
-
 namespace core {
 namespace {
 
@@ -661,6 +659,10 @@ void ProfileStore::refreshDueProfiles() {
     for (const QString &uid : due) updateProfile(uid);
 }
 
+void ProfileStore::setSeedDir(const QString &dir) { seedDir_ = dir; }
+
+QString ProfileStore::seedDir() const { return seedDir_; }
+
 void ProfileStore::setEnhancer(ConfigEnhancer *enhancer) {
     if (enhancer_) enhancer_->disconnect(this);
     cancelRuntimeGeneration();
@@ -719,7 +721,7 @@ ProfileStore::RuntimeRequest ProfileStore::prepareRuntime() {
     if (enhancer_) request.chain = enhancer_->chain();
     request.secret = secret_;
     request.dataDir = dataDir();
-    request.seedDir = QFileInfo(vergeConfigPath()).absolutePath();
+    request.seedDir = seedDir_;
     request.configPath = request.dataDir + "/.runtime-" + QUuid::createUuid().toString(QUuid::Id128) + ".yaml";
     request.cancelled = std::make_shared<std::atomic_bool>(false);
     return request;
@@ -848,10 +850,17 @@ ProfileStore::RuntimeResult ProfileStore::buildRuntime(const RuntimeRequest &req
         if (!root["profile"].IsMap()) root["profile"] = YAML::Node(YAML::NodeType::Map);
         root["profile"]["store-selected"] = true;
         if (request.cancelled->load()) return {};
-        for (const char *name : {"Country.mmdb", "geoip.dat", "geosite.dat"}) {
-            const QString target = request.dataDir + '/' + name;
-            const QString source = request.seedDir + '/' + name;
-            if (!QFileInfo::exists(target) && QFileInfo(source).isReadable()) QFile::copy(source, target);
+        // Geo data is seeded, never overwritten: an engine that has already
+        // refreshed Country.mmdb in dataDir keeps its copy. The directory comes
+        // from the caller (ProfileStore::setSeedDir); empty means no seeding at
+        // all, rather than probing the filesystem root for "/Country.mmdb".
+        if (!request.seedDir.isEmpty()) {
+            for (const char *name : {"Country.mmdb", "geoip.dat", "geosite.dat"}) {
+                const QString target = request.dataDir + '/' + name;
+                const QString source = request.seedDir + '/' + name;
+                if (!QFileInfo::exists(target) && QFileInfo(source).isReadable())
+                    QFile::copy(source, target);
+            }
         }
         QDir().mkpath(request.dataDir + "/ui");
         root["external-ui"] = (request.dataDir + "/ui").toStdString();

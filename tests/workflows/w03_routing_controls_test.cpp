@@ -26,11 +26,30 @@
 // SystemProxyState means no OS operation ever completed on it. See the worker
 // report; the page should take the service the controller was built with.
 //
-// THE REJECTED CHANGE IS A TUN ENABLE WHOSE READ-BACK DISAGREES. That is the
-// contract's own definition of a refusal (backend-r2: TunChangeCompleted::actual
-// is a read-back, never an echo), it is visible on every surface at once, and it
-// is driven by scripting the controller fixture to keep reporting TUN off -
-// there is no test hook in production code anywhere in this journey.
+// TWO DIFFERENT TUN REFUSALS, AND THEY ARE NOT THE SAME THING. This header used
+// to claim the managed journey drove "a TUN enable whose read-back disagrees".
+// It did not, and the assertion under that claim - `tunChanges.empty()` - said
+// so: nothing was ever sent, so no read-back ever happened. The two are now
+// separate cases and each says which one it is.
+//
+//   1. THE PRE-SUBMISSION BLOCK, in the managed journey below. ui::MainWindow
+//      decides an unprivileged managed core cannot have TUN and hands the reason
+//      to the toolbar; app::runtime::RoutingController refuses BEFORE calling
+//      the backend. `tunChanges.empty()` is the point of it: a blocked request
+//      must not reach the engine at all. This refusal exists only once the shell
+//      and the coordinators are assembled - neither half produces it alone.
+//
+//   2. THE READ-BACK DISAGREEMENT, in aTunReadBackThatDisagreesWith... below.
+//      The request IS submitted, the controller accepts the PATCH, and the
+//      re-read of /configs still says TUN is off. That is the contract's own
+//      definition of a refusal (backend-r2: TunChangeCompleted::actual is a
+//      read-back, never an echo), and it is what catches `actual` and
+//      `requested` being swapped anywhere on the path. It is driven over an
+//      EXTERNAL attachment, because the permission block in (1) would otherwise
+//      stop the request before it could be submitted - so the case that means to
+//      test the read-back has to be a case where nothing else says no first.
+//
+// Neither needs a test hook in production code.
 
 #include <QtTest>
 
@@ -53,6 +72,7 @@
 #include "ui/shell/routing_controls.h"
 #include "ui/shell/tray_icon.h"
 #include "ui/pages/settings/settings_page.h"
+#include "workflows/composition_root_audit.h"
 #include "workflows/workflow_support.h"
 
 using testsupport::FakeCore;
@@ -131,6 +151,21 @@ class W03RoutingControlsTest : public QObject {
         QVERIFY2(escape.isEmpty(), qPrintable(escape));
         environment_.reset();
         enginePath_.clear();
+    }
+
+    // --- the graph this journey assembles is the one the application ships ---
+    //
+    // wf::AssembledApp is a REBUILD of src/main.cpp's object graph, so every
+    // assertion in this suite is about a copy of the composition root. This case
+    // keeps the copy honest: it compares the wiring of the two files and fails
+    // the whole suite when they disagree. Until it existed, deleting the
+    // warningRaised -> QMessageBox connection from src/main.cpp - the one thing
+    // standing between an unacknowledged warning and a quit that never completes
+    // - left all five workflow suites green.
+
+    void theHarnessStillMirrorsTheCompositionRoot() {
+        const QString drift = wf::audit::compositionRootDrift();
+        QVERIFY2(drift.isEmpty(), qPrintable(drift));
     }
 
     void everySurfaceAgreesWithConfirmedStateThroughAManagedSession() {
@@ -242,13 +277,19 @@ class W03RoutingControlsTest : public QObject {
         QCOMPARE(proxyLog->count(wf::ProxyAction::Enable), 2);
         assertAllSurfacesAgree(true, toolbar, settings, trayProxy, app);
 
-        // ---- the refusal the assembled shell computes for itself ------------
+        // ---- refusal (1): the PRE-SUBMISSION block the shell computes --------
         // ui::MainWindow decides that an unprivileged managed core cannot have
         // TUN and hands the reason to the toolbar, which hands it to the
-        // controller; the controller refuses the request and raises it on its
-        // one error channel. Nothing is echoed as applied on any surface. This
-        // is a rejection that only exists once the shell and the coordinators
-        // are assembled - neither half produces it alone.
+        // controller; the controller refuses the request BEFORE it reaches the
+        // backend and raises it on its one error channel. Nothing is echoed as
+        // applied on any surface. This is a rejection that only exists once the
+        // shell and the coordinators are assembled - neither half produces it
+        // alone.
+        //
+        // NOT a read-back disagreement. `tunChanges.empty()` below is the
+        // assertion that the request never reached the engine, which is the
+        // opposite of a change that was sent and then contradicted by a re-read.
+        // That one is aTunReadBackThatDisagreesWithTheRequestIsNeverAppliedToASurface().
         QVERIFY2(!toolbar->tunEnabled(), "TUN was on before the journey asked for it");
         QVERIFY2(!app.routing->tunBlockedReason().isEmpty(),
                  "the shell never told the controller why TUN is blocked");
@@ -319,6 +360,125 @@ class W03RoutingControlsTest : public QObject {
         QVERIFY2(!controller.sawUnexpectedRequest(), qPrintable(controller.redactedTranscript()));
     }
 
+    // --- refusal (2): the read-back the contract defines ---------------------
+    //
+    // The change IS submitted. The controller accepts the PATCH with 200 and
+    // then keeps answering GET /configs with `tun.enable: false`, which is a
+    // core that took the request and could not create the interface - the
+    // commonest real refusal there is. core::MihomoClient re-reads /configs
+    // after the PATCH and reports what it FOUND, so TunChangeCompleted arrives
+    // with requested=true and actual=false.
+    //
+    // WHY AN EXTERNAL ATTACHMENT AND NOT THE MANAGED JOURNEY ABOVE. On macOS the
+    // shell blocks a TUN enable on an unprivileged managed core before it can be
+    // submitted, so the journey above can never reach a read-back at all. Here
+    // the composition root's other attachment is used - the one src/main.cpp
+    // makes with `bridge.attach(backend.discoverEndpoint())` before any managed
+    // core exists - and no child process is started. Nothing says no first, so
+    // the read-back is the only thing that can refuse.
+    //
+    // WHAT WOULD FAIL THIS. Publishing `requested` where `actual` belongs,
+    // anywhere on the path: MihomoClient::confirmTunChange, the
+    // TunChangeCompleted the backend builds, or
+    // RoutingController::tunChangeCompleted. Each of those would leave TUN
+    // reading as ON on all three surfaces after a change that never took.
+
+    void aTunReadBackThatDisagreesWithTheRequestIsNeverAppliedToASurface() {
+        LoopbackServer controller;
+        QVERIFY(controller.listen(QString()));
+        scriptController(controller);
+
+        auto proxyLog = std::make_shared<wf::ProxyOperations>();
+        auto osProxy = std::make_shared<wf::ProxyConfig>();
+        wf::AssembledApp app(proxyLog, osProxy);
+        // No engine: this journey never starts a core. The binary path is left
+        // empty on purpose, so a managed start would fail loudly rather than
+        // quietly become the subject.
+        app.bootstrap(QString());
+
+        cb::BackendBridge bridge(*app.backend);
+        platform::Hotkeys hotkeys;
+        const app::Context context{app.profiles.get(), app.enhancer.get(), &hotkeys,
+                                   app.backups.get()};
+        ui::MainWindow window(context, &bridge, app.routing.get());
+        ui::TrayIcon tray(&window, nullptr);
+
+        auto *toolbar = window.routingControls();
+        QVERIFY2(toolbar, "the window built no routing controls");
+        QMenu *trayMenu = tray.contextMenu();
+        QVERIFY2(trayMenu, "the tray built no menu");
+        QAction *trayTun = actionNamed(trayMenu, QStringLiteral("TUN Mode"));
+        QVERIFY2(trayTun, "the tray menu has no TUN entry");
+
+        cb::Endpoint endpoint;
+        endpoint.host = QStringLiteral("127.0.0.1");
+        endpoint.port = controller.port();
+        bridge.attach(endpoint);
+
+        QVERIFY2(wf::waitFor([&app] { return app.backend->isConnected(); }),
+                 qPrintable(report(app, controller)));
+        // tunAvailable() means connected AND a configuration has been read, so
+        // this is also the proof that the read-back channel is live before
+        // anything is asked of it.
+        QVERIFY2(wf::waitFor([&app] { return app.routing->tunAvailable(); }),
+                 qPrintable(report(app, controller)));
+        QVERIFY2(app.routing->tunBlockedReason().isEmpty(),
+                 qPrintable(QStringLiteral(
+                                "the shell blocked TUN on an attached controller (%1), so this "
+                                "case would measure the pre-submission block instead of the "
+                                "read-back it exists for")
+                                .arg(app.routing->tunBlockedReason())));
+        QVERIFY2(!app.routing->tunEnabled(), "the controller reported TUN already on");
+        QVERIFY2(!toolbar->tunEnabled(), "the toolbar showed TUN on before anything asked");
+
+        QSignalSpy confirmed(app.routing.get(),
+                             &app::runtime::RoutingController::tunConfirmed);
+        const int errorsBefore = app.routingErrors.size();
+        const int patchesBefore = controller.requestCount("PATCH", QStringLiteral("/configs"));
+
+        toolbar->requestTunChange(true);
+
+        QVERIFY2(wf::waitFor([&app] { return !app.events.tunChanges.empty(); }),
+                 qPrintable(QStringLiteral("no TUN completion arrived: %1")
+                                .arg(report(app, controller))));
+        // The request really was submitted - this is what separates case (2)
+        // from the pre-submission block in the journey above.
+        QVERIFY2(controller.requestCount("PATCH", QStringLiteral("/configs")) > patchesBefore,
+                 qPrintable(QStringLiteral("the engine was never asked to change TUN: %1")
+                                .arg(controller.redactedTranscript())));
+
+        const cb::TunChangeCompleted &result = app.events.tunChanges.back();
+        QCOMPARE(result.requested, true);
+        QVERIFY2(!result.actual,
+                 "TunChangeCompleted::actual is a READ-BACK: the controller answered "
+                 "tun.enable=false after the PATCH, so publishing true here is the request "
+                 "echoed back as though it had taken");
+        QCOMPARE(result.status, cb::CompletionStatus::Failed);
+
+        QVERIFY2(wf::waitFor([&app] { return !app.routing->tunPending(); }),
+                 "the refused TUN change never settled");
+        QVERIFY2(!app.routing->tunEnabled(),
+                 "the controller reported a TUN change as applied although the read-back said "
+                 "it was still off");
+        QVERIFY2(!toolbar->tunEnabled(), "the toolbar rendered the disagreeing read-back as on");
+        auto *rendered = toolbar->findChild<QCheckBox *>(QStringLiteral("tunSwitch"));
+        QVERIFY2(rendered, "the toolbar has no tunSwitch");
+        QVERIFY2(!rendered->isChecked(), "the toolbar's TUN switch rendered as on");
+        QVERIFY2(!trayTun->isChecked(), "the tray rendered the disagreeing read-back as on");
+        QCOMPARE(confirmed.count(), 0);
+
+        // The failure is visible, and it is the engine's own explanation.
+        QVERIFY2(app.routingErrors.size() > errorsBefore,
+                 "a TUN change the core did not apply was never reported to the user");
+        QVERIFY2(app.routingErrors.last().contains(QStringLiteral("still disabled")),
+                 qPrintable(QStringLiteral("the reported error does not say what happened: %1")
+                                .arg(app.routingErrors.last())));
+        QCOMPARE(app.routing->lastError(), app.routingErrors.last());
+
+        QVERIFY2(app.quit(), qPrintable(app.blockingReason()));
+        QVERIFY2(!controller.sawUnexpectedRequest(), qPrintable(controller.redactedTranscript()));
+    }
+
     // --- the gap the journey above had to work round -----------------------
     //
     // This case was written as an EXPECTED failure: on a cold data directory the
@@ -375,10 +535,16 @@ class W03RoutingControlsTest : public QObject {
             settings, QStringLiteral("Use the connected core as the system proxy"));
         QVERIFY(settingsProxy);
 
-        QVERIFY2(settingsProxy->isEnabled(),
-                 "a cold start must be able to enable the system proxy from settings");
-        QVERIFY2(app.routing->systemProxyAvailable(),
+        // Gated, not asserted outright. Availability arrives through a signal
+        // chain that drainPostedTimers() does not guarantee has settled, and the
+        // immediate form passed alone while failing inside a full lane run --
+        // load-dependent, which is the worst kind of green. The cause is checked
+        // before the rendered effect, and a condition that never holds still
+        // fails when the deadline expires.
+        QVERIFY2(wf::waitFor([&app] { return app.routing->systemProxyAvailable(); }),
                  "the controller must have a proxy target without the user toggling anything");
+        QVERIFY2(wf::waitFor([settingsProxy] { return settingsProxy->isEnabled(); }),
+                 "a cold start must be able to enable the system proxy from settings");
 
         QVERIFY2(app.quit(), qPrintable(app.blockingReason()));
         QVERIFY(wf::awaitNoLiveProcess(engine.binaryPath()));

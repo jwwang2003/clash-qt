@@ -3,7 +3,9 @@
 
 // BackendAttachment: the controller this component talks to, which may be the
 // managed core's or any endpoint the user or discovery pointed us at.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1, sections 1, 2, 5.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 1, 2, 5,
+// with amendment A2 (an aborted request's completion is MARKED Superseded) and
+// r2's re-issue obligation, which an endpoint change discharges by itself.
 
 #include <QString>
 
@@ -34,10 +36,20 @@ class BackendAttachment {
     // previous endpoint (contract section 2's ordering rule), then publishes
     // the cleared live state, then re-opens whatever streams were open.
     // No observer is invoked before this call returns.
+    //
+    // Every request that abort abandons completes with
+    // CompletionStatus::Superseded and ErrorCode::Superseded (amendment A2).
+    // The consumer's generation comparison cannot see them on its own: they are
+    // queued ahead of the endpointChanged event that announces the bump.
+    //
+    // This call also re-issues the snapshot set, which is what discharges r2's
+    // re-issue obligation for an endpoint change rather than deferring it.
     virtual RequestId attach(const Endpoint &endpoint) noexcept = 0;
 
     // Stops talking to the current controller: bumps the generation, aborts
-    // in-flight work, clears live state, closes the streams.
+    // in-flight work (marking each abandoned completion Superseded, per A2),
+    // clears live state, closes the streams. Nothing is re-issued: there is no
+    // endpoint left to fetch from.
     //
     // NEVER terminates the controller. Detaching from an attached controller
     // leaves it running; only BackendLifecycle::stop() terminates anything, and

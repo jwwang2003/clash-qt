@@ -126,14 +126,12 @@
       "transitive_external": [
         "Qt6::Concurrent",
         "Qt6::Core",
-        "Qt6::Gui",
         "Qt6::Network",
         "Qt6::Qml",
         "Qt6::QmlIntegration",
-        "Qt6::WebSockets",
         "yaml-cpp::yaml-cpp"
       ],
-      "_note": "PRE-ARCH edge 1 (clash_profiles -> clash_mihomo_impl) IS present and is baselined as E1-profiles-links-mihomo-impl, owner CFG-CORE, removed in P4. Qt6::Gui and Qt6::WebSockets appear here only as a consequence of that edge, reaching this module through clash_mihomo_impl -> clash_platform. All three disappear when the single vergeConfigPath() call at profile_store.cpp:722 is replaced by an injected seedDir.",
+      "_note": "PRE-ARCH edge 1 is gone: the composition root supplies seedDir. The Qt Gui and WebSockets entries went with it -- they were only ever reaching this module through clash_mihomo_impl -> clash_platform.",
       "public_headers": [
         "core/profiles/profile_store.h"
       ]
@@ -264,7 +262,7 @@
       ]
     },
     "clash_backend": {
-      "_role": "Published MihomoBackend contract (backend-r2). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when D2 was discharged: the composition root needs it, so it cannot live in component-private core/mihomo/**.",
+      "_role": "Published MihomoBackend contract (backend-r3). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when D2 was discharged: the composition root needs it, so it cannot live in component-private core/mihomo/**.",
       "deps": [
         "clash_types"
       ],
@@ -339,7 +337,6 @@
         "Qt6::Network",
         "Qt6::Qml",
         "Qt6::QmlIntegration",
-        "Qt6::WebSockets",
         "yaml-cpp::yaml-cpp"
       ],
       "public_headers": [
@@ -612,7 +609,7 @@
       "optional": true
     },
     "backend-contract-tests": {
-      "_note": "Runs the backend-r2 contract suite against the fake.",
+      "_note": "Runs the backend-r3 contract suite against the fake.",
       "deps": [
         "clash_backend_fake"
       ],
@@ -851,7 +848,7 @@
       "kind": "target_edge",
       "owner": "COMPONENT-ABI",
       "remove_in": "P4",
-      "reason": "Down from 17 direct linkers to 8, after the UI migration. The residue is two kinds and only one is debt. DEBT (clears when COMPONENT-ABI's factory and module land in P4): clash-qt, routing-controls-tests. NOT DEBT: controller-tests, provider-tests, core-process-tests, backend-real-contract-tests, backend-real-core-tests, engine-discovery-tests -- their subject IS the implementation, so they link it on purpose and always will. They are listed here because the sealed-module rule requires every direct linker to be named; being named is not the same as being owed. The five workflow suites assemble the whole application, so they construct MihomoBackendImpl exactly as the composition root does and clear with the same P4 factory. They were caught automatically by the sealed-module rule rather than noticed by a human, which is the point of it.",
+      "reason": "13 targets link clash_mihomo_impl directly: 12 carried here, plus the checker's own header probe, which is exempt. Down from 17 before the UI migration and from 14 before E1 was removed. Only two are debt -- clash-qt and the five workflow suites construct MihomoBackendImpl exactly as the composition root does, and clear with the P4 factory. The other six are suites whose subject IS the implementation; they link it on purpose and always will. Being named here is not the same as being owed.",
       "sites": [
         {
           "from": "clash-qt",
@@ -863,10 +860,6 @@
         },
         {
           "from": "provider-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "routing-controls-tests",
           "to": "clash_mihomo_impl"
         },
         {
@@ -914,41 +907,18 @@
       "rule": "IR-COMPONENT-PRIVATE",
       "owner": "COMPONENT-ABI",
       "remove_in": "P4",
-      "reason": "All 20 UI include sites are DISCHARGED: no file under src/ui/** reaches into core/mihomo/** any more. The single remaining site is the composition root constructing the implementation, which is legitimate until COMPONENT-ABI publishes a factory from clash_backend in P4. Frozen at one site: a second file reaching for the implementation fails the check.",
-      "_status": [
-        "IN FLIGHT, 2026-09-21. Two workers are migrating the UI onto the",
-        "published backend contract. As of this writing 10 of the 20 sites",
-        "below -- every site under src/ui/pages/ -- no longer match, and",
-        "arch-graph reports them as ARCH-R5-STALE-INCLUDE-EXCEPTION. That is",
-        "the ratchet working: the debt is being discharged and the ledger",
-        "has not caught up yet.",
-        "",
-        "The sites are deliberately NOT pruned here. Deleting a site is how",
-        "a discharge is recorded, and it belongs in the same change that",
-        "removes the include, by the worker who removes it -- pruning them",
-        "from outside mid-migration would both chase a number that moved",
-        "three times while this file was being edited and hide a re-added",
-        "include behind an already-deleted site. The remaining 10 (src/ui/",
-        "shell/, src/ui/pages/settings/, src/ui/pages/backups/, src/main.cpp)",
-        "have not been started. The clause is discharged when the entry is",
-        "deleted outright, not when it is trimmed."
-      ],
+      "reason": "All 20 UI include sites are DISCHARGED: no file under src/ui/** reaches into core/mihomo/** any more. The single remaining site is the composition root constructing the implementation, which is legitimate until COMPONENT-ABI publishes a factory from clash_backend in P4. Frozen at two sites: a second file reaching for the implementation fails the check. A second composition-root site was added when E1 was removed: main.cpp now asks core::vergeConfigPath() for the seed directory that ProfileStore used to fetch itself. That is the trade -- one library edge affecting everything that links clash_profiles, exchanged for one include in the one file already allowed to construct the implementation.",
+      "_status": "2 sites, both in src/main.cpp: mihomo_backend.h to construct the implementation, and controller_discovery.h for the seed directory that removing E1 moved here. Zero sites remain under src/ui/**.",
       "sites": [
         {
           "file": "src/main.cpp",
           "include": "core/mihomo/mihomo_backend.h"
+        },
+        {
+          "file": "src/main.cpp",
+          "include": "core/mihomo/controller_discovery.h"
         }
       ]
-    },
-    {
-      "id": "E1-profiles-links-mihomo-impl",
-      "class": "migration-baseline",
-      "kind": "target_edge",
-      "from": "clash_profiles",
-      "to": "clash_mihomo_impl",
-      "owner": "CFG-CORE",
-      "remove_in": "P3",
-      "reason": "PRE-ARCH edge 1. ProfileStore::prepareRuntime calls core::vergeConfigPath() from controller_discovery.cpp to seed runtime data -- a SINGLE call site, src/core/profiles/profile_store.cpp:722. The edge was previously invisible because every consuming executable linked both libraries directly; partitioning the runtime suite exposed it. Declared rather than linked around, because the library genuinely cannot link standalone without it. Removing that one call site removes this exception AND both transitive-external entries below at once. RE-PHASED P4 -> P3 by P3-LEDGER: this edge propagates into clash-qt, and check_targets()'s is_propagated() exempts a propagated edge, so G2's link clause could be declared closed on a false green while the application still reached the private implementation. Verified in build-p3ledger: arch_probe_clash_profiles links only clash_profiles and has clash_mihomo_impl in its closure, and clash-qt's direct-dep closure still reaches clash_mihomo_impl through clash_profiles and through clash_app_runtime -> clash_profiles. G2 cannot be signed off before this is gone. The call site is CFG-CORE's file and a separate package; only the phase moved here."
     }
   ]
 }

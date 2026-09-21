@@ -28,6 +28,7 @@
 #include <QCommandLineParser>
 #include <QCryptographicHash>
 #include <QDir>
+#include <QFileInfo>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QLockFile>
@@ -52,6 +53,7 @@
 #include "app/runtime/runtime_coordinator.h"
 #include "core/backend/backend_bridge.h"
 #include "core/config/enhance/config_enhancer.h"
+#include "core/mihomo/controller_discovery.h"
 #include "core/mihomo/mihomo_backend.h"
 #include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
@@ -150,6 +152,24 @@ int main(int argc, char *argv[]) {
                                  : cb::ExecutionMode::Managed);
     enhancer->load();
     profiles->setEnhancer(enhancer);
+    // Where a runtime config seeds its geo data from. An existing Clash Verge
+    // Rev install keeps Country.mmdb, geoip.dat and geosite.dat beside the
+    // config.yaml that discoverEndpoint() already reads, and copying them on a
+    // first generation is what saves a new user a 29 MB download.
+    //
+    // The store used to work this path out itself, by calling
+    // core::vergeConfigPath() from profile_store.cpp. One path string made
+    // clash_profiles link the component-private engine library, and because
+    // link edges propagate, every consumer of clash_profiles -- this
+    // application included -- reached the private implementation and was handed
+    // Qt WebSockets with it (PRE-ARCH edge 1 / E1-profiles-links-mihomo-impl).
+    // The knowledge belongs here: the composition root is already the one place
+    // that knows which engine this process is managing.
+    //
+    // Set before anything can generate: the first generation is driven either
+    // by RuntimeCoordinator (constructed below) or by the shell (constructed
+    // after it), and neither exists yet.
+    profiles->setSeedDir(QFileInfo(core::vergeConfigPath()).absolutePath());
     profiles->load();
     QObject::disconnect(profileErrors);
     QObject::disconnect(chainErrors);

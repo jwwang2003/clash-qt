@@ -4,13 +4,26 @@ The coverage index `docs/TEST_STRATEGY.md` ("Feature contracts") and
 `docs/IMPLEMENTATION_ROADMAP.md` require: every registered suite, the coverage
 IDs it carries, the environment it needs, and the gaps that remain.
 
-It had drifted. It was written as the record of one job — partitioning the two
-shared monoliths `tests/core/runtime_test.cpp` and `tests/ui/data_pages_test.cpp`
-— and it still is that record, in the second half. But it listed 13 of the 42
-tests CTest registers, and it carried no workflow IDs at all, so ten suites
-built after it (the application-coordinator, backend-contract and real-engine
-lanes) existed nowhere in it. The registered-suite table below is now the index;
-everything after it is detail.
+It has drifted twice. Both corrections are recorded here rather than smoothed
+away, because a coverage index that is wrong is worse than one that is absent:
+people act on it. The file was written as the record of one job — partitioning
+the two shared monoliths `tests/core/runtime_test.cpp` and
+`tests/ui/data_pages_test.cpp` — and it still is that record, in the second half.
+
+**First drift.** It listed 13 of the then-42 registered tests and carried no
+workflow IDs at all, so ten suites built after it (the application-coordinator,
+backend-contract and real-engine lanes) existed nowhere in it.
+
+**Second drift, corrected in this revision.** The five workflow suites under
+`tests/workflows/` landed in `e592003` and this file did not mention a single one
+of them. It still said "no suite currently runs one end to end", and it still
+listed W01, W03, W04 and W05 as journeys with nothing driving them. Those
+statements were false, not merely stale.
+
+CTest now registers **47** tests. The table below is derived from `ctest -N`
+(`--show-only=json-v1`) against a configured tree and from the `add_test`/
+`clash_qt_label` calls that produce it — not from prose, and not from memory.
+The registered-suite table is the index; everything after it is detail.
 
 Feature identifiers are the ones used throughout the refactor plan:
 
@@ -28,15 +41,27 @@ Feature identifiers are the ones used throughout the refactor plan:
 | F10 | Application / distribution |
 
 Workflow identifiers `W01`–`W05` are the five complete journeys in
-`docs/TEST_STRATEGY.md` ("Complete workflows"). They are tracked separately
-below, because no suite currently runs one end to end.
+`docs/TEST_STRATEGY.md` ("Complete workflows"). Four of them — W01, W03, W04 and
+W05 — now have a dedicated suite in `tests/workflows/` that drives the journey
+end to end against the assembled coordinators. W02 has none, and is P4 work.
+They are tracked in their own table below.
 
 ---
 
 ## Registered suites
 
-Every name CTest registers, in lane order. `make test` runs all of them except
-the `native`, `privileged`, `benchmark` and `real-core` labels.
+Every name CTest registers, in lane order — 47 entries.
+
+`make test` excludes the labels `native|privileged|benchmark|real-core` and so
+runs **44**. Only two of those four labels match anything today: `benchmark`
+(2 suites) and `real-core` (1). `native` and `privileged` are reserved and
+currently match no registered test — the privileged suites carry `service`, not
+`privileged`, so that half of the exclusion is inert. Do not read the exclusion
+list as a description of what exists.
+
+`make test-integration` selects `real-core|integration` and runs **15**: the
+eight core/platform integration suites, `backend-real-contract`,
+`backend-real-core`, and all five workflow suites.
 
 ### Core lane
 
@@ -102,12 +127,38 @@ only `backend-real-core` is evidence about mihomo itself.
 | `rules-page` | `rules-page-tests` | `ui/rules_page_test.cpp` | pages, ui | F06 |
 | `logs-page` | `logs-page-tests` | `ui/logs_page_test.cpp` | pages, ui | F07 |
 
+### Workflow lane
+
+The five complete-journey suites. Every one is `RUN_SERIAL`, because they all
+bind the fixed controller port **29097** — `core::ProfileStore` rewrites
+`external-controller` in every configuration it generates, so a journey cannot
+choose its own port. Each gets `CLASH_QT_FAKE_CORE` pointing at the compiled
+`clash-qt-fake-core`; `app-smoke` additionally gets `CLASH_QT_APP_BINARY`
+pointing at the built application.
+
+| CTest name | Target | Source | Labels | Features | Cases | Timeout |
+| --- | --- | --- | --- | --- | --- | --- |
+| `w01-first-launch` | `w01-first-launch-tests` | `workflows/w01_first_launch_test.cpp` | app, integration, workflow | F01, F03, F04, F10 | 2 | 300 s |
+| `w03-routing-controls` | `w03-routing-controls-tests` | `workflows/w03_routing_controls_test.cpp` | app, integration, ui, workflow | F05, F04, F10 | 2 | 300 s |
+| `w04-restore` | `w04-restore-tests` | `workflows/w04_restore_test.cpp` | app, integration, workflow | F08, F01, F02, F03, F09 | 1 | 300 s |
+| `w05-recovery` | `w05-recovery-tests` | `workflows/w05_recovery_test.cpp` | app, integration, workflow | F04, F01, F10 | 3 | 300 s |
+| `app-smoke` | `app-smoke-tests` | `workflows/app_smoke_test.cpp` | app, integration, packaging, workflow | F10, F04, F09 | 3 functions / 4 invocations | 600 s |
+
+These are in the routine lane: they carry `integration`, not `real-core`, so
+`make test` runs them and `make test-integration` runs them again. They drive
+the compiled fixture core, never mihomo, and never the OS proxy or the
+privileged helper.
+
 ### Benchmark lane (excluded from `make test`)
 
 | CTest name | Target | Source | Labels | Features |
 | --- | --- | --- | --- | --- |
 | `traffic-graph-frames` | `traffic-graph-frames-tests` | `benchmarks/traffic_graph_frames_test.cpp` | benchmark, ui | F07 |
-| `traffic-frame-pacing` | `traffic-frame-pacing-tests` | `benchmarks/traffic_frame_pacing_test.cpp` | benchmark, ui | F07 |
+| `traffic-frame-pacing` | `traffic-frame-pacing-tests` | `benchmarks/traffic_frame_pacing_test.cpp` | benchmark, ui | none |
+
+Both carry exactly `benchmark ui`. An earlier revision of this file claimed they
+also carried `native` and `pages`; `tests/CMakeLists.txt:333-334` gives them
+neither. The `benchmark` label alone is what keeps them out of `make test`.
 
 ### Fixture self-tests
 
@@ -135,31 +186,39 @@ Not feature coverage. They check the shape of the build, per
 
 ## Workflow coverage — W01 to W05
 
-No suite runs a complete journey yet. Recording that plainly is the point of
-this table: the contributing suites below prove the pieces, not the trip. The
-roadmap places W01/W03/W04/W05 in phase 3 and W02 in phase 4.
+Four of the five journeys now have a suite that drives them end to end. This
+table previously said none did, and listed the four as missing; that was wrong
+and is corrected here.
 
-| Journey | Contributing suites | What is still missing |
-| --- | --- | --- |
-| **W01** First launch | `engine-discovery` (managed engine resolution and provenance), `core-process` (start → ready → stop with a real child), `runtime-coordinator` (autostart deferred into the event loop, generation as the start action), `profile-store` (selection survives a reopen), `shutdown-coordinator` (no owned child survives quit) | Nothing walks empty workspace → import → start → inspect → stop → quit → reopen in one process against one data directory. |
-| **W02** Subscription update | `profile-store` (`rejectsNonHttpSubscriptions`, `subscriptionUrlEditPreservesCacheAndRejectsOldRefresh`, `reloadCancelsInFlightImport`), `config-generation` (overrides survive regeneration), `provider` (subscription counts) | No journey drives a local HTTP subscription through refresh with a user override in place, and no pinned real-core smoke. |
-| **W03** Routing controls | `routing-controller` (`everyRoutingSurfaceReadsTheSameConfirmedSystemProxyState`, `theTrayActionAndTheHotkeyUseTheSameIntentPath`), `routing-controls`, `tray`, `proxy`, `system-proxy-async`, `privileged-service`, `controller` (TUN confirmation) | The surfaces are proven to agree on the confirmed value at coordinator level, but not across a started managed backend and a real quit. |
-| **W04** Restore | `backup` (snapshot → restore → rollback), `backup-coordinator` (writers quiesced, core stopped before restore, enhancer reloaded before profiles), `runtime-maintenance` (the only evidence for the "writers quiesced" contract) | Nothing reopens the application after a restore to show the restored state is what comes back. |
-| **W05** Recovery | `backend-contract` / `backend-real-contract` (supersession, unconfirmed stop, validation failure leaves the running config intact), `core-process` (`hangingProbeCanStopAndRestart`), `shutdown-coordinator` (bounded shutdown, accurate cleanup status) | No journey drops a controller or crashes a child and then switches profile and quits. |
+| Journey | Status | Journey suite | Supporting suites | What remains |
+| --- | --- | --- | --- | --- |
+| **W01** First launch | **covered** | `w01-first-launch` (2 cases) | `engine-discovery` (managed engine resolution and provenance), `core-process` (start → ready → stop with a real child), `runtime-coordinator` (autostart deferred into the event loop), `profile-store` (selection survives a reopen), `shutdown-coordinator` (no owned child survives quit) | Nothing. The journey walks empty workspace → import → start → inspect → stop → quit → reopen in one process against one data directory, with the readiness gate held so "process started" and "ready" are distinguishable, and `pgrep` rather than the backend's own opinion deciding whether a child is alive. |
+| **W02** Subscription update | **OPEN — P4** | none | `profile-store` (`rejectsNonHttpSubscriptions`, `subscriptionUrlEditPreservesCacheAndRejectsOldRefresh`, `reloadCancelsInFlightImport`), `config-generation` (overrides survive regeneration), `provider` (subscription counts), `w04-restore` (a real held subscription reply, but as a restore hazard, not as a refresh journey) | The whole journey. Nothing drives a local HTTP subscription through refresh with a user override in place, and there is no pinned real-core smoke. W02 belongs to **P4/CFG-CORE**, with preset and composer extraction; `docs/PARALLEL_EXECUTION_PLAN.md` puts "validate W02" in the P4 integration column. |
+| **W03** Routing controls | **covered** | `w03-routing-controls` (2 cases) | `routing-controller` (`everyRoutingSurfaceReadsTheSameConfirmedSystemProxyState`, `theTrayActionAndTheHotkeyUseTheSameIntentPath`), `routing-controls`, `tray`, `proxy`, `system-proxy-async`, `privileged-service`, `controller` (TUN confirmation) | One recorded weakness, not a gap in the journey: `ui::SettingsPage` reaches `platform::SystemProxyService::instance()` directly for its status line, so the process-global singleton exists in the test whether or not it is wanted. The journey asserts that singleton is untouched at both ends rather than assuming it. The page should take the service the controller was built with. |
+| **W04** Restore | **covered** | `w04-restore` (1 case) | `backup` (snapshot → restore → rollback), `backup-coordinator` (writers quiesced, core stopped before restore, enhancer reloaded before profiles), `runtime-maintenance` (the only unit-level evidence for the "writers quiesced" contract) | Nothing. The restore runs while a managed core is up, a profile write is in flight and a subscription refresh is parked on the wire with a differing body; the reopen is a second graph over the same directory. |
+| **W05** Recovery | **covered** | `w05-recovery` (3 cases) | `backend-contract` / `backend-real-contract` (supersession, unconfirmed stop, validation failure leaves the running config intact), `core-process` (`hangingProbeCanStopAndRestart`), `shutdown-coordinator` (bounded shutdown, accurate cleanup status) | Nothing for the journey. One case skips where the platform's `terminate()` cannot be refused by the child — see "Known skips". |
+
+Beyond the five: `app-smoke` is not a W-journey. It is the executable smoke
+harness `docs/TEST_STRATEGY.md` asks for separately, and it is the only suite
+whose subject is the shipped binary rather than the libraries behind it. It is
+the lane that can see a component which builds, links and is never wired up —
+the shape of the privileged-service regression P3 shipped.
 
 ---
 
 ## Suites built after this index was first written
 
-Ten suites postdate the partition record below. They are indexed above; this
-section is the detail the older suites already have.
+Fifteen suites postdate the partition record below — ten application-coordinator,
+backend-contract and real-engine suites, then the five workflow suites. They are
+indexed above; this section is the detail the older suites already have.
 
 ### `backend-contract` — `tests/contracts/backend/backend_contract_test.cpp`
 
 * **Features:** F04, F05, F06, F07. The backend-r3 acceptance set.
 * **Environment:** headless. Runs against `clash_backend_fake`, a deterministic
   in-process backend — no child processes, no sockets.
-* **Cases (28):** published shape/ABI readiness, ownership reporting, generation
+* **Cases (28 functions, 39 invocations — several are data-driven):** published
+  shape/ABI readiness, ownership reporting, generation
   and supersession, readiness requiring a version string rather than a started
   process, validation failure leaving the running configuration intact,
   re-entrancy (no observer invoked from inside a mutating call, safe removal
@@ -172,7 +231,8 @@ section is the detail the older suites already have.
 * **Environment:** real child processes and a real loopback controller, but a
   **fixture** core binary (`clash-qt-fake-core`, passed as
   `CLASH_QT_FAKE_CORE`). It is not evidence about mihomo.
-* **Cases (26):** the same semantics as `backend-contract`, plus the readiness
+* **Cases (26 functions, 31 invocations):** the same semantics as
+  `backend-contract`, plus the readiness
   hard cap not being refreshed by log output, a cancelled readiness probe
   disconnecting before it aborts, and a privileged-service status answered
   without a second connection.
@@ -193,7 +253,7 @@ section is the detail the older suites already have.
 
 * **Features:** F04, F10.
 * **Environment:** headless, filesystem only.
-* **Cases (8):** the managed path never resolving `PATH` or another Clash
+* **Cases (7):** the managed path never resolving `PATH` or another Clash
   installation; a local build being a managed engine and labelled as one; an
   unusable local build not resolving; provenance tied to the artefact it
   describes; an engine without a manifest saying so rather than staying silent;
@@ -269,22 +329,167 @@ section is the detail the older suites already have.
   every routing surface reading the same confirmed state; the tray action and
   the hotkey using the same intent path.
 
+### `w01-first-launch` — `tests/workflows/w01_first_launch_test.cpp`
+
+* **Features:** F01, F03, F04, F10. The W01 journey.
+* **Environment:** the real `ProfileStore` writing real YAML to a real data
+  directory, real configuration generation on a real worker, a real validation
+  child and a real launched child, real HTTP `GET /version` over a real socket,
+  and the real `ShutdownCoordinator` quit sequence. Only the OS proxy command
+  and the privileged helper are substituted, and neither participates in W01.
+  Binds the fixed controller port 29097; `RUN_SERIAL`, 300 s timeout.
+* **Cases (2):** `firstLaunchImportsStartsInspectsStopsQuitsAndReopens`,
+  `aControllerThatNeverAnswersFailsTheLaunchAndLeavesNoChild`.
+* **What decides each claim,** because a journey that asserts on its own objects
+  proves nothing: "the profile persists" is read from a SECOND `ProfileStore`
+  built over the same directory after the first graph is gone; "readiness is
+  real" holds `/version` and checks the child is alive with `pgrep` while the
+  core is still `Starting`; "the owned child exits" is `pgrep` again; "the
+  application remains usable" reopens, starts and quits again.
+* **Known skip:** the whole case skips if 127.0.0.1:29097 cannot be bound — a
+  running clash-qt core is the usual reason. Not asserted rather than asserted
+  weakly.
+
+### `w03-routing-controls` — `tests/workflows/w03_routing_controls_test.cpp`
+
+* **Features:** F05, F04, F10. The W03 journey, and the only journey that builds
+  the real shell.
+* **Environment:** builds the real `ui::MainWindow`, `ui::SettingsPage`,
+  `ui::RoutingControls` and `ui::TrayIcon` from `src/ui/**` sources compiled into
+  the test target, plus the `ClashQt` QML module. Fixed port 29097, `RUN_SERIAL`,
+  300 s.
+* **DEFECT, found while reconciling this file and not yet fixed.**
+  `w03-routing-controls` is named in **both** environment lists at the end of
+  `tests/CMakeLists.txt` — the `QT_QPA_PLATFORM=offscreen` list and the
+  `QT_QUICK_BACKEND=software` list — and receives **neither**. Verified against
+  the configured tree: `ctest --show-only=json-v1` reports its `ENVIRONMENT` as
+  `CLASH_QT_FAKE_CORE` and `CLASH_QT_DATA_DIR` only, while `tray`,
+  `routing-controls` and `home-page` in the same lists get theirs. The cause is
+  that the test is registered in the `tests/workflows/` subdirectory, so
+  `if(TEST w03-routing-controls)` is false in the parent scope where that block
+  runs; CMake emits no warning. This is the **same failure mode** as the ordering
+  bug `447c381` fixed — a guard that quietly does nothing — recurring for the one
+  workflow suite that builds widgets. It passes today only because this machine
+  has a display; a headless runner would fail it. Owner: whoever holds
+  `tests/CMakeLists.txt` / `tests/workflows/CMakeLists.txt`. Not fixable from
+  this file.
+* **Cases (2):** `everySurfaceAgreesWithConfirmedStateThroughAManagedSession`,
+  `aColdStartCanEnableTheSystemProxyFromTheSettingsSurface`.
+* The three surfaces are driven the way a user drives them and then read back;
+  asking `app::runtime::RoutingController` three times would prove only that a
+  getter is deterministic.
+* The rejected change is a TUN enable whose read-back disagrees — the contract's
+  own definition of a refusal (backend-r3: `TunChangeCompleted::actual` is a
+  read-back, never an echo) — driven by scripting the controller fixture, with no
+  test hook anywhere in production code.
+* **Recorded weakness:** `ui::SettingsPage` reaches
+  `platform::SystemProxyService::instance()` directly, so the process-global
+  singleton exists here regardless. Its state is asserted untouched at both ends
+  rather than assumed.
+* **Known skip:** port 29097 unavailable.
+
+### `w04-restore` — `tests/workflows/w04_restore_test.cpp`
+
+* **Features:** F08, F01, F02, F03, F09. The W04 journey.
+* **Environment:** a managed child running, an asynchronous profile write in
+  flight, and a real HTTP subscription reply held by the loopback fixture and
+  released only after the restore finishes. Fixed port 29097, `RUN_SERIAL`, 300 s.
+* **Cases (1):** `backupChangeRestoreWhileRunningThenReopen`.
+* "While app services exist" is the point: a restore into a quiet process is a
+  file copy. The order prepared → core stopped → restored is recorded rather than
+  assumed, the child's death is checked with `pgrep`, and the held reply carries a
+  body that DIFFERS from the backed-up one so "no stale reply overwrites it" can
+  fail on a machine where the reply is simply never delivered.
+* **Known skip:** port 29097 unavailable.
+
+### `w05-recovery` — `tests/workflows/w05_recovery_test.cpp`
+
+* **Features:** F04, F01, F10. The W05 journey.
+* **Environment:** real child processes, a scripted controller relay, and a
+  fixture core that can be told to refuse `SIGTERM`. Fixed port 29097,
+  `RUN_SERIAL`, 300 s.
+* **Cases (3):**
+  `aCrashedChildIsReportedTheRestartSucceedsAndTheLatestProfileWins`,
+  `aDroppedControllerIsReportedWithoutTearingDownTheRunningCore`,
+  `aCoreThatRefusesToTerminateIsKilledAndTheQuitStillCompletes`.
+* Three failures, three journeys. A dead child and a dead controller are not
+  interchangeable, and the second case exists to show the application does not
+  confuse them: reporting a blip as a crash is how a working core gets torn down
+  for nothing.
+* "Which profile is live" is read out of the configuration file the child was
+  handed (each profile carries a marker key), not inferred from the store that
+  was asked last. "Shutdown is bounded" is asserted against the budget the
+  backend PUBLISHES (`BackendTimings::terminateWaitMs`), and "accurate cleanup
+  status" against `wasLastStopConfirmed()` — backend-r3 section 6 forbids
+  reporting an unconfirmed stop as a success.
+* **Known skips:** port 29097 unavailable; and
+  `aCoreThatRefusesToTerminateIsKilledAndTheQuitStillCompletes` skips where
+  `FakeCore::terminationContract().terminateIsCooperative` is false, because a
+  child that ignores `terminate()` is not expressible there and the escalation
+  cannot be driven.
+
+### `app-smoke` — `tests/workflows/app_smoke_test.cpp`
+
+* **Features:** F10, F04, F09. Not a W-journey: the executable smoke harness.
+* **Environment:** launches the **shipped binary** (`CLASH_QT_APP_BINARY`) with
+  `--data-dir` and `--no-autostart` and asks only questions answerable from
+  outside it — files it creates, processes it starts, sockets it answers on, the
+  code it exits with. There is no test-control flag and no environment hook into
+  the composition root; nothing in `src/**` was changed to make any of it
+  observable. `RUN_SERIAL`, 600 s timeout (it is the slowest entry in the lane at
+  ~14 s).
+* **Cases (3 functions, 4 invocations):**
+  `theApplicationLaunchesIntoItsDataDirectoryAndExitsOnRequest`,
+  `aSecondInstanceDefersToTheFirstOnlyWhenTheyShareADataDirectory`,
+  `theCompositionRootSelectsServiceModeWhenTheUserSavedIt` (2 data rows:
+  "managed mode launches the engine", "service mode launches no managed child").
+* **Why the service arm is shaped the way it is.** Driving service mode against a
+  host with a privileged helper installed would ask a root daemon to start a
+  core, which the isolation rules forbid. The launch configuration is therefore
+  made deliberately larger than the 8 MiB `core_process.cpp` rejects BEFORE it
+  calls `startCore()`, so the service arm stops one step short of the helper
+  every time.
+* **Known skips:** `initTestCase` skips the whole suite when
+  `CLASH_QT_APP_BINARY` is unset or not a built application; the service-mode row
+  skips when the generated configuration is at or below the 8 MiB limit, because
+  running it would let the application reach a real privileged helper.
+
 ---
 
 ## Counts move, and are meant to
 
-Two workers are migrating the UI onto the published backend contract while this
-is written. Case counts and the link ledger in
-`tests/architecture/architecture.json` both move with that migration; the
+The UI migration onto the published backend contract has landed (`88ef6cd`), and
+the workflow suites after it (`e592003`). Case counts and the link ledger in
+`tests/architecture/architecture.json` both moved with that work; the
 architecture checker derives its G2 site list from the evaluated build graph on
 every run rather than from a number recorded here, so a link that appears or
 disappears fails loudly instead of silently disagreeing with this file. Treat
-per-suite case counts in the sections below as accurate at the partition, not as
+per-suite case counts in the sections below as accurate when measured, not as
 invariants — the original-to-new maps are the invariant.
 
-One count has already moved: `core-process` gained two cases after the
-partition, when privileged-service mode was restored (`d697d45`). It is 6 cases
-now, not the 4 recorded below; the 19 originals are all still there.
+A worked example of why that matters, resolved while this file was being
+reconciled: the G2 ledger in `architecture.json` listed `routing-controls-tests`
+as a direct linker of `clash_mihomo_impl`, classified as P4 migration debt. It
+was never a direct linker. Its direct dependencies are `clash_app_runtime`,
+`clash_backend_bridge` and `clash_backend_fake`; it reached the implementation
+only transitively, through `clash_app_runtime → clash_profiles →
+clash_mihomo_impl` — E1's edge, not its own, and one the checker exempts as
+propagated. When E1 was discharged on 2026-09-22 the reach disappeared with it,
+and the site was deleted. No P4 factory was involved. See
+`.refactor/PROGRESS_LEDGER.md`, "the G2 link ledger, re-derived".
+
+Counts that have already moved, measured from a full verbose run rather than
+recalled:
+
+| Suite | Recorded here earlier | Measured now |
+| --- | --- | --- |
+| `core-process` | 4 cases | **6** — it gained the two privileged-service-mode cases in `d697d45`; the 19 originals are all still there |
+| `backend-contract` | 28 cases | **28 functions / 39 invocations** — the added cases are data-driven rows |
+| `backend-real-contract` | 26 cases | **26 functions / 31 invocations** |
+| `engine-discovery` | 8 cases | **7** — the figure was wrong when written; the bullet list beside it always had seven entries |
+
+Every other per-suite count in this file was re-checked against
+`ctest -V` and holds.
 
 ---
 
@@ -475,7 +680,7 @@ skips, so an opt-in run would report a spurious failure.
 ### `traffic-graph-frames` — `tests/benchmarks/traffic_graph_frames_test.cpp`
 
 * **Features:** F07.
-* **Labels:** `benchmark native ui pages`.
+* **Labels:** `benchmark ui` — exactly those two.
 * **Environment:** requires `CLASH_QT_VERIFY_GRAPH_FRAMES` to be set **and** a
   native (non-offscreen) GPU display. Needs the `ClashQt` QML module.
   `CLASH_QT_AUDIT_IMAGES` optionally dumps frames.
@@ -487,12 +692,15 @@ skips, so an opt-in run would report a spurious failure.
   test with hard assertions, not a measurement: it grabs 60 frames, inspects pixel
   colours and requires `invalidFrames == 0`. It belongs in a `native` lane, not a
   performance lane. `tests/benchmarks/` is its interim home because no `native`
-  directory exists yet; its entry carries the `native` label for that reason.
+  directory exists yet. An earlier revision of this file said its entry "carries
+  the `native` label for that reason" — it does not, and never has: the entry is
+  labelled `benchmark ui`, and `benchmark` alone is what excludes it. The
+  `native` label is reserved and unused across the whole tree.
 
 ### `traffic-frame-pacing` — `tests/benchmarks/traffic_frame_pacing_test.cpp`
 
 * **Features:** none — infrastructure measurement.
-* **Labels:** `benchmark native ui pages`.
+* **Labels:** `benchmark ui` — exactly those two.
 * **Environment:** requires `CLASH_QT_MEASURE_FRAMES` to be set **and** a native
   (non-offscreen) display. Needs the `ClashQt` QML module.
 * **Cases (1):** `trafficNativeFrameTiming`.
@@ -592,6 +800,18 @@ label excludes them, so they are not counted at all rather than counted as passe
 | `trafficNativeFillStaysBelowOutline` | `traffic-graph-frames` | `CLASH_QT_VERIFY_GRAPH_FRAMES` is set and the platform is not `offscreen` |
 | `trafficNativeFrameTiming` | `traffic-frame-pacing` | `CLASH_QT_MEASURE_FRAMES` is set and the platform is not `offscreen` |
 | every `core-process` case (6) | `core-process` | the platform is not Windows |
+| every case (2) | `w01-first-launch` | 127.0.0.1:**29097** can be bound. A running clash-qt core is the usual reason |
+| every case (2) | `w03-routing-controls` | 127.0.0.1:29097 can be bound |
+| the case (1) | `w04-restore` | 127.0.0.1:29097 can be bound |
+| every case (3) | `w05-recovery` | 127.0.0.1:29097 can be bound |
+| `aCoreThatRefusesToTerminateIsKilledAndTheQuitStillCompletes` | `w05-recovery` | `FakeCore::terminationContract().terminateIsCooperative` — a child that can refuse `terminate()` |
+| the whole suite | `app-smoke` | `CLASH_QT_APP_BINARY` names a built application |
+| `theCompositionRootSelectsServiceModeWhenTheUserSavedIt(service mode launches no managed child)` | `app-smoke` | the generated configuration exceeds the 8 MiB service limit, so the service arm cannot reach a real privileged helper |
+
+The workflow skips are **port-conditional, not environment-gated**: on a clean
+machine they all run, and the last full run in `build-r5d` recorded
+`0 skipped` for all five workflow suites. They are listed because a skip that
+nobody wrote down is a pass that nobody earned.
 
 ---
 
@@ -608,8 +828,10 @@ their own; see "Fixture self-tests" in the registered-suite index.
 `testsupport::writeFile()` / `testsupport::readFile()` — write a YAML fixture and
 read an artefact back byte-for-byte.
 
-* **Consumers (4):** `config-generation`, `profile-store`, `core-process`,
-  `runtime-maintenance`.
+* **Consumers (4, unchanged):** `config-generation`, `profile-store`,
+  `core-process`, `runtime-maintenance`. The workflow suites use
+  `tests/workflows/workflow_support.h` instead, which owns the fixed controller
+  port, the controller relay and the journey's own filesystem helpers.
 * Carried over verbatim from the monolith's anonymous namespace, including the
   quirk that a `QVERIFY` failure inside `writeFile` returns from the helper rather
   than from the calling test.
@@ -622,9 +844,11 @@ read an artefact back byte-for-byte.
 `core::preferences` really resolved inside it, and the developer's real preference
 store is unchanged at the end.
 
-* **Consumers (12):** all seven `ui/pages` suites, both benchmark suites, and
-  the three application-coordinator suites (`backup-coordinator`,
-  `runtime-coordinator`, `routing-controller`) added afterwards.
+* **Consumers (17):** all seven `ui/pages` suites, both benchmark suites, the
+  three application-coordinator suites (`backup-coordinator`,
+  `runtime-coordinator`, `routing-controller`) added afterwards, and all five
+  workflow suites — a journey that quietly rewrote the developer's real
+  preference store would be the worst offender of the lot.
 * They return a message instead of asserting, because a `QVERIFY2` inside a helper
   would return from the helper and hide the failure.
 

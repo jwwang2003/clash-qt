@@ -2,7 +2,9 @@
 #define CLASHQT_CORE_BACKEND_OBSERVER_H
 
 // BackendObserver: the event sink, published instead of Qt signals.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1, sections 2, 7, 9.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 2, 7, 9,
+// with amendment A2, which is the reason the consumer obligation below is not
+// stated the way r1 stated it.
 //
 // DELIVERY RULES - all four are contract obligations on the BACKEND.
 //
@@ -16,8 +18,16 @@
 //    mid-mutation. A sink interface would inherit that hazard unchanged.
 //
 // 2. Order is preserved. Events are delivered in the order they were produced.
-//    That is what makes the section 2 ordering rule observable: the generation
-//    bump reaches the consumer before the completions the abort produced.
+//
+//    Note what that means for an abort, because r1 got it backwards and A2
+//    corrected it: the completions an abort produces are queued BEFORE the
+//    event that announces the bump, so they reach the consumer FIRST, while its
+//    last-observed generation is still the pre-bump value. Section 2's ordering
+//    rule (bump, THEN abort) is still observable - but through the completion's
+//    status, not through its arrival order. A backend that bumps first marks
+//    each abandoned completion Superseded; one that aborts first delivers the
+//    stale reply as live Ok data. That is the difference the contract test
+//    asserts.
 //
 // 3. Removal during delivery is safe. An observer may remove itself, or any
 //    other observer, from inside a callback. A removed observer receives no
@@ -39,11 +49,24 @@
 //   Every reference and Span parameter is BORROWED for the duration of the
 //   call. An observer that needs the data afterwards copies it.
 //
-// CONSUMER OBLIGATION
-//   Reject any event whose generation is older than the newest generation
-//   already observed (contract section 2). Completions carry the generation
-//   their request was submitted under, so a completion for work a newer
-//   generation invalidated compares older and is dropped.
+// CONSUMER OBLIGATION - TWO CHECKS, NOT ONE (amendment A2)
+//   1. Drop any completion whose `status` is CompletionStatus::Superseded. The
+//      BACKEND marks abandoned work; the consumer does not have to deduce it.
+//   2. Reject any event whose generation is older than the newest generation
+//      already observed (contract section 2).
+//
+//   Check 2 alone is NOT sufficient, and r1 wrongly implied it was. Completions
+//   carry the generation their request was submitted under, but under rule 2
+//   above they are delivered before the event that carries the newer
+//   generation, so at that moment `lastObserved` is still the older value and
+//   the comparison says "current". Check 1 is what catches them; check 2 is the
+//   second line of defence, for an event that arrives after a bump the consumer
+//   has already seen.
+//
+//   One exemption, and it is deliberate: the managed core's terminal outcomes
+//   (coreReady, coreFailed, stopCompleted) carry the POST-bump generation
+//   (amendment A1, restated by B1), so check 2 never fires on them. Uniform
+//   filtering would drop the unconfirmed stop that blocks quit.
 //
 // Every method has an empty default body so a consumer overrides only what it
 // uses. A completion callback whose `completion.status` is not Ok carries no

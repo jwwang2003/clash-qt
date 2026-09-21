@@ -3,7 +3,10 @@
 
 // BackendLifecycle: the managed core - a child process or a privileged lease
 // that THIS component started.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1, sections 1, 3, 4, 6.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 1, 3, 4,
+// 6, with amendments A1 and A4 (StopCompleted carries a Generation, stamped
+// post-bump), B1 (which is where the real backend violated A1) and B2
+// (StopCompleted carries a CompletionStatus).
 
 #include <cstdint>
 
@@ -85,12 +88,26 @@ class BackendLifecycle {
     // failure, both carrying the returned RequestId. Ready means an HTTP
     // GET /version answered 200 with a JSON object whose `version` field is a
     // string - NOT that the process started.
+    //
+    // A managed start bumps the generation, and that bump is not an endpoint
+    // change, so it carries r2's re-issue obligation: the backend must re-issue
+    // the snapshot set (see telemetry.h). Its own terminal outcome carries the
+    // POST-bump generation (amendment A1), because the consumer has to act on
+    // it rather than reject it as invalidated work.
     virtual RequestId start(const QString &configPath, const QString &workDir) noexcept = 0;
 
     // Terminal response: observer.stopCompleted(). Applies ONLY to a managed
     // core; an attached controller is never terminated by it (contract
     // section 1). Also clears the managed endpoint, drops any pending launch,
     // and cancels both the validation child and the readiness probe.
+    //
+    // Like start(), this bumps the generation and therefore owes the re-issue.
+    // StopCompleted carries a Generation (A4) and a CompletionStatus (B2), and
+    // the generation is the POST-bump value (A1, restated by B1 after the real
+    // backend was measured emitting coreFailed(N+1) before stopCompleted(N)).
+    // An unconfirmed stop must reach the consumer: it is what blocks quit, and
+    // a consumer applying section 2's rejection rule to a stale stamp would
+    // drop it and wedge the quit forever.
     virtual RequestId stop() noexcept = 0;
 
     // ---- observation

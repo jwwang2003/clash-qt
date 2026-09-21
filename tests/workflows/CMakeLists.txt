@@ -59,9 +59,14 @@ target_link_libraries(w03-routing-controls-tests PRIVATE
 add_traffic_graph_module(w03-routing-controls-tests)
 add_dependencies(w03-routing-controls-tests clash-qt-fake-core)
 add_test(NAME w03-routing-controls COMMAND w03-routing-controls-tests)
+# The offscreen platform and the software Quick backend are set HERE, not in the
+# parent. W03 builds the real shell, and the parent's env loops use if(TEST ...),
+# which is false for a subdirectory's test -- so naming it there set nothing at
+# all, silently. Same failure as the ordering bug fixed in 447c381, recurring by
+# scope instead of order.
 set_tests_properties(w03-routing-controls PROPERTIES
     RUN_SERIAL TRUE TIMEOUT 300
-    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>")
+    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
 
 # Launches the real shipping binary. This is the lane that can see a component
 # that builds and links but that nothing wires up -- the shape of the

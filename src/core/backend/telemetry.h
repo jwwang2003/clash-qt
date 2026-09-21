@@ -2,7 +2,10 @@
 #define CLASHQT_CORE_BACKEND_TELEMETRY_H
 
 // BackendTelemetry: snapshots, streams and providers.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1, sections 2, 7, 9.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 2, 7, 9,
+// with r2's answer to the second open question (one global Generation, and the
+// re-issue obligation that comes with it) and B3, which requires the fake to
+// honour that obligation too.
 
 #include <QString>
 
@@ -16,6 +19,21 @@ class BackendTelemetry {
   public:
     // ---- snapshots. Completion: the matching observer callback, or
     //      observer.errorOccurred() carrying the same RequestId.
+    //
+    // THE RE-ISSUE OBLIGATION. r2 settled that ONE global Generation suffices,
+    // in place of the four counters the pre-contract code carried, but a single
+    // counter means a managed start, stop or failure also invalidates in-flight
+    // CONTROLLER replies - which the pre-contract code did not do. /version and
+    // /proxies recover through the composition root's 5 s poll; /rules and
+    // /configs are issued only from a refresh, so a discarded reply would leave
+    // the rules list and BaseConfig stale until the next endpoint change.
+    //
+    // In place of a second counter: any generation bump that is NOT an endpoint
+    // change must re-issue this snapshot set. An endpoint change discharges it
+    // by re-fetching on attach; a disconnect, a managed start, a managed stop
+    // and a managed failure all owe it. backend-r3 B3 makes it binding on the
+    // fake as well as the real backend, because section 10 requires both to
+    // satisfy the same contract tests.
     virtual RequestId refreshVersion() noexcept = 0;
     virtual RequestId refreshProxies() noexcept = 0;
     virtual RequestId refreshRules() noexcept = 0;
@@ -43,9 +61,11 @@ class BackendTelemetry {
     //
     // Deduplicated: a fetch or operation identical to one already outstanding
     // under the current generation is COALESCED onto it and returns that
-    // request's id rather than a new one. See the report's answer on
-    // ProviderClient::pending_ - this is the behaviour that set implements, and
-    // it is not expressible with a per-submission RequestId alone.
+    // request's id rather than a new one. This is r2's published answer to the
+    // first open question: ProviderClient::pending_ does NOT reduce to a
+    // RequestId, because it is keyed by (Generation, operation identity) and a
+    // duplicate submission issues nothing at all. A per-submission id would
+    // mint two ids and issue both.
     // Completion: observer.providersReceived() / observer.providerOperationFinished().
     virtual RequestId fetchProviders(bool rules) noexcept = 0;
     virtual RequestId updateProvider(bool rules, const QString &name) noexcept = 0;

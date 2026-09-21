@@ -55,6 +55,25 @@ public:
     /// Application data directory; profiles live in `<dataDir>/profiles`.
     QString dataDir() const;
 
+    /// Directory the engine's geo-data seed files (Country.mmdb, geoip.dat,
+    /// geosite.dat) are copied from into dataDir() the first time a runtime
+    /// config is generated, so a fresh install does not re-download them.
+    ///
+    /// SUPPLIED BY THE CALLER, and deliberately so. This store used to locate
+    /// the directory itself by calling core::vergeConfigPath(), which made
+    /// clash_profiles -- and everything that links it, up to and including the
+    /// application -- depend on the component-private engine library for one
+    /// path string (PRE-ARCH edge 1). The composition root already knows where
+    /// the engine keeps its configuration; it says so here.
+    ///
+    /// Empty is the default and means "do not seed": no file is read, and no
+    /// file is written beside the generated config. A store that is never told
+    /// where to seed from therefore touches nothing outside dataDir(), which is
+    /// what a test wants. Set it before the first generation; prepareRuntime()
+    /// samples it per request, so a later change affects later generations only.
+    void setSeedDir(const QString &dir);
+    QString seedDir() const;
+
     void load();
     void setMaintenanceMode(bool enabled);
     void beginShutdown();
@@ -123,6 +142,7 @@ private:
     QVector<Profile> profiles_;
     QString currentUid_;
     QString secret_;
+    QString seedDir_;
     QPointer<ConfigEnhancer> enhancer_;
     QJsonObject runtimeOverrides_;
     QHash<QString, QNetworkReply *> updating_;

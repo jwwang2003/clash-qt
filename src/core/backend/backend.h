@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_H
 
 // MihomoBackend: the asynchronous facade the application talks to.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r1.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
 //
 // One object exposing five facets. A consumer that needs only part of the
 // surface takes a reference to the facet it needs - MOD-RUNTIME can hold a
@@ -12,7 +12,7 @@
 // no facet can be deleted (each has a protected, non-virtual destructor).
 //
 // LIFETIME
-//   The facade's destructor is public and virtual: in r1, an in-process C++
+//   The facade's destructor is public and virtual: in r3, an in-process C++
 //   interface, the host creates a backend and deletes it. P4 replaces that with
 //   an explicit create/release pair, because a virtual destructor cannot cross
 //   a module boundary. Nothing else in this surface has to change for that.
