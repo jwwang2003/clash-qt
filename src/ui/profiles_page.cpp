@@ -31,7 +31,7 @@ namespace ui {
 namespace {
 
 constexpr int kCardMargin = 4;
-constexpr int kAccentWidth = 3;
+constexpr int kAccentWidth = 5;
 constexpr int kPad = 12;
 constexpr int kPadV = 8;
 constexpr int kEditorWidth = 140;
@@ -157,10 +157,10 @@ void ProfileDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
     QPainterPath card;
     card.addRoundedRect(QRectF(cardRect).adjusted(0.5, 0.5, -0.5, -0.5), 6, 6);
 
-    // The rail and the ACTIVE chip mark the current profile; the fill and the
-    // border stay at the weight every other card carries.
-    painter->fillPath(card, current    ? t.accentFaint
-                            : selected ? theme::blend(base, accent, 0.08)
+    // The chosen profile stays distinct even when keyboard focus moves to
+    // another row or its interval editor.
+    painter->fillPath(card, current    ? theme::blend(base, accent, 0.22)
+                            : selected ? theme::blend(base, accent, 0.10)
                                        : base);
     if (current) {
         painter->save();
@@ -169,7 +169,7 @@ void ProfileDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
                           accent);
         painter->restore();
     }
-    painter->setPen(QPen(current || selected ? accent : t.border, 1));
+    painter->setPen(QPen(current || selected ? accent : t.border, current ? 2 : 1));
     painter->drawPath(card);
 
     const QRect content = cardRect.adjusted(kAccentWidth + kPad, kPadV, -kPad, -kPadV);
@@ -183,24 +183,26 @@ void ProfileDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
     chipFont.setBold(true);
     if (chipFont.pointSizeF() > 0) chipFont.setPointSizeF(chipFont.pointSizeF() - 1.0);
 
-    // The update-interval editor floats over the top-right of the card; text stays clear of it.
+    // Reserve a separate right-hand column for the centered interval editor.
     const int reserved = profile.remote ? kEditorWidth + kPad : 0;
     QRect line(content.left(), content.top(), content.width() - reserved,
                nameMetrics.height() + 2);
 
     const QFontMetrics chipMetrics(chipFont);
-    const int chipSpace = chipMetrics.horizontalAdvance(profile.remote ? tr("REMOTE") : tr("LOCAL")) + 28 +
-        (current ? chipMetrics.horizontalAdvance(tr("SELECTED")) + 18 : 0);
+    // Put the selected marker first so long names cannot push it out of view.
+    if (current) {
+        const int next = drawChip(painter, line.left(), line, tr("✓ SELECTED"), chipFont,
+                                 t.accentText, accent);
+        line.setLeft(next + 4);
+    }
+    const int chipSpace = chipMetrics.horizontalAdvance(profile.remote ? tr("REMOTE") : tr("LOCAL")) + 28;
     const QString name = nameMetrics.elidedText(profile.name, Qt::ElideRight,
                                                qMax(0, line.width() - chipSpace));
     painter->setFont(nameFont);
     painter->setPen(text);
     painter->drawText(line, Qt::AlignLeft | Qt::AlignVCenter, name);
 
-    int chipX = line.left() + nameMetrics.horizontalAdvance(name) + 10;
-    if (current) {
-        chipX = drawChip(painter, chipX, line, tr("SELECTED"), chipFont, t.accentText, accent);
-    }
+    const int chipX = line.left() + nameMetrics.horizontalAdvance(name) + 10;
     drawChip(painter, chipX, line, profile.remote ? tr("REMOTE") : tr("LOCAL"), chipFont, dim,
              theme::blend(base, text, 0.12));
 
@@ -225,7 +227,7 @@ void ProfileDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
                 ? qBound(0.0, static_cast<double>(used) / static_cast<double>(info.total), 1.0)
                 : 0.0;
 
-        line = QRect(content.left(), line.bottom() + 6, content.width(), metrics.height());
+        line = QRect(content.left(), line.bottom() + 6, content.width() - reserved, metrics.height());
         const QRect track(line.left(), line.center().y() - kBarHeight / 2, kBarWidth, kBarHeight);
 
         painter->setPen(Qt::NoPen);
@@ -302,8 +304,8 @@ void ProfileDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptionVi
     const QRect cardRect =
         option.rect.adjusted(kCardMargin, kCardMargin, -kCardMargin, -kCardMargin);
     const int height = editor->sizeHint().height();
-    const int nameCenter = cardRect.top() + kPadV + (QFontMetrics(option.font).height() + 2) / 2;
-    editor->setGeometry(cardRect.right() - kPad - kEditorWidth, nameCenter - height / 2,
+    const int top = cardRect.top() + (cardRect.height() - height) / 2;
+    editor->setGeometry(cardRect.right() - kPad - kEditorWidth + 1, top,
                         kEditorWidth, height);
 }
 
