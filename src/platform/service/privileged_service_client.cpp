@@ -60,6 +60,8 @@ PrivilegedServiceClient::PrivilegedServiceClient(QObject *parent, const QString 
     connect(socket_, &QLocalSocket::disconnected, this, [this] {
         deadline_->stop();
         input_.clear();
+        if (!closing_ && connectionError_.isEmpty())
+            connectionError_ = tr("Privileged service disconnected; its core lease ended.");
         if (reportedConnected_) { reportedConnected_ = false; emit connectedChanged(false); }
         failRequests(closing_ ? tr("Privileged service connection closed.")
                               : tr("Privileged service disconnected; its core lease ended."));
@@ -71,6 +73,7 @@ PrivilegedServiceClient::PrivilegedServiceClient(QObject *parent, const QString 
 
 bool PrivilegedServiceClient::isConnected() const { return socket_->state() == QLocalSocket::ConnectedState; }
 bool PrivilegedServiceClient::isBusy() const { return hasActive_ || !queue_.isEmpty(); }
+QString PrivilegedServiceClient::connectionError() const { return connectionError_; }
 
 void PrivilegedServiceClient::connectToService() {
     if (isConnected() || socket_->state() == QLocalSocket::ConnectingState) return;
@@ -82,6 +85,7 @@ void PrivilegedServiceClient::connectToService() {
     }
 #endif
     closing_ = false;
+    connectionError_.clear();
     input_.clear();
     deadline_->start(kConnectTimeoutMs);
     socket_->connectToServer(socketPath_);
@@ -212,6 +216,7 @@ void PrivilegedServiceClient::failRequests(const QString &error) {
 
 void PrivilegedServiceClient::failConnection(const QString &error) {
     if (closing_) return;
+    connectionError_ = error;
     closing_ = true;
     deadline_->stop();
     failRequests(error);

@@ -395,6 +395,7 @@ void SettingsPage::buildCore(QVBoxLayout *column) {
 void SettingsPage::buildRuntime(QVBoxLayout *column) {
     auto *section = new SettingsSection(tr("Runtime Settings"),
         tr("Overrides for managed profiles. Apply validates and restarts a core started by this app."), this);
+    const auto coreFailure = std::make_shared<bool>(false);
     const QJsonObject current = context_.profiles->runtimeOverrides();
     auto *port = new QSpinBox(section);
     port->setRange(1, 65535);
@@ -434,12 +435,13 @@ void SettingsPage::buildRuntime(QVBoxLayout *column) {
     buttons->addStretch();
     buttons->addWidget(apply);
     section->addLayout(buttons);
-    connect(apply, &QPushButton::clicked, this, [this, section, port, mode, lan, ipv6, dirty] {
+    connect(apply, &QPushButton::clicked, this, [this, section, port, mode, lan, ipv6, dirty, coreFailure] {
         auto overrides = context_.profiles->runtimeOverrides();
         overrides.insert("mixed-port", port->value());
         overrides.insert("mode", mode->currentText());
         overrides.insert("allow-lan", lan->isChecked());
         overrides.insert("ipv6", ipv6->isChecked());
+        *coreFailure = false;
         section->setError({});
         section->setNotice({});
         if (!context_.profiles->setRuntimeOverrides(overrides)) return;
@@ -448,8 +450,22 @@ void SettingsPage::buildRuntime(QVBoxLayout *column) {
             context_.profiles->requestRuntimeConfig();
         else section->setNotice(tr("Saved. These settings take effect when you start the core."));
     });
-    connect(context_.profiles, &core::ProfileStore::errorOccurred, section, &SettingsSection::setError);
-    connect(context_.coreProcess, &core::CoreProcess::failed, section, &SettingsSection::setError);
+    connect(context_.profiles, &core::ProfileStore::errorOccurred, section,
+            [section, coreFailure](const QString &error) {
+        *coreFailure = false;
+        section->setError(error);
+    });
+    connect(context_.coreProcess, &core::CoreProcess::failed, section,
+            [section, coreFailure](const QString &error) {
+        *coreFailure = true;
+        section->setError(error);
+    });
+    connect(context_.coreProcess, &core::CoreProcess::ready, section, [section, coreFailure] {
+        // Clear an earlier core failure only after a successful launch. An
+        // unrelated profile/save error must remain visible until addressed.
+        if (*coreFailure) section->setError({});
+        *coreFailure = false;
+    });
     connect(advanced, &QPushButton::clicked, this, [this, port, mode, lan, ipv6] {
         QDialog dialog(this);
         dialog.setWindowTitle(tr("Advanced Runtime Overrides"));

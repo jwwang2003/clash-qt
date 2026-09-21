@@ -20,6 +20,8 @@ public:
     static bool isSupported();
     bool isConnected() const;
     bool isBusy() const;
+    /// Available before connectedChanged(false); reset on a new connection attempt.
+    QString connectionError() const;
 
 public slots:
     void connectToService();
@@ -49,6 +51,7 @@ private:
     QLocalSocket *socket_;
     QTimer *deadline_;
     QString socketPath_;
+    QString connectionError_;
     QByteArray input_;
     QQueue<Request> queue_;
     Request active_{};

@@ -216,6 +216,7 @@ bool CoreProcess::usesPrivilegedService() const { return serviceActive_; }
 
 void CoreProcess::serviceDisconnected() {
     const bool wasStopping = serviceStopping_;
+    const QString connectionError = serviceClient_->connectionError();
     servicePoll_->stop();
     serviceActive_ = false;
     serviceStopping_ = false;
@@ -224,9 +225,12 @@ void CoreProcess::serviceDisconnected() {
         pendingLaunch_.reset();
         stopResult_ = CoreState::Failed;
         stopError_ = tr("The privileged service disconnected before confirming core shutdown.");
+        if (!connectionError.isEmpty()) stopError_ += '\n' + connectionError;
         finishStop();
     } else {
-        fail(tr("The privileged service connection was lost. Its core lease has ended."));
+        QString reason = tr("The privileged service connection was lost. Its core lease has ended.");
+        if (!connectionError.isEmpty()) reason += '\n' + connectionError;
+        fail(reason);
     }
 }
 

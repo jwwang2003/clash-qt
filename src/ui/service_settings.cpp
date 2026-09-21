@@ -48,7 +48,8 @@ ServiceSettings::ServiceSettings(const app::Context &context, QWidget *parent)
     row->addStretch();
     addLayout(row);
     connect(context_.coreProcess, &core::CoreProcess::stateChanged, this, [this] {
-        if (context_.coreProcess->state() == core::CoreState::Stopped)
+        const auto state = context_.coreProcess->state();
+        if (state == core::CoreState::Stopped || state == core::CoreState::Failed)
             QTimer::singleShot(0, this, &ServiceSettings::checkStatus);
         refresh();
     });
@@ -174,7 +175,9 @@ void ServiceSettings::refresh() {
     } else if (startupRetries_ > 0 || startupRetry_->isActive()) {
         status_->setText(tr("Starting privileged service…"));
     } else if (context_.coreProcess->usesPrivilegedService()) {
-        status_->setText(tr("Service core active"));
+        status_->setText(state == core::CoreState::Starting ? tr("Service core starting…")
+            : state == core::CoreState::Stopping ? tr("Service core stopping…")
+            : tr("Service core active"));
     } else if (!checked_) {
         status_->setText(tr("Checking installation…"));
     } else {

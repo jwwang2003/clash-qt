@@ -466,6 +466,7 @@ private slots:
         QJsonObject receivedConfig;
         QLocalSocket *peer = nullptr;
         QJsonObject pendingStop;
+        bool stallLogs = false;
         auto respond = [](QLocalSocket *socket, const QJsonObject &response) {
             const QByteArray json = QJsonDocument(response).toJson(QJsonDocument::Compact);
             QByteArray frame(4, Qt::Uninitialized);
@@ -491,8 +492,10 @@ private slots:
                         response.insert("endpoint", QJsonObject{{"host", "127.0.0.1"},
                             {"port", controller.serverPort()}, {"secret", "0123456789abcdef0123456789abcdef"}});
                     } else if (command == "stop") { pendingStop = response; continue; }
-                    else if (command == "logs") response.insert("logs", "service-started\n");
-                    else if (command == "status") response.insert("state", "running");
+                    else if (command == "logs") {
+                        if (stallLogs) continue;
+                        response.insert("logs", "service-started\n");
+                    } else if (command == "status") response.insert("state", "running");
                     respond(peer, response);
                 }
             });
@@ -530,6 +533,29 @@ private slots:
         failures.clear();
         process.start(config, directory_->path());
         QTRY_COMPARE(process.state(), core::CoreState::Running);
+        // A polling timeout must retain its cause, release the lease locally,
+        // and allow a fresh start after the helper becomes responsive again.
+        stallLogs = true;
+        const auto previousCommands = commands.size();
+        client.requestLogs();
+        QTRY_VERIFY(commands.size() > previousCommands);
+        QTRY_COMPARE(commands.last(), QString("logs"));
+        QVERIFY(client.isBusy());
+        auto *deadline = client.findChild<QTimer *>();
+        QVERIFY(deadline);
+        deadline->start(20);
+        QTRY_COMPARE(process.state(), core::CoreState::Failed);
+        QCOMPARE(failures.size(), 1);
+        QVERIFY(failures.first().first().toString().contains("timed out: logs"));
+        QVERIFY(!process.usesPrivilegedService());
+        QVERIFY(!client.isConnected());
+        stallLogs = false;
+        failures.clear();
+        process.start(config, directory_->path());
+        QTRY_COMPARE(process.state(), core::CoreState::Running);
+        QVERIFY(process.usesPrivilegedService());
+        QVERIFY(client.connectionError().isEmpty());
+        QVERIFY(failures.isEmpty());
         process.stop();
         QTRY_VERIFY(!pendingStop.isEmpty());
         QCOMPARE(process.state(), core::CoreState::Stopping);
