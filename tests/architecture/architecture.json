@@ -121,14 +121,16 @@
         "yaml-cpp::yaml-cpp"
       ],
       "transitive_external": [
-        "Qt6::Core",
         "Qt6::Concurrent",
+        "Qt6::Core",
+        "Qt6::Gui",
         "Qt6::Network",
         "Qt6::Qml",
         "Qt6::QmlIntegration",
+        "Qt6::WebSockets",
         "yaml-cpp::yaml-cpp"
       ],
-      "_note": "PRE-ARCH edge 1 (clash_profiles -> clash_mihomo_impl) is absent from this graph and must stay absent.",
+      "_note": "PRE-ARCH edge 1 (clash_profiles -> clash_mihomo_impl) IS present and is baselined as E1-profiles-links-mihomo-impl, owner CFG-CORE, removed in P4. Qt6::Gui and Qt6::WebSockets appear here only as a consequence of that edge, reaching this module through clash_mihomo_impl -> clash_platform. All three disappear when the single vergeConfigPath() call at profile_store.cpp:722 is replaced by an injected seedDir.",
       "public_headers": [
         "core/profiles/profile_store.h"
       ]
@@ -281,15 +283,6 @@
       "deps": [],
       "optional": true
     },
-    "runtime-tests": {
-      "headless": true,
-      "deps": [
-        "clash_yaml",
-        "clash_config",
-        "clash_profiles",
-        "clash_platform"
-      ]
-    },
     "controller-tests": {
       "headless": true,
       "deps": []
@@ -338,14 +331,6 @@
         "clash_platform"
       ]
     },
-    "data-pages-tests": {
-      "deps": [
-        "clash_telemetry",
-        "clash_preferences",
-        "clash_test_support"
-      ],
-      "optional": true
-    },
     "tray-tests": {
       "deps": [],
       "optional": true
@@ -367,7 +352,116 @@
     },
     "clash_test_support": {
       "_note": "Shared test infrastructure: scoped environment, loopback server, fake-core driver. Declared rather than ignored so that it becoming a consumer of production modules is a visible change, not a silent one.",
-      "deps": [],
+      "deps": [
+        "clash_preferences"
+      ],
+      "optional": true
+    },
+    "config-generation-tests": {
+      "_note": "Partitioned from the former runtime suite; see tests/README.md.",
+      "deps": [
+        "clash_profiles",
+        "clash_config",
+        "clash_yaml",
+        "clash_test_support"
+      ]
+    },
+    "profile-store-tests": {
+      "_note": "Partitioned from the former runtime suite; see tests/README.md.",
+      "deps": [
+        "clash_profiles",
+        "clash_config",
+        "clash_test_support"
+      ]
+    },
+    "core-process-tests": {
+      "_note": "Partitioned from the former runtime suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_platform",
+        "clash_test_support"
+      ]
+    },
+    "runtime-maintenance-tests": {
+      "_note": "Partitioned from the former runtime suite; see tests/README.md.",
+      "deps": [
+        "clash_profiles",
+        "clash_config",
+        "clash_test_support"
+      ]
+    },
+    "home-page-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "traffic-graph-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "proxies-page-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "connections-page-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "providers-page-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "rules-page-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "logs-page-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_mihomo_impl",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "traffic-graph-frames-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_telemetry",
+        "clash_test_support"
+      ],
+      "optional": true
+    },
+    "traffic-frame-pacing-tests": {
+      "_note": "Partitioned from the former data-pages suite; see tests/README.md.",
+      "deps": [
+        "clash_telemetry",
+        "clash_test_support"
+      ],
       "optional": true
     }
   },
@@ -600,6 +694,16 @@
           "include": "core/mihomo/process/core_process.h"
         }
       ]
+    },
+    {
+      "id": "E1-profiles-links-mihomo-impl",
+      "class": "migration-baseline",
+      "kind": "target_edge",
+      "from": "clash_profiles",
+      "to": "clash_mihomo_impl",
+      "owner": "CFG-CORE",
+      "remove_in": "P4",
+      "reason": "PRE-ARCH edge 1. ProfileStore::prepareRuntime calls core::vergeConfigPath() from controller_discovery.cpp to seed runtime data -- a SINGLE call site, src/core/profiles/profile_store.cpp:722. The edge was previously invisible because every consuming executable linked both libraries directly; partitioning the runtime suite exposed it. Declared rather than linked around, because the library genuinely cannot link standalone without it. Removing that one call site removes this exception AND both transitive-external entries below at once."
     }
   ]
 }

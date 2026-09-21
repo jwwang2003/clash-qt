@@ -4,10 +4,6 @@ find_package(Qt6 6.9 REQUIRED COMPONENTS Test)
 
 # Backend suites now link the production libraries instead of recompiling their
 # sources, so a test exercises the same objects the application ships.
-qt_add_executable(runtime-tests core/runtime_test.cpp)
-target_link_libraries(runtime-tests PRIVATE Qt6::Test Qt6::Network
-    clash_profiles clash_config clash_yaml clash_mihomo_impl clash_platform)
-add_test(NAME runtime COMMAND runtime-tests)
 
 qt_add_executable(controller-tests core/controller_test.cpp)
 target_link_libraries(controller-tests PRIVATE Qt6::Test Qt6::Network clash_mihomo_impl)
@@ -42,23 +38,6 @@ target_link_libraries(proxy-tests PRIVATE Qt6::Test clash_platform)
 add_test(NAME proxy COMMAND proxy-tests)
 
 if(CLASH_QT_BUILD_APP)
-    qt_add_executable(data-pages-tests ui/data_pages_test.cpp
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/proxies/proxies_page.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/connections/connections_page.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/rules/rules_page.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/logs/logs_page.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/home_page.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/traffic_graph.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/pages/providers/providers_page.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/widgets/settings_section.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
-        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
-    target_link_libraries(data-pages-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
-        clash_mihomo_impl clash_telemetry clash_preferences clash_test_support)
-    add_traffic_graph_module(data-pages-tests)
-    add_test(NAME data-pages COMMAND data-pages-tests)
 
     qt_add_executable(tray-tests ui/tray_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/shell/proxy_environment.cpp"
@@ -98,20 +77,27 @@ if(APPLE)
     add_test(NAME privileged-helper-ipc COMMAND privileged-helper-ipc-tests --ipc-self-test)
 endif()
 
-set(offscreen_tests runtime controller provider backup proxy tray routing-controls
-    traffic-history dashboard-async system-proxy-async privileged-service)
+set(offscreen_tests controller provider backup proxy tray routing-controls
+    traffic-history dashboard-async system-proxy-async privileged-service
+    config-generation profile-store core-process runtime-maintenance preferences)
 if(CLASH_QT_BUILD_APP)
-    list(APPEND offscreen_tests data-pages)
+    # The benchmark entries are deliberately absent: with their measurement flag
+    # set, QT_QPA_PLATFORM=offscreen turns their skip into a failure.
+    list(APPEND offscreen_tests home-page traffic-graph proxies-page
+        connections-page providers-page rules-page logs-page)
 endif()
 foreach(name IN LISTS offscreen_tests)
     if(TEST ${name})
         set_tests_properties(${name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     endif()
 endforeach()
-if(TEST data-pages)
-    set_tests_properties(data-pages PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
-endif()
+# The QQuickView-embedding suites additionally need the software backend.
+foreach(name home-page traffic-graph)
+    if(TEST ${name})
+        set_tests_properties(${name} PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+    endif()
+endforeach()
 
 # The settings-isolation regression guard: fails if production preference access
 # escapes the isolated location. Without it the defect returns silently.
@@ -129,7 +115,9 @@ set_target_properties(clash-qt-fake-core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTO
 qt_add_library(clash_test_support STATIC
     support/scoped_environment.cpp support/loopback_server.cpp support/fake_core.cpp)
 target_include_directories(clash_test_support PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(clash_test_support PUBLIC Qt6::Core Qt6::Network)
+# PUBLIC clash_preferences: support/preference_isolation.h is header-only and
+# calls core::preferences, so every consumer of the support headers needs it.
+target_link_libraries(clash_test_support PUBLIC Qt6::Core Qt6::Network clash_preferences)
 add_dependencies(clash_test_support clash-qt-fake-core)
 
 qt_add_executable(scoped-environment-tests support/scoped_environment_test.cpp)
@@ -150,6 +138,131 @@ set_tests_properties(fake-core PROPERTIES
 qt_add_executable(component-contract-tests contracts/component/component_contract_test.cpp)
 target_link_libraries(component-contract-tests PRIVATE Qt6::Test clashqt_com)
 add_test(NAME component-contract COMMAND component-contract-tests)
+
+
+# ---------------------------------------------------------------------------
+# Suites partitioned from the two former monoliths. The per-case preservation
+# map is tests/README.md; every original assertion has a recorded home there.
+# ---------------------------------------------------------------------------
+
+qt_add_executable(config-generation-tests core/config_generation_test.cpp)
+target_link_libraries(config-generation-tests PRIVATE Qt6::Test
+    clash_profiles clash_config clash_yaml clash_test_support)
+add_test(NAME config-generation COMMAND config-generation-tests)
+
+qt_add_executable(profile-store-tests core/profile_store_test.cpp)
+target_link_libraries(profile-store-tests PRIVATE Qt6::Test Qt6::Network
+    clash_profiles clash_config clash_test_support)
+add_test(NAME profile-store COMMAND profile-store-tests)
+
+qt_add_executable(core-process-tests core/core_process_test.cpp)
+target_link_libraries(core-process-tests PRIVATE Qt6::Test Qt6::Network
+    clash_mihomo_impl clash_platform clash_test_support)
+add_test(NAME core-process COMMAND core-process-tests)
+
+qt_add_executable(runtime-maintenance-tests core/maintenance_test.cpp)
+target_link_libraries(runtime-maintenance-tests PRIVATE Qt6::Test
+    clash_profiles clash_config clash_test_support)
+add_test(NAME runtime-maintenance COMMAND runtime-maintenance-tests)
+
+if(CLASH_QT_BUILD_APP)
+
+    qt_add_executable(home-page-tests ui/home_page_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/home_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/traffic_graph.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/settings_section.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(home-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_mihomo_impl clash_test_support clash_telemetry)
+    add_traffic_graph_module(home-page-tests)
+    add_test(NAME home-page COMMAND home-page-tests)
+
+    qt_add_executable(traffic-graph-tests ui/traffic_graph_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/traffic_graph.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(traffic-graph-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_mihomo_impl clash_test_support clash_telemetry)
+    add_traffic_graph_module(traffic-graph-tests)
+    add_test(NAME traffic-graph COMMAND traffic-graph-tests)
+
+    qt_add_executable(proxies-page-tests ui/proxies_page_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/proxies/proxies_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(proxies-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_mihomo_impl clash_test_support)
+    add_test(NAME proxies-page COMMAND proxies-page-tests)
+
+    qt_add_executable(connections-page-tests ui/connections_page_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/connections/connections_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(connections-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_mihomo_impl clash_test_support)
+    add_test(NAME connections-page COMMAND connections-page-tests)
+
+    qt_add_executable(providers-page-tests ui/providers_page_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/providers/providers_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(providers-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::Network
+        clash_mihomo_impl clash_test_support)
+    add_test(NAME providers-page COMMAND providers-page-tests)
+
+    qt_add_executable(rules-page-tests ui/rules_page_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/rules/rules_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(rules-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_mihomo_impl clash_test_support)
+    add_test(NAME rules-page COMMAND rules-page-tests)
+
+    qt_add_executable(logs-page-tests ui/logs_page_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/logs/logs_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(logs-page-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::Concurrent
+        clash_mihomo_impl clash_test_support)
+    add_test(NAME logs-page COMMAND logs-page-tests)
+
+    # Benchmark lane. These two measure native frame pacing and are gated on
+    # CLASH_QT_VERIFY_GRAPH_FRAMES / CLASH_QT_MEASURE_FRAMES. They reported as
+    # "Passed" inside data-pages while silently skipping; here they carry the
+    # benchmark label that `make test` excludes, so they are honestly not run.
+    # They must NOT get QT_QPA_PLATFORM=offscreen: with their flag set, offscreen
+    # turns a skip into a failure.
+    qt_add_executable(traffic-graph-frames-tests benchmarks/traffic_graph_frames_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/traffic_graph.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(traffic-graph-frames-tests PRIVATE Qt6::Test Qt6::Widgets
+        clash_telemetry clash_test_support)
+    add_traffic_graph_module(traffic-graph-frames-tests)
+    add_test(NAME traffic-graph-frames COMMAND traffic-graph-frames-tests)
+
+    qt_add_executable(traffic-frame-pacing-tests benchmarks/traffic_frame_pacing_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/traffic_graph.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(traffic-frame-pacing-tests PRIVATE Qt6::Test Qt6::Widgets
+        clash_telemetry clash_test_support)
+    add_traffic_graph_module(traffic-frame-pacing-tests)
+    add_test(NAME traffic-frame-pacing COMMAND traffic-frame-pacing-tests)
+endif()
 
 # Architecture checks. Reads evaluated CMake target dependencies through the File
 # API, so transitive and generated edges are included rather than guessed at from
@@ -175,7 +288,6 @@ function(clash_qt_label test_name)
     endif()
 endfunction()
 
-clash_qt_label(runtime               integration core config profiles)
 clash_qt_label(controller            integration core mihomo)
 clash_qt_label(provider              integration core mihomo)
 clash_qt_label(backup                integration core backups)
@@ -185,7 +297,6 @@ clash_qt_label(system-proxy-async    unit platform proxy)
 clash_qt_label(privileged-service    integration platform service)
 clash_qt_label(privileged-helper     unit platform service)
 clash_qt_label(privileged-helper-ipc unit platform service)
-clash_qt_label(data-pages            ui pages)
 clash_qt_label(tray                  ui shell)
 clash_qt_label(routing-controls      ui shell)
 clash_qt_label(dashboard-async       ui shell)
@@ -194,3 +305,16 @@ clash_qt_label(scoped-environment  unit support)
 clash_qt_label(loopback-server     unit support)
 clash_qt_label(fake-core           unit support)
 clash_qt_label(preferences         unit core preferences)
+clash_qt_label(config-generation   integration core config)
+clash_qt_label(profile-store       integration core profiles)
+clash_qt_label(core-process        integration core mihomo)
+clash_qt_label(runtime-maintenance integration core profiles)
+clash_qt_label(home-page           ui pages)
+clash_qt_label(traffic-graph       ui pages)
+clash_qt_label(proxies-page        ui pages)
+clash_qt_label(connections-page    ui pages)
+clash_qt_label(providers-page      ui pages)
+clash_qt_label(rules-page          ui pages)
+clash_qt_label(logs-page           ui pages)
+clash_qt_label(traffic-graph-frames  benchmark ui)
+clash_qt_label(traffic-frame-pacing  benchmark ui)
