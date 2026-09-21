@@ -1,4 +1,4 @@
-# MihomoBackend — contract revision `backend-r2`
+# MihomoBackend — contract revision `backend-r3`
 
 Coordinator-owned. MOD-CORE implements it against the real engine, MOD-RUNTIME and
 MOD-LIFECYCLE consume it, and the fake backend under `tests/support/backend/`
@@ -302,3 +302,73 @@ observer skip-guards in the fake's `drain()`. They are genuinely redundant —
 correct. Removing **both**, or iterating the live list, does fail. Recorded rather
 than papered over, because a surviving mutant is either a coverage gap or a
 redundancy, and here it is demonstrably the latter.
+
+
+---
+
+# Amendments: `backend-r2` → `backend-r3`
+
+An independent audit implemented r2's rules as written and found the real backend
+violating two of them. These are defects in the delivered code *and* gaps in the
+contract's own specification.
+
+## B1 — `StopCompleted` must carry the post-bump generation (A1 violated in practice)
+
+`core_process.cpp:486-491` emits `failed` **before** `stopFinished`. The backend's
+`failed` handler bumps the generation, while `stopFinished` stamps the
+`stopGeneration_` captured at submit. The delivered order is therefore
+`coreFailed(N+1)` then `stopCompleted(N)` — measured as `stopGen=2, coreFailedGen=3`.
+
+A consumer applying §2's **mandatory** rejection rule drops the unconfirmed stop.
+That is exactly the failure A1 was written to prevent, and it is live.
+
+`ShutdownCoordinator` escapes only because it does not override `coreFailed`. Its own
+comment asserts a guarantee the real backend does not provide. The fake stamps both
+identically, so fake and real diverge and the fake cannot catch it.
+
+**Required:** a stop completion carries the generation current *after* any bump its
+own operation caused, per A1. Either `stopFinished` re-reads the generation at emit,
+or the backend defers the bump until the terminal outcome is delivered. Both suites
+must assert `!isSuperseded(result.generation, lastObserved)` on the unconfirmed path.
+
+## B2 — Every completion type carries a `CompletionStatus` (A2 was unimplementable)
+
+`types.h` gives `StopCompleted` and `TunChangeCompleted` no `CompletionStatus`, so A2's
+`Superseded` marking cannot be expressed for them. Additionally, every TUN error is
+labelled `Protocol`, including "cancelled because the controller changed", which is a
+supersession and must be classified as one.
+
+**Required:** both types carry `CompletionStatus`; supersession is never reported as a
+protocol error.
+
+## B3 — The fake must implement the re-issue obligation
+
+r2 attached a re-issue obligation to the single global generation. The real backend
+honours it; the fake does not — `start`, `stop`, `failManaged` and `setConnected(false)`
+all bump without re-issuing, and no test covers it.
+
+§10 requires the fake and the real backend to satisfy **the same** contract tests. They
+currently do not. Either the fake implements the obligation, or §10's claim is false.
+
+## B4 — "Passes against the locally built mihomo" is not currently true
+
+§10 says the real backend additionally passes against the locally built engine.
+`backend-real-contract` drives `clash-qt-fake-core`, not mihomo. The only suite that
+drives the real engine is `real-core`-labelled and therefore excluded from `make test`.
+
+**Required:** either the acceptance set runs against the real engine in the integration
+lane, or §10 stops claiming it. The claim is not permitted to stand on a suite whose
+name merely contains "real".
+
+## Known weak coverage, to be closed with these fixes
+
+Mutation testing found three acceptance bullets that the **real** suite does not
+actually protect, though the fake suite does:
+
+- **#5**, the hard cap: making `readyHardDeadlineMs_` refreshable survives the real
+  suite, which asserts only a lower bound.
+- **#1**, second half: no scenario ever has a managed core and an external controller
+  alive at once, so "stop terminates only a managed core" is untested.
+- **§5.2**, probe-cancel ordering: aborting before disconnecting survives the real suite.
+
+A bullet that only the fake protects is a bullet the engine does not have to honour.
