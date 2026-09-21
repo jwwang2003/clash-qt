@@ -362,3 +362,32 @@ domain deleted at the user's instruction. It reappeared at 13:28:42 containing o
 66-byte `window.geometry` blob, with `~/Library/Application Support/clash-qt/` changing
 at 13:28:46 — a real application launch against the default data directory, not a test
 run. No test sentinel is present in it.
+
+
+## Documented commands — verified end to end, and what running them exposed
+
+Verifying the *documented path* rather than the ad-hoc command found three defects.
+An earlier claim that "the Make facade is verified" covered only `help` and `doctor`.
+
+| Defect | Detail |
+| --- | --- |
+| `make build` failed to link | The dev preset resolved yaml-cpp from `/opt/anaconda3` while Qt came from `/opt/homebrew`: undefined `YAML::FpToString` / `YAML::Emitter::Write`. The ad-hoc command passed `-DCMAKE_PREFIX_PATH=/opt/homebrew` and never hit it. Fixed: the Makefile resolves a prefix (default `brew --prefix`, override with `CMAKE_PREFIX_PATH`); presets stay free of local paths. |
+| `make doctor` hid it | It reported "ok yaml-cpp" without naming the copy — exactly how a broken configuration passes a prerequisite check. It now prints `Qt6_DIR` and `yaml-cpp_DIR` and warns on a split prefix. Verified: the warning fires on the broken configuration. |
+| The engine carried the wrong provenance | Go walks up from the submodule and stamped the **superproject's** revision and dirty state into the binary — `vcs.revision` recorded clash-qt's commit where mihomo's `ab405bad` belongs, contradicting the manifest and changing the artifact hash on every unrelated commit here. Fixed with `-buildvcs=false`; provenance comes from the ldflags and manifest. Now verified stable across a superproject commit. |
+| `make run` set a variable nothing read | It exported `CLASH_QT_CORE_BINARY` but the app only read the `core/binary` setting, so the command silently did not resolve the staged engine. The app now falls back to the variable; an explicit user setting still wins. |
+
+Verified on macOS 26.6.2 arm64: `make doctor`, `make build`, `make test` (22/22, real
+preferences byte-identical), `make core` (reproducible at a fixed path), `make package`.
+
+Artifacts: `build/dev/clash-qt.app`, symlink `build/dev/clash-qt`,
+engine `build/dev/core/mihomo` + `mihomo-provenance.json`, staged app
+`build/dev/stage/clash-qt.app` (135 MB, Qt frameworks/plugins and the privileged
+helper included).
+
+### Open gap — G1 acceptance not yet met
+
+`make package` does **not** stage the locally built engine into the distribution.
+G1 requires packaging to consume that exact build output. The helper is staged; the
+engine is not. Needs a packaging decision on its bundle-relative home and a
+corresponding install rule, plus the runtime lookup to resolve it there. Until then
+a packaged app has no managed engine.
