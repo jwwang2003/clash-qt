@@ -266,3 +266,43 @@ only `.DS_Store` files, which is intended.
 **Guard added.** A fresh `git clone` of the branch is now configured from scratch as
 part of integration, not just the working tree. First run: clone contains
 `scripts/build/`, and `cmake -DCLASH_QT_BUILD_APP=OFF` configures cleanly.
+
+
+## BLOCKING FINDING — the test suite writes to the developer's real macOS preferences
+
+**Proven, not inferred.**
+
+1. `~/Library/Preferences/com.clash-qt.clash-qt.plist` was modified at **10:47:40**,
+   inside the window of the 17/17 CTest run that finished at 10:48:00.
+2. It contains `backup.password = do-not-export`. That literal is written by exactly
+   one place in the repository: `tests/core/backup_test.cpp:84`.
+3. It also holds `core.useService`, `startup.startCore`, `dashboard.browser`,
+   `window.geometry`, `proxies.sort` and four `hotkeys.*` keys — the same keys the
+   application itself uses, so test and real values are indistinguishable in it.
+
+**This violates the test strategy's own rule** that a normal test run must not alter
+developer state. It is **pre-existing**, not introduced by the refactor.
+
+**Mechanism — partly established.** 14 production sites construct
+`QSettings("clash-qt", "clash-qt")` inline. On macOS that resolves to the native
+CFPreferences store. `src/main.cpp:68-70` calls `setDefaultFormat(IniFormat)` and
+`setPath(IniFormat, UserScope, …)` under `--data-dir`, and `setPath` has no effect on
+the native format. BASE-FIXTURE reports the org/app constructor ignores
+`setDefaultFormat` too; that specific claim is **not yet independently confirmed**.
+
+**An inconclusive probe, recorded so it is not mistaken for evidence.** Running each
+suite with `HOME` redirected left the real plist untouched and produced no file in the
+redirected home. That is *not* proof of safety: CFPreferences flushes asynchronously
+through `cfprefsd`, and the temporary home was removed before any flush could land.
+Treat `HOME` redirection as unverified, not as a safe harness.
+
+**Correction to an earlier claim.** After the first application launch this session the
+ledger recorded "real user preferences untouched". That check compared the *list of
+filenames* in `~/Library/Preferences`, not contents or modification times, and was
+therefore too weak to support the claim.
+
+**Fix scope.** A production change: a single settings accessor that honours
+`CLASH_QT_DATA_DIR` with an explicit format, replacing all 14 inline constructions.
+Needs its own package; it is not a test-only fix and must not be smuggled into an
+unrelated one. Until it lands, treat every full-suite run as writing to the developer's
+preferences.
