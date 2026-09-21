@@ -452,3 +452,76 @@ rather than maintaining it by hand; remove the zombies; move the eight `deps`
 declarations back under the exception with their owner and removal phase; and add a
 checker rule that a target may not reach `clash_mihomo_impl` through `deps` while the
 G2 exception is open.
+
+
+## P3 audit verdict — the wave is NOT complete
+
+Three independent read-only audits. Leading with what is not met.
+
+### Acceptance gate (roadmap stage 3)
+
+| Clause | Verdict |
+| --- | --- |
+| App services run with a fake backend | **met** — four coordinator suites pass against `clash_backend_fake` |
+| Real backend passes lifecycle/control contracts | **partially** — 23 cases, but see B1/B4 and the three unprotected bullets |
+| W01/W03/W04/W05 exercise assembled behaviour | **NOT MET** — `tests/workflows/` does not exist, none of W01–W05 has any coverage, the `workflow` label is not even reserved |
+| Integration (the work package's other half) | **NOT MET** — `main.cpp` includes none of `app/{lifecycle,backup,runtime,composition}` or `core/backend`; `RoutingController` has zero consumers |
+
+### Defects found (all now recorded, one already fixed)
+
+1. **FIXED** — privileged-service mode was dead on HEAD. `NullPrivilegedCoreService`
+   with no injection meant `setUseService(true)` always failed and the saved
+   preference was silently discarded. Now injected at the composition root with two
+   mutually-controlling regression cases.
+2. **B1** — `StopCompleted` carries a stale generation on the unconfirmed path; a
+   conforming consumer drops it. See `backend-r3`.
+3. **B2** — `StopCompleted`/`TunChangeCompleted` cannot express `Superseded`.
+4. **B3** — the fake does not implement the re-issue obligation; fake and real
+   diverge, so §10's "same contract tests" is false.
+5. **B4** — `backend-real-contract` drives the fake core binary, not mihomo.
+6. **Three acceptance bullets unprotected by the real suite** (hard cap, managed-vs-
+   external stop, probe-cancel ordering) — mutations survive.
+7. **G2 contract insufficient to start migration** — `BackendObserver` is a plain
+   non-`QObject` while ~66 UI sites use `connect(client_, &MihomoClient::…)`. Nothing
+   republishes proxies/rules/traffic/connections/logs/version/config/DNS/providers/
+   errors. A QObject bridge must be published first.
+8. **G2 link ledger understates debt** — see the correction above.
+9. **E1 is mis-phased** — it propagates into `clash-qt` and the checker exempts
+   propagated edges, so P3 would close G2's link clause on a false green. Move to P3.
+10. **Five unowned behaviours** the wiring would silently drop: the routing-restore
+    error message; `beginShutdown()` absent from any quit action (a core would start
+    *during* shutdown); startup attach + `openTrafficStream()`; the `warningRaised`
+    dialog (omit it and quit hangs forever); and all of inventory group A, for which no
+    startup class was ever written.
+11. **Blocker neither wiring recipe saw** — `MihomoBackendImpl` privately owns
+    `client_`/`process_` with no accessor, while 65 UI sites read `context.client` /
+    `context.coreProcess`.
+12. Unclaimed: `src/integrations/component/**` never created; `tests/README.md` missing
+    10 suites and all W-IDs; headers still cite `backend-r1`; D3's second privileged
+    connection still open.
+
+### Decision reversed
+
+The 5000 ms telemetry poll **stays in the composition root**. `fetchVersion()` is the
+only site reaching `setConnected(true)` — it is the process's sole liveness probe, and
+the re-issue obligation is edge-triggered, never periodic. The contract text already
+relies on this poll. Fix only its lifetime: a stack `QTimer`, not a heap one.
+
+### Corrected package plan
+
+**R1, three parallel, all blocking:**
+`P3-CONTRACT-FIX` (B1/B2 + the three unprotected bullets + B4, owns `mihomo_backend.*`,
+`types.h`, `tests/core/mihomo/**`) · `P3-FAKE-PARITY` (B3 + shared suite, owns
+`tests/support/backend/**`, `tests/contracts/backend/**`) · `P3-BRIDGE` (the published
+QObject bridge, owns new `src/core/backend/` bridge files).
+
+**R2, two parallel + one:** `P3-UIDATA` (8 sites) · `P3-UISHELL` (10 sites) ·
+`P3-LEDGER` (re-derive G2 sites from the build graph, delete zombies, move the eight
+`deps` back under the exception, add a rule forbidding `deps` reach while the exception
+is open, re-phase E1 to P3).
+
+**R3, coordinator:** `P3-MAINWIRE` — the composition root, carrying all five unowned
+behaviours and the five recipe conflicts explicitly.
+
+**R4:** `P3-WORKFLOWS` — W01/W03/W04/W05 plus the application smoke harness, without
+which the gate cannot close and the composition root stays untested.
