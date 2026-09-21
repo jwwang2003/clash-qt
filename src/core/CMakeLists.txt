@@ -1,6 +1,23 @@
 # Reusable backend libraries. Each owns one responsibility and declares only the
 # dependencies its code actually has; see .refactor/DECISIONS.md D1.
 
+# Portable component object model, contract revision component-r1. Deliberately
+# links nothing -- not even Qt6::Core -- because it is the foundation every
+# component boundary is expressed in; a Qt type in a published signature would
+# defeat the point. Verified: the archive has zero undefined symbols.
+add_library(clashqt_com STATIC component/component.cpp)
+target_sources(clashqt_com PUBLIC FILE_SET HEADERS
+    BASE_DIRS "${PROJECT_SOURCE_DIR}/src"
+    FILES
+        component/buffer.h component/com_ptr.h component/component.h
+        component/component_module.h component/error_info.h
+        component/interface_id.h component/object.h
+        component/object_support.h component/result.h)
+target_include_directories(clashqt_com PUBLIC "${PROJECT_SOURCE_DIR}/src")
+# qt_standard_project_setup turns AUTOMOC on for every target. This one has no
+# Q_OBJECT and must not acquire a Qt code path at all, so opt it back out.
+set_target_properties(clashqt_com PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
 # Shared value types. Header-only, so everything can depend on it without any
 # target depending on another implementation library. This is what keeps the
 # component-private mihomo library and the UI from having to share a home.

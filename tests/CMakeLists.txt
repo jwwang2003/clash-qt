@@ -112,6 +112,37 @@ if(TEST data-pages)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
 endif()
 
+# Shared test infrastructure (BASE-FIXTURE). The fake core is a compiled helper,
+# not a shell script or an interpreter invocation, so the process tests are not
+# POSIX-only and cannot silently skip on Windows.
+add_executable(clash-qt-fake-core fixtures/fake_core_main.cpp)
+set_target_properties(clash-qt-fake-core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
+qt_add_library(clash_test_support STATIC
+    support/scoped_environment.cpp support/loopback_server.cpp support/fake_core.cpp)
+target_include_directories(clash_test_support PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(clash_test_support PUBLIC Qt6::Core Qt6::Network)
+add_dependencies(clash_test_support clash-qt-fake-core)
+
+qt_add_executable(scoped-environment-tests support/scoped_environment_test.cpp)
+target_link_libraries(scoped-environment-tests PRIVATE clash_test_support Qt6::Test)
+add_test(NAME scoped-environment COMMAND scoped-environment-tests)
+
+qt_add_executable(loopback-server-tests support/loopback_server_test.cpp)
+target_link_libraries(loopback-server-tests PRIVATE clash_test_support Qt6::Test Qt6::WebSockets)
+add_test(NAME loopback-server COMMAND loopback-server-tests)
+
+qt_add_executable(fake-core-tests support/fake_core_test.cpp)
+target_link_libraries(fake-core-tests PRIVATE clash_test_support Qt6::Test)
+add_test(NAME fake-core COMMAND fake-core-tests)
+set_tests_properties(fake-core PROPERTIES
+    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>")
+
+# Portable component object model contract (component-r1).
+qt_add_executable(component-contract-tests contracts/component/component_contract_test.cpp)
+target_link_libraries(component-contract-tests PRIVATE Qt6::Test clashqt_com)
+add_test(NAME component-contract COMMAND component-contract-tests)
+
 # Architecture checks. Reads evaluated CMake target dependencies through the File
 # API, so transitive and generated edges are included rather than guessed at from
 # the text of these files.
@@ -150,3 +181,7 @@ clash_qt_label(data-pages            ui pages)
 clash_qt_label(tray                  ui shell)
 clash_qt_label(routing-controls      ui shell)
 clash_qt_label(dashboard-async       ui shell)
+clash_qt_label(component-contract  unit contract component)
+clash_qt_label(scoped-environment  unit support)
+clash_qt_label(loopback-server     unit support)
+clash_qt_label(fake-core           unit support)

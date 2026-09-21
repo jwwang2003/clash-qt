@@ -18,12 +18,10 @@
     "                       tests/architecture/CMakeLists.txt, in a consumer",
     "                       that links only this module."
   ],
-
   "ignore_external": [
     "Qt6::Platform"
   ],
   "ignore_targets": [],
-
   "forbidden_external": [
     "Qt6::Widgets",
     "Qt6::Quick",
@@ -41,29 +39,53 @@
     "deliberately NOT forbidden either: core/config/enhance/config_enhancer.cpp",
     "runs profile enhancement scripts through QJSEngine. Qml is not Quick."
   ],
-
   "modules": {
     "clash_types": {
       "_role": "D1: header-only value types. Everything may depend on it; it depends on nothing.",
       "deps": [],
-      "external": ["Qt6::Core"],
-      "transitive_external": ["Qt6::Core"],
-      "public_headers": ["core/types.h"]
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": [
+        "core/types.h"
+      ]
     },
     "clash_yaml": {
       "_role": "D1: yaml helpers as their own leaf, so the packaged component never drags clash_config in (PRE-ARCH edge 5).",
-      "deps": ["clash_types"],
-      "external": ["yaml-cpp::yaml-cpp"],
-      "transitive_external": ["Qt6::Core", "yaml-cpp::yaml-cpp"],
-      "public_headers": ["core/config/yaml_util.h"]
+      "deps": [
+        "clash_types"
+      ],
+      "external": [
+        "yaml-cpp::yaml-cpp"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "yaml-cpp::yaml-cpp"
+      ],
+      "public_headers": [
+        "core/config/yaml_util.h"
+      ]
     },
     "clash_config": {
       "_role": "Configuration composition and profile enhancement scripts.",
-      "deps": ["clash_types", "clash_yaml"],
-      "external": ["Qt6::Qml", "Qt6::Concurrent"],
+      "deps": [
+        "clash_types",
+        "clash_yaml"
+      ],
+      "external": [
+        "Qt6::Qml",
+        "Qt6::Concurrent"
+      ],
       "transitive_external": [
-        "Qt6::Core", "Qt6::Concurrent", "Qt6::Qml", "Qt6::QmlIntegration",
-        "Qt6::Network", "yaml-cpp::yaml-cpp"
+        "Qt6::Core",
+        "Qt6::Concurrent",
+        "Qt6::Qml",
+        "Qt6::QmlIntegration",
+        "Qt6::Network",
+        "yaml-cpp::yaml-cpp"
       ],
       "_transitive_note": [
         "Qt6::Network is present only because Qt6::Qml re-exports it; the",
@@ -71,40 +93,85 @@
         "allowlist stays closed, not because it is wanted. Removing Qt6::Qml",
         "would remove it. Widgets/Quick/Graphs remain forbidden here."
       ],
-      "public_headers": ["core/config/enhance/config_enhancer.h"]
+      "public_headers": [
+        "core/config/enhance/config_enhancer.h"
+      ]
     },
     "clash_profiles": {
-      "deps": ["clash_types", "clash_config"],
-      "external": ["Qt6::Network", "Qt6::Concurrent", "yaml-cpp::yaml-cpp"],
+      "deps": [
+        "clash_types",
+        "clash_config"
+      ],
+      "external": [
+        "Qt6::Network",
+        "Qt6::Concurrent",
+        "yaml-cpp::yaml-cpp"
+      ],
       "transitive_external": [
-        "Qt6::Core", "Qt6::Concurrent", "Qt6::Network", "Qt6::Qml",
-        "Qt6::QmlIntegration", "yaml-cpp::yaml-cpp"
+        "Qt6::Core",
+        "Qt6::Concurrent",
+        "Qt6::Network",
+        "Qt6::Qml",
+        "Qt6::QmlIntegration",
+        "yaml-cpp::yaml-cpp"
       ],
       "_note": "PRE-ARCH edge 1 (clash_profiles -> clash_mihomo_impl) is absent from this graph and must stay absent.",
-      "public_headers": ["core/profiles/profile_store.h"]
+      "public_headers": [
+        "core/profiles/profile_store.h"
+      ]
     },
     "clash_backups": {
-      "deps": ["clash_types"],
-      "external": ["Qt6::Network", "yaml-cpp::yaml-cpp"],
-      "transitive_external": ["Qt6::Core", "Qt6::Network", "yaml-cpp::yaml-cpp"],
+      "deps": [
+        "clash_types"
+      ],
+      "external": [
+        "Qt6::Network",
+        "yaml-cpp::yaml-cpp"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Network",
+        "yaml-cpp::yaml-cpp"
+      ],
       "_note": "Uses QThread/QSemaphore, not QtConcurrent: Qt6::Concurrent must not reappear.",
-      "public_headers": ["core/backups/backup_store.h"]
+      "public_headers": [
+        "core/backups/backup_store.h"
+      ]
     },
     "clash_telemetry": {
       "_role": "Narrowest module in the tree, and the sharpest umbrella-creep probe.",
-      "deps": ["clash_types"],
+      "deps": [
+        "clash_types"
+      ],
       "external": [],
-      "transitive_external": ["Qt6::Core"],
-      "public_headers": ["core/telemetry/traffic_history.h"]
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": [
+        "core/telemetry/traffic_history.h"
+      ]
     },
     "clash_mihomo_impl": {
       "_role": "Component-private per G2. The UI must reach it through the published component contract.",
-      "deps": ["clash_types", "clash_yaml"],
-      "external": ["Qt6::Network", "Qt6::WebSockets", "Qt6::Concurrent"],
+      "deps": [
+        "clash_types",
+        "clash_yaml"
+      ],
+      "external": [
+        "Qt6::Network",
+        "Qt6::WebSockets",
+        "Qt6::Concurrent"
+      ],
       "transitive_external": [
-        "Qt6::Core", "Qt6::Concurrent", "Qt6::Network", "Qt6::WebSockets",
-        "Qt6::Gui", "yaml-cpp::yaml-cpp",
-        "framework:CoreServices", "framework:Security", "framework:Carbon"
+        "Qt6::Core",
+        "Qt6::Concurrent",
+        "Qt6::Network",
+        "Qt6::WebSockets",
+        "Qt6::Gui",
+        "yaml-cpp::yaml-cpp",
+        "framework:CoreServices",
+        "framework:Security",
+        "framework:Carbon"
       ],
       "_transitive_note": [
         "Qt6::Gui and the three Apple frameworks arrive solely through the D2",
@@ -121,16 +188,33 @@
     },
     "clash_platform": {
       "_role": "OS adapters. Qt Gui is allowed here (D4); Widgets/Quick/Graphs are not.",
-      "deps": ["clash_types"],
+      "deps": [
+        "clash_types"
+      ],
       "external": [
-        "Qt6::Gui", "Qt6::Network", "Qt6::Concurrent",
-        "framework:CoreServices", "framework:Security", "framework:Carbon",
-        "ole32", "shell32", "wininet", "X11::X11"
+        "Qt6::Gui",
+        "Qt6::Network",
+        "Qt6::Concurrent",
+        "framework:CoreServices",
+        "framework:Security",
+        "framework:Carbon",
+        "ole32",
+        "shell32",
+        "wininet",
+        "X11::X11"
       ],
       "transitive_external": [
-        "Qt6::Core", "Qt6::Gui", "Qt6::Network", "Qt6::Concurrent",
-        "framework:CoreServices", "framework:Security", "framework:Carbon",
-        "ole32", "shell32", "wininet", "X11::X11"
+        "Qt6::Core",
+        "Qt6::Gui",
+        "Qt6::Network",
+        "Qt6::Concurrent",
+        "framework:CoreServices",
+        "framework:Security",
+        "framework:Carbon",
+        "ole32",
+        "shell32",
+        "wininet",
+        "X11::X11"
       ],
       "public_headers": [
         "platform/browser/browser_launcher.h",
@@ -141,9 +225,25 @@
         "platform/system/autostart.h",
         "platform/system/hotkeys.h"
       ]
+    },
+    "clashqt_com": {
+      "_role": "Portable component object model (component-r1). Depends on nothing, by design.",
+      "deps": [],
+      "external": [],
+      "transitive_external": [],
+      "public_headers": [
+        "core/component/buffer.h",
+        "core/component/com_ptr.h",
+        "core/component/component.h",
+        "core/component/component_module.h",
+        "core/component/error_info.h",
+        "core/component/interface_id.h",
+        "core/component/object.h",
+        "core/component/object_support.h",
+        "core/component/result.h"
+      ]
     }
   },
-
   "consumers": {
     "_about": [
       "Targets that consume modules. 'headless: true' means the target must",
@@ -153,71 +253,167 @@
     "clash-qt": {
       "_note": "Links the backend libraries directly; clash-qt-service-helper is an add_dependencies() edge, which the File API reports and which must therefore be declared like any other.",
       "deps": [
-        "clash_config", "clash_profiles", "clash_backups", "clash_telemetry",
-        "clash_platform", "clash-qt-service-helper"
+        "clash_config",
+        "clash_profiles",
+        "clash_backups",
+        "clash_telemetry",
+        "clash_platform",
+        "clash-qt-service-helper"
       ],
       "optional": true
     },
-    "clash-qt-service-helper": { "deps": [], "optional": true },
-
+    "clash-qt-service-helper": {
+      "deps": [],
+      "optional": true
+    },
     "runtime-tests": {
       "headless": true,
-      "deps": ["clash_yaml", "clash_config", "clash_profiles", "clash_platform"]
+      "deps": [
+        "clash_yaml",
+        "clash_config",
+        "clash_profiles",
+        "clash_platform"
+      ]
     },
-    "controller-tests": { "headless": true, "deps": [] },
-    "provider-tests": { "headless": true, "deps": [] },
-    "backup-tests": { "headless": true, "deps": ["clash_backups"] },
-    "traffic-history-tests": { "headless": true, "deps": ["clash_telemetry"] },
-    "privileged-service-tests": { "headless": true, "deps": ["clash_platform"] },
-    "system-proxy-async-tests": { "headless": true, "deps": ["clash_platform"] },
-    "proxy-tests": { "headless": true, "deps": ["clash_platform"] },
-
-    "data-pages-tests": { "deps": ["clash_telemetry"], "optional": true },
-    "tray-tests": { "deps": [], "optional": true },
-    "routing-controls-tests": { "deps": [], "optional": true },
-    "dashboard-async-tests": { "deps": ["clash_platform"], "optional": true },
-    "privileged-helper-ipc-tests": { "deps": [], "optional": true }
+    "controller-tests": {
+      "headless": true,
+      "deps": []
+    },
+    "provider-tests": {
+      "headless": true,
+      "deps": []
+    },
+    "backup-tests": {
+      "headless": true,
+      "deps": [
+        "clash_backups"
+      ]
+    },
+    "traffic-history-tests": {
+      "headless": true,
+      "deps": [
+        "clash_telemetry"
+      ]
+    },
+    "privileged-service-tests": {
+      "headless": true,
+      "deps": [
+        "clash_platform"
+      ]
+    },
+    "system-proxy-async-tests": {
+      "headless": true,
+      "deps": [
+        "clash_platform"
+      ]
+    },
+    "proxy-tests": {
+      "headless": true,
+      "deps": [
+        "clash_platform"
+      ]
+    },
+    "data-pages-tests": {
+      "deps": [
+        "clash_telemetry"
+      ],
+      "optional": true
+    },
+    "tray-tests": {
+      "deps": [],
+      "optional": true
+    },
+    "routing-controls-tests": {
+      "deps": [],
+      "optional": true
+    },
+    "dashboard-async-tests": {
+      "deps": [
+        "clash_platform"
+      ],
+      "optional": true
+    },
+    "privileged-helper-ipc-tests": {
+      "deps": [],
+      "optional": true
+    },
+    "clash_test_support": {
+      "_note": "Shared test infrastructure: scoped environment, loopback server, fake-core driver. Declared rather than ignored so that it becoming a consumer of production modules is a visible change, not a silent one.",
+      "deps": [],
+      "optional": true
+    }
   },
-
   "include_rules": [
     {
       "id": "IR-NO-UPWARD-INCLUDE",
-      "applies_to": ["src/core/**", "src/platform/**"],
-      "forbid_project_includes": ["ui/**", "app/**"],
+      "applies_to": [
+        "src/core/**",
+        "src/platform/**"
+      ],
+      "forbid_project_includes": [
+        "ui/**",
+        "app/**"
+      ],
       "message": "a backend file must not include UI or application code",
       "hint": "invert the dependency: publish a signal or an interface the UI consumes"
     },
     {
       "id": "IR-NO-DESKTOP-QT",
-      "applies_to": ["src/core/**", "src/platform/**"],
-      "forbid_qt_modules": ["Qt6::Widgets", "Qt6::Quick", "Qt6::QuickWidgets", "Qt6::Graphs", "Qt6::Charts", "Qt6::DataVisualization"],
+      "applies_to": [
+        "src/core/**",
+        "src/platform/**"
+      ],
+      "forbid_qt_modules": [
+        "Qt6::Widgets",
+        "Qt6::Quick",
+        "Qt6::QuickWidgets",
+        "Qt6::Graphs",
+        "Qt6::Charts",
+        "Qt6::DataVisualization"
+      ],
       "message": "backend code must not use Qt Widgets, Quick or Graphs (D4: Qt Gui and Qt Qml are allowed)",
       "hint": "QKeySequence (Gui) and QJSEngine (Qml) are deliberately not flagged"
     },
     {
       "id": "IR-PLATFORM-NOT-CORE",
-      "applies_to": ["src/platform/**"],
-      "forbid_project_includes": ["core/**"],
-      "allow_includes": ["core/types.h", "core/types/**"],
+      "applies_to": [
+        "src/platform/**"
+      ],
+      "forbid_project_includes": [
+        "core/**"
+      ],
+      "allow_includes": [
+        "core/types.h",
+        "core/types/**"
+      ],
       "message": "platform adapters must not depend on core services",
       "hint": "shared value types belong in clash_types"
     },
     {
       "id": "IR-CORE-NOT-PLATFORM",
-      "applies_to": ["src/core/**"],
-      "forbid_project_includes": ["platform/**"],
+      "applies_to": [
+        "src/core/**"
+      ],
+      "forbid_project_includes": [
+        "platform/**"
+      ],
       "message": "core must reach the OS through an interface it owns, not a platform header (D2)",
       "hint": "inject an abstract interface owned by clash_mihomo_impl; the composition root adapts the concrete platform type"
     },
     {
       "id": "IR-COMPONENT-PRIVATE",
-      "applies_to": ["src/ui/**", "src/main.cpp", "src/app/**"],
-      "forbid_project_includes": ["core/mihomo/**"],
+      "applies_to": [
+        "src/ui/**",
+        "src/main.cpp",
+        "src/app/**"
+      ],
+      "forbid_project_includes": [
+        "core/mihomo/**"
+      ],
       "message": "G2: clash_mihomo_impl is component-private; the UI must use the published component contract",
       "hint": "MOD-CORE publishes the contract that displaces these includes"
     }
   ],
-
   "exceptions": [
     {
       "id": "D2-mihomo-impl-links-platform",
@@ -238,7 +434,10 @@
       "remove_in": "P3",
       "reason": "DECISION D2, seen at file level. The single include site behind the baselined target edge. Frozen at one site: a second core file reaching into platform fails the check.",
       "sites": [
-        { "file": "src/core/mihomo/process/core_process.cpp", "include": "platform/service/privileged_service_client.h" }
+        {
+          "file": "src/core/mihomo/process/core_process.cpp",
+          "include": "platform/service/privileged_service_client.h"
+        }
       ]
     },
     {
@@ -249,14 +448,38 @@
       "remove_in": "P3",
       "reason": "G2 blocker at link level: these targets link the component-private implementation directly. Frozen; MOD-CORE's published contract displaces them. A ninth linker fails the check.",
       "sites": [
-        { "from": "clash-qt", "to": "clash_mihomo_impl" },
-        { "from": "runtime-tests", "to": "clash_mihomo_impl" },
-        { "from": "controller-tests", "to": "clash_mihomo_impl" },
-        { "from": "provider-tests", "to": "clash_mihomo_impl" },
-        { "from": "data-pages-tests", "to": "clash_mihomo_impl" },
-        { "from": "tray-tests", "to": "clash_mihomo_impl" },
-        { "from": "routing-controls-tests", "to": "clash_mihomo_impl" },
-        { "from": "dashboard-async-tests", "to": "clash_mihomo_impl" }
+        {
+          "from": "clash-qt",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "runtime-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "controller-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "provider-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "data-pages-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "tray-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "routing-controls-tests",
+          "to": "clash_mihomo_impl"
+        },
+        {
+          "from": "dashboard-async-tests",
+          "to": "clash_mihomo_impl"
+        }
       ]
     },
     {
@@ -268,26 +491,86 @@
       "remove_in": "P3",
       "reason": "PRE-ARCH 1b, the concrete G2 blocker: UI translation units include component-private mihomo headers, and src/ui/shell/main_window.h names core::CoreState in a slot signature. Frozen at 20 sites across 17 files; a 21st fails the check, and a site that disappears must be deleted from this list.",
       "sites": [
-        { "file": "src/ui/shell/routing_controls.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/shell/tray_proxy_menu.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/shell/tray_icon.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/shell/main_window.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/shell/main_window.h", "include": "core/mihomo/process/core_process.h" },
-        { "file": "src/ui/shell/dashboard_button.h", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/settings/settings_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/settings/settings_page.cpp", "include": "core/mihomo/process/core_process.h" },
-        { "file": "src/ui/pages/settings/service_settings.cpp", "include": "core/mihomo/process/core_process.h" },
-        { "file": "src/ui/pages/connections/connections_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/providers/providers_page.h", "include": "core/mihomo/provider_client.h" },
-        { "file": "src/ui/pages/providers/providers_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/rules/rules_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/logs/logs_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/proxies/proxies_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/overview/home_page.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/ui/pages/backups/backup_page.cpp", "include": "core/mihomo/process/core_process.h" },
-        { "file": "src/main.cpp", "include": "core/mihomo/controller_discovery.h" },
-        { "file": "src/main.cpp", "include": "core/mihomo/mihomo_client.h" },
-        { "file": "src/main.cpp", "include": "core/mihomo/process/core_process.h" }
+        {
+          "file": "src/ui/shell/routing_controls.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/shell/tray_proxy_menu.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/shell/tray_icon.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/shell/main_window.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/shell/main_window.h",
+          "include": "core/mihomo/process/core_process.h"
+        },
+        {
+          "file": "src/ui/shell/dashboard_button.h",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/settings/settings_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/settings/settings_page.cpp",
+          "include": "core/mihomo/process/core_process.h"
+        },
+        {
+          "file": "src/ui/pages/settings/service_settings.cpp",
+          "include": "core/mihomo/process/core_process.h"
+        },
+        {
+          "file": "src/ui/pages/connections/connections_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/providers/providers_page.h",
+          "include": "core/mihomo/provider_client.h"
+        },
+        {
+          "file": "src/ui/pages/providers/providers_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/rules/rules_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/logs/logs_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/proxies/proxies_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/overview/home_page.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/ui/pages/backups/backup_page.cpp",
+          "include": "core/mihomo/process/core_process.h"
+        },
+        {
+          "file": "src/main.cpp",
+          "include": "core/mihomo/controller_discovery.h"
+        },
+        {
+          "file": "src/main.cpp",
+          "include": "core/mihomo/mihomo_client.h"
+        },
+        {
+          "file": "src/main.cpp",
+          "include": "core/mihomo/process/core_process.h"
+        }
       ]
     }
   ]
