@@ -131,17 +131,51 @@ Status values: `queued`, `running`, `ready-for-integration`, `verified`, `blocke
 | BASELINE | coordinator | — | none (read-only) | verified | 14/14 CTest on macOS arm64; Windows/Linux absent |
 | G1-PROBE | coordinator | — | `build-core-probe/` (ignored) | verified | local mihomo builds, provenance recorded; darwin/arm64 only |
 | ARCHIVE | coordinator | BASELINE | git refs only | verified | `legacy-v1` = `28ce5f4`, content verified against disk |
-| PRE-ARCH | worker A / Opus | — | scratchpad only | running | — |
-| PRE-TEST | worker B / Opus | — | scratchpad only | running | — |
-| PRE-MOVE | worker C / Opus | — | scratchpad only | running | — |
+| PRE-ARCH | worker A / Opus | — | scratchpad only | verified | 729-line inventory; escalated E1/E2, resolved as D1/D2 |
+| PRE-TEST | worker B / Opus | — | scratchpad only | verified | 987-line inventory; 3 intrusive seams located with file:line |
+| PRE-MOVE | worker C / Opus | — | scratchpad only | verified | 805-line move map; 170 include rows, all applied without deviation |
+| MOVE-UI | worker A / Opus | PRE-MOVE | `src/ui/**` | verified | 50 moves, 115 include rows, QRC + QML checks passed |
+| MOVE-CORE | worker B / Opus | PRE-MOVE | `src/core/**`, `src/platform/browser_launcher.*`, `src/service/**` | verified | 24 moves, 17 include rows, helper byte-identical |
+| MOVE-TEST | worker C / Opus | PRE-MOVE | `tests/**` | verified | 12 moves, 29 include rows, 117 slot signatures preserved |
+| P1-STEP2 | coordinator | all MOVE-* | `CMakeLists.txt`, all manifests, `README.md` | verified | configure+build clean; 131 passed / 0 failed / 2 skipped, identical to baseline |
+
+## P1 relocation evidence (verified)
+
+Fresh build directory `build-p1`, macOS 26.6.2 arm64, Qt 6.11.1, CMake 4.4.2, Ninja.
+
+| Check | Result |
+| --- | --- |
+| Configure | clean |
+| Build | clean, no warnings, 173 targets |
+| CTest names | all **14**, same names and order as baseline |
+| CTest result | 14/14 passed |
+| Per-suite case totals vs baseline | **identical** — 131 passed, 0 failed, 2 skipped |
+| Line churn in the move commit | 176 additions, 176 deletions; every line an `#include` or a QRC `<file>` body |
+| QML | qmldir reads `TrafficGraph 1.0 TrafficGraph.qml`, so `QT_RESOURCE_ALIAS` still applies from the new path; `clash-qt` and `data-pages-tests` each get their own `ClashQt` output directory |
+| QRC | `/ui` prefix and both aliases unchanged; `:/ui/chevron-down-*.png` registered in the binary; assets resolve from the new depth |
+| macOS helper | `macos_helper.mm` moved byte-identically; present at `Contents/Helpers/`; the bundle-relative path literal untouched |
+
+The 2 skips are pre-existing and are the native-GPU graph cases behind
+`CLASH_QT_VERIFY_GRAPH_FRAMES` / `CLASH_QT_MEASURE_FRAMES`. They have never run under
+CTest. **No skip is visible at the CTest level today** — surfacing them is P2 work, and
+until then a skipped case must not be counted as a pass.
 
 ## Next ready packages
 
-P1 relocation (MOVE-UI, MOVE-CORE, MOVE-TEST) once P0 findings are consolidated and
-ownership is published. Relocation is a mandatory whole-tree barrier: no dependent
-package starts against the intermediate tree.
+**P1 is complete and verified.** The relocation barrier is cleared, so dependent
+packages may now start against the integrated tree.
 
-## Open correction — commit `096addf` has a mismatched message
+P2 (three slots): BASE-FIXTURE (scoped settings/environment fixtures, loopback servers,
+portable fake-core executable), BASE-SEAM (replace the three intrusive seams that
+PRE-TEST located with injected dependencies), BASE-ARCH (dependency checker plus its own
+positive/negative self-tests, carrying D2's baselined exception pre-registered).
+
+Coordinator in parallel: extract the reusable static libraries per D1, add the Make
+facade and `CMakePresets.json`, and `cmake/Mihomo.cmake` for the local-source core build.
+COMPONENT-BASE takes a freed P2 slot against contract `component-r1` before any P3
+consumer starts.
+
+## Resolved correction — commit `096addf` had a mismatched message
 
 **What happened.** `096addf` is messaged as the D1–D6 decisions document but its tree
 also contains ~90 in-flight `R100` renames belonging to MOVE-UI, MOVE-CORE and
@@ -157,10 +191,10 @@ damage is purely that one commit's message does not describe its contents.
 mutate the index while three workers are concurrently running `git mv` against it.
 Repairing now risks a genuine race and real loss; the mismatched message risks nothing.
 
-**Repair at BARRIER 1**, once all three workers are quiescent and before Step 2:
-`git reset --soft 2a6f3ed` (non-destructive; index and working tree keep everything),
-then recommit as two honest commits — the decisions document via an explicit pathspec,
-then the phase-1 relocation. Step 2's CMake reconciliation becomes a third commit.
+**Repaired at BARRIER 1**, exactly as planned. `git reset --soft 2a6f3ed` (HEAD only;
+index and working tree untouched), then three honest commits: `b586739` decisions
+document (2 files, via explicit pathspec), `522e503` phase-1 relocation, `3144720`
+CMake/manifest reconciliation. `096addf` no longer exists on the branch. Nothing lost.
 
 **Rule adopted:** while any worker holds a lease, the coordinator commits only with an
 explicit pathspec (`git commit -- <path>`), never a bare `git commit`.
