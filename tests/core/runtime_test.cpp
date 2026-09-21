@@ -506,7 +506,30 @@ private slots:
         const QString config = directory_->filePath("service-config.yaml");
         write(config, "proxies: []\nsecret: '0123456789abcdef0123456789abcdef'\nexternal-controller: 127.0.0.1:" +
             QByteArray::number(controller.serverPort()) + "\ncustom-string: '123'\n");
-        platform::PrivilegedServiceClient client(nullptr, socketPath);
+        // The stalled-logs case below expires this client's request on purpose;
+        // every other request here is answered by hand, so none of them expire.
+        // Local to this case: it replaces searching the client for its QTimer,
+        // and nothing here then depends on wall-clock time.
+        class ManualDeadline : public platform::RequestDeadline {
+        public:
+            void setExpiredHandler(std::function<void()> handler) override {
+                expired_ = std::move(handler);
+            }
+            void start(std::chrono::milliseconds) override { pending_ = true; }
+            void stop() override { pending_ = false; }
+            bool expire() {
+                if (!pending_ || !expired_) return false;
+                pending_ = false;
+                expired_();
+                return true;
+            }
+
+        private:
+            std::function<void()> expired_;
+            bool pending_ = false;
+        };
+        ManualDeadline deadline;
+        platform::PrivilegedServiceClient client(nullptr, socketPath, &deadline);
         core::CoreProcess process(nullptr, &client);
         process.setBinaryPath(binary);
         QVERIFY(process.setUseService(true));
@@ -541,9 +564,7 @@ private slots:
         QTRY_VERIFY(commands.size() > previousCommands);
         QTRY_COMPARE(commands.last(), QString("logs"));
         QVERIFY(client.isBusy());
-        auto *deadline = client.findChild<QTimer *>();
-        QVERIFY(deadline);
-        deadline->start(20);
+        QVERIFY(deadline.expire());
         QTRY_COMPARE(process.state(), core::CoreState::Failed);
         QCOMPARE(failures.size(), 1);
         QVERIFY(failures.first().first().toString().contains("timed out: logs"));

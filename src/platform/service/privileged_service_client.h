@@ -1,21 +1,43 @@
 #pragma once
 
+#include <chrono>
+#include <functional>
+#include <memory>
+
 #include <QJsonObject>
 #include <QObject>
 #include <QQueue>
 #include <QString>
 
 class QLocalSocket;
-class QTimer;
 
 namespace platform {
+
+/// The deadline a privileged-service operation runs against: the connection
+/// attempt first, then each sent request. Production uses a single-shot QTimer;
+/// a caller that must decide when an operation expires - a test - injects its
+/// own instead of reaching into the client's QObject children.
+class RequestDeadline {
+public:
+    virtual ~RequestDeadline() = default;
+    /// Set once by the client. The implementation calls it when a started
+    /// deadline elapses, on the client's thread, unless stop() came first.
+    virtual void setExpiredHandler(std::function<void()> handler) = 0;
+    /// Starts or restarts the single pending deadline.
+    virtual void start(std::chrono::milliseconds timeout) = 0;
+    virtual void stop() = 0;
+};
 
 /// A single asynchronous connection is the helper's lease on a privileged core.
 /// Dropping this connection makes the helper stop that core.
 class PrivilegedServiceClient : public QObject {
     Q_OBJECT
 public:
-    explicit PrivilegedServiceClient(QObject *parent = nullptr, const QString &socketPath = {});
+    /// `deadline` must outlive this client; a null one means the real timer,
+    /// which is what production passes.
+    explicit PrivilegedServiceClient(QObject *parent = nullptr, const QString &socketPath = {},
+                                     RequestDeadline *deadline = nullptr);
+    ~PrivilegedServiceClient() override;
     static QString defaultSocketPath();
     static bool isSupported();
     bool isConnected() const;
@@ -49,7 +71,8 @@ private:
     void failRequests(const QString &error);
 
     QLocalSocket *socket_;
-    QTimer *deadline_;
+    std::unique_ptr<RequestDeadline> ownedDeadline_;
+    RequestDeadline *deadline_;
     QString socketPath_;
     QString connectionError_;
     QByteArray input_;

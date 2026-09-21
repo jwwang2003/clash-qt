@@ -3,23 +3,29 @@
 #include <QThread>
 #include <QTimer>
 #include <atomic>
+#include "platform/browser/browser_launcher.h"
 #include "ui/shell/dashboard_button.h"
 
 namespace {
 std::atomic_int discoveries{0};
 std::atomic_int completed{0};
 std::atomic_bool ranOnGuiThread{false};
-}
 
-namespace platform {
-QVector<Browser> BrowserLauncher::available() {
-    ++discoveries;
-    ranOnGuiThread = QThread::currentThread() == qApp->thread();
-    QThread::msleep(200); // A deliberately slow OS enumeration, with no OS access.
-    ++completed;
-    return {{"fixture.browser", "Fixture Browser", true}};
-}
-bool BrowserLauncher::open(const QUrl &, const QString &) { return true; }
+// Injected through the constructor instead of replacing the production symbols
+// at link time, so this target links the real browser_launcher.cpp. The fixture
+// is file-scope because discovery keeps running after a button is destroyed.
+class FixtureBrowsers final : public platform::BrowserOperations {
+public:
+    QVector<platform::Browser> available() override {
+        ++discoveries;
+        ranOnGuiThread = QThread::currentThread() == qApp->thread();
+        QThread::msleep(200); // A deliberately slow OS enumeration, with no OS access.
+        ++completed;
+        return {{"fixture.browser", "Fixture Browser", true}};
+    }
+    bool open(const QUrl &, const QString &) override { return true; }
+};
+FixtureBrowsers browsers;
 }
 
 class DashboardAsyncTest : public QObject {
@@ -27,7 +33,7 @@ class DashboardAsyncTest : public QObject {
 private slots:
     void menuDiscoveryDoesNotBlockGui() {
         core::MihomoClient client;
-        ui::DashboardButton button(&client);
+        ui::DashboardButton button(&client, &browsers);
         int ticks = 0;
         QTimer heartbeat;
         heartbeat.setInterval(5);
@@ -50,7 +56,7 @@ private slots:
     void destructionDuringDiscoveryIsSafe() {
         core::MihomoClient client;
         const int before = completed;
-        auto *button = new ui::DashboardButton(&client);
+        auto *button = new ui::DashboardButton(&client, &browsers);
         QTRY_VERIFY(discoveries.load() > before);
         QElapsedTimer elapsed;
         elapsed.start();

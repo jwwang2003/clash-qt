@@ -9,6 +9,25 @@
 #include <functional>
 #include "platform/service/privileged_service_client.h"
 
+/// A deadline the test decides the moment of: it replaces searching the client
+/// for its QTimer and shortening it, so nothing here depends on wall-clock time.
+class ManualDeadline : public platform::RequestDeadline {
+public:
+    void setExpiredHandler(std::function<void()> handler) override { expired_ = std::move(handler); }
+    void start(std::chrono::milliseconds) override { pending_ = true; }
+    void stop() override { pending_ = false; }
+    bool expire() {
+        if (!pending_ || !expired_) return false;
+        pending_ = false;
+        expired_();
+        return true;
+    }
+
+private:
+    std::function<void()> expired_;
+    bool pending_ = false;
+};
+
 class FakePrivilegedService : public QLocalServer {
 public:
     QList<QJsonObject> requests;
@@ -190,16 +209,15 @@ private slots:
     void stalledReplyTimesOutAndEndsLease() {
         FakePrivilegedService server;
         QVERIFY(server.listen(socketPath()));
-        platform::PrivilegedServiceClient client(nullptr, socketPath());
+        ManualDeadline deadline;
+        platform::PrivilegedServiceClient client(nullptr, socketPath(), &deadline);
         QSignalSpy finished(&client, &platform::PrivilegedServiceClient::requestFinished);
         QSignalSpy errors(&client, &platform::PrivilegedServiceClient::errorOccurred);
         client.requestStatus();
         QTRY_COMPARE(server.requests.size(), 1);
-        auto *deadline = client.findChild<QTimer *>();
-        QVERIFY(deadline);
-        // Shorten only this isolated client's existing deadline; production has
-        // no environment/config override for the timeout or helper socket.
-        deadline->start(20);
+        // Expire only this isolated client's pending request; production has no
+        // environment/config override for the timeout or helper socket.
+        QVERIFY(deadline.expire());
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY(!finished.first().at(1).toBool());
         QVERIFY(finished.first().at(2).toString().contains("timed out"));

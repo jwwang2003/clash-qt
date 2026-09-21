@@ -1,5 +1,7 @@
 #include "platform/proxy/system_proxy.h"
 
+#include <utility>
+
 #include <QFileInfo>
 #include <QMap>
 #include <QMutex>
@@ -17,16 +19,9 @@ namespace {
 thread_local QString g_lastError;
 QRecursiveMutex g_proxyMutex;
 
-#if defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
-
 /// Runs a configuration tool and captures its output. networksetup reports its
 /// failures on stdout rather than stderr, so both feed `g_lastError`.
-bool run(const QString &program, const QStringList &arguments, QString *output = nullptr) {
-#ifdef CLASH_QT_PROXY_TEST_RUNNER
-    const bool result = CLASH_QT_PROXY_TEST_RUNNER(program, arguments, output);
-    if (!result) g_lastError = QStringLiteral("Mock proxy command failed.");
-    return result;
-#else
+bool runProcess(const QString &program, const QStringList &arguments, QString *output) {
     QProcess process;
     process.start(program, arguments);
     if (!process.waitForFinished(5000)) {
@@ -50,10 +45,27 @@ bool run(const QString &program, const QStringList &arguments, QString *output =
         *output = out;
     }
     return true;
-#endif
 }
 
-#endif
+/// The single command boundary every OS helper below goes through. An injected
+/// runner replaces the process launch outright, so a caller holding one can
+/// never reach the machine, whatever the helpers ask for.
+class CommandInvoker {
+public:
+    explicit CommandInvoker(SystemProxyBackend::CommandRunner runner = {})
+        : runner_(std::move(runner)) {}
+
+    bool operator()(const QString &program, const QStringList &arguments,
+                    QString *output = nullptr) const {
+        if (!runner_) return runProcess(program, arguments, output);
+        const bool result = runner_(program, arguments, output);
+        if (!result) g_lastError = QStringLiteral("The proxy command failed.");
+        return result;
+    }
+
+private:
+    SystemProxyBackend::CommandRunner runner_;
+};
 
 #ifdef Q_OS_MACOS
 
@@ -80,7 +92,7 @@ bool hasDefaultRoute(const QString &info) {
 /// The service the proxy applies to. `-listallnetworkservices` prints a legend
 /// first, then the services in routing-priority order, marking the disabled
 /// ones with a leading '*'.
-QString primaryService() {
+QString primaryService(const CommandInvoker &run) {
     QString route;
     QString interface;
     for (const QStringList &arguments : {QStringList{"-n", "get", "default"},
@@ -151,7 +163,7 @@ bool parseProxyReport(const QString &report, ProxyConfig *config) {
     return enabled;
 }
 
-QString readBypass(const QString &service) {
+QString readBypass(const CommandInvoker &run, const QString &service) {
     QString report;
     if (!run(kNetworksetup, {QStringLiteral("-getproxybypassdomains"), service}, &report)) {
         return {};
@@ -167,7 +179,7 @@ QString readBypass(const QString &service) {
     return entries.join(QLatin1Char(','));
 }
 
-bool applyProxies(const QString &service, const ProxyConfig &config) {
+bool applyProxies(const CommandInvoker &run, const QString &service, const ProxyConfig &config) {
     for (int i = 0; i < 3; ++i) {
         if (i == 2 && config.socksPort == 0) {
             if (!run(kNetworksetup, {QLatin1String(kStateSetters[i]), service, "off"})) return false;
@@ -192,7 +204,7 @@ bool applyProxies(const QString &service, const ProxyConfig &config) {
     return run(kNetworksetup, arguments);
 }
 
-bool setProxyStates(const QString &service, const QString &state) {
+bool setProxyStates(const CommandInvoker &run, const QString &service, const QString &state) {
     for (const char *setter : kStateSetters) {
         if (!run(kNetworksetup, {QLatin1String(setter), service, state})) {
             return false;
@@ -231,12 +243,12 @@ const auto kProxySchema = QStringLiteral("org.gnome.system.proxy");
 
 QString gsettings() { return QStandardPaths::findExecutable(QStringLiteral("gsettings")); }
 
-bool setKey(const QString &schema, const QString &key, const QString &value) {
+bool setKey(const CommandInvoker &run, const QString &schema, const QString &key, const QString &value) {
     return run(gsettings(), {QStringLiteral("set"), schema, key, value});
 }
 
 /// gsettings quotes the strings it prints; callers want the bare value.
-QString getKey(const QString &schema, const QString &key) {
+QString getKey(const CommandInvoker &run, const QString &schema, const QString &key) {
     QString value;
     if (!run(gsettings(), {QStringLiteral("get"), schema, key}, &value)) {
         return {};
@@ -254,9 +266,6 @@ struct ProxySnapshot {
     QMap<QString, QVariant> values;
     bool valid = false;
 };
-ProxySnapshot originalSettings;
-ProxySnapshot ownedSettings;
-
 #ifdef Q_OS_MACOS
 const char *const kGetters[] = {"-getwebproxy", "-getsecurewebproxy", "-getsocksfirewallproxy",
                                "-getproxybypassdomains", "-getautoproxyurl", "-getproxyautodiscovery"};
@@ -268,10 +277,10 @@ QString reportField(const QString &report, const QString &name) {
 }
 #endif
 
-ProxySnapshot snapshot(const QString &service = {}) {
+ProxySnapshot snapshot(const CommandInvoker &run, const QString &service = {}) {
     ProxySnapshot state;
 #ifdef Q_OS_MACOS
-    state.service = service.isEmpty() ? primaryService() : service;
+    state.service = service.isEmpty() ? primaryService(run) : service;
     if (state.service.isEmpty()) return state;
     for (const char *getter : kGetters) {
         QString output;
@@ -279,6 +288,7 @@ ProxySnapshot snapshot(const QString &service = {}) {
         state.values.insert(QLatin1String(getter), output);
     }
 #elif defined(Q_OS_WIN)
+    Q_UNUSED(run);
     Q_UNUSED(service);
     QSettings settings(kInternetSettings, QSettings::NativeFormat);
     for (const char *key : {"ProxyEnable", "ProxyServer", "ProxyOverride", "AutoConfigURL"}) {
@@ -301,6 +311,7 @@ ProxySnapshot snapshot(const QString &service = {}) {
         state.values.insert(kProxySchema + '/' + QLatin1String(key), output);
     }
 #else
+    Q_UNUSED(run);
     Q_UNUSED(service);
     return state;
 #endif
@@ -308,7 +319,7 @@ ProxySnapshot snapshot(const QString &service = {}) {
     return state;
 }
 
-bool restore(const ProxySnapshot &state) {
+bool restore(const CommandInvoker &run, const ProxySnapshot &state) {
     if (!state.valid) return false;
     bool ok = true;
 #ifdef Q_OS_MACOS
@@ -344,6 +355,7 @@ bool restore(const ProxySnapshot &state) {
     ok = run(kNetworksetup, {"-setproxyautodiscovery", state.service,
                             discovery.endsWith("On", Qt::CaseInsensitive) ? "on" : "off"}) && ok;
 #elif defined(Q_OS_WIN)
+    Q_UNUSED(run);
     QSettings settings(kInternetSettings, QSettings::NativeFormat);
     for (auto it = state.values.begin(); it != state.values.end(); ++it) {
         if (it.value().isValid()) settings.setValue(it.key(), it.value());
@@ -354,19 +366,20 @@ bool restore(const ProxySnapshot &state) {
     for (auto it = state.values.begin(); it != state.values.end(); ++it) {
         if (it.key().endsWith("/mode")) continue;
         const int slash = it.key().lastIndexOf('/');
-        ok = setKey(it.key().left(slash), it.key().mid(slash + 1), it.value().toString()) && ok;
+        ok = setKey(run, it.key().left(slash), it.key().mid(slash + 1), it.value().toString()) && ok;
     }
-    ok = setKey(kProxySchema, "mode", state.values.value(kProxySchema + "/mode").toString()) && ok;
+    ok = setKey(run, kProxySchema, "mode", state.values.value(kProxySchema + "/mode").toString()) && ok;
 #endif
     return ok;
 }
 
-bool apply(const ProxyConfig &config, const QString &service) {
+bool apply(const CommandInvoker &run, const ProxyConfig &config, const QString &service) {
 #if defined(Q_OS_MACOS)
-    return applyProxies(service, config) &&
+    return applyProxies(run, service, config) &&
            run(kNetworksetup, {"-setautoproxystate", service, "off"}) &&
            run(kNetworksetup, {"-setproxyautodiscovery", service, "off"});
 #elif defined(Q_OS_WIN)
+    Q_UNUSED(run);
     Q_UNUSED(service);
     QSettings settings(kInternetSettings, QSettings::NativeFormat);
     QString bypass = config.bypass;
@@ -387,16 +400,17 @@ bool apply(const ProxyConfig &config, const QString &service) {
         const QString schema = kProxySchema + '.' + QLatin1String(child);
         const bool socks = QLatin1String(child) == "socks";
         const quint16 port = socks ? config.socksPort : config.port;
-        if (!setKey(schema, "host", quoted(port == 0 ? QString() : config.host)) ||
-            !setKey(schema, "port", QString::number(port))) return false;
+        if (!setKey(run, schema, "host", quoted(port == 0 ? QString() : config.host)) ||
+            !setKey(run, schema, "port", QString::number(port))) return false;
     }
     QStringList hosts;
     for (const QString &entry : config.bypass.split(',', Qt::SkipEmptyParts)) {
         hosts.append(quoted(entry.trimmed()));
     }
-    return setKey(kProxySchema, "ignore-hosts", '[' + hosts.join(',') + ']') &&
-           setKey(kProxySchema, "mode", "'manual'");
+    return setKey(run, kProxySchema, "ignore-hosts", '[' + hosts.join(',') + ']') &&
+           setKey(run, kProxySchema, "mode", "'manual'");
 #else
+    Q_UNUSED(run);
     Q_UNUSED(config);
     Q_UNUSED(service);
     return false;
@@ -405,19 +419,24 @@ bool apply(const ProxyConfig &config, const QString &service) {
 
 }  // namespace
 
-bool SystemProxy::isSupported() {
-#if defined(Q_OS_MACOS)
-    return QFileInfo::exists(kNetworksetup);
-#elif defined(Q_OS_WIN)
-    return true;
-#elif defined(Q_OS_LINUX)
-    return !gsettings().isEmpty();
-#else
-    return false;
-#endif
-}
+/// Everything one backend owns: the command boundary, and the two snapshots
+/// that decide whether this application still owns the OS proxy.
+struct SystemProxyBackend::Data {
+    explicit Data(CommandRunner runner) : run(std::move(runner)) {}
 
-bool SystemProxy::enable(const ProxyConfig &config) {
+    CommandInvoker run;
+    ProxySnapshot originalSettings;
+    ProxySnapshot ownedSettings;
+};
+
+SystemProxyBackend::SystemProxyBackend(CommandRunner runner)
+    : d_(std::make_unique<Data>(std::move(runner))) {}
+
+SystemProxyBackend::~SystemProxyBackend() = default;
+
+bool SystemProxyBackend::isSupported() const { return SystemProxy::isSupported(); }
+
+bool SystemProxyBackend::enable(const ProxyConfig &config) {
     const QMutexLocker lock(&g_proxyMutex);
     g_lastError.clear();
     if (config.host.trimmed().isEmpty() || config.host.contains('\n') || config.port == 0) {
@@ -428,9 +447,10 @@ bool SystemProxy::enable(const ProxyConfig &config) {
         g_lastError = QStringLiteral("This platform has no supported proxy mechanism.");
         return false;
     }
-    const ProxySnapshot before = snapshot();
+    const ProxySnapshot before = snapshot(d_->run);
     if (!before.valid) return false;
-    if (ownedSettings.valid && ownedSettings.service != before.service && !restoreOwned()) return false;
+    if (d_->ownedSettings.valid && d_->ownedSettings.service != before.service && !restoreOwned())
+        return false;
 #ifdef Q_OS_MACOS
     for (int i = 0; i < 3; ++i) {
         const QString report = before.values.value(QLatin1String(kGetters[i])).toString();
@@ -440,96 +460,97 @@ bool SystemProxy::enable(const ProxyConfig &config) {
         }
     }
 #endif
-    const bool stillOwned = ownedSettings.valid && before.service == ownedSettings.service &&
-                            before.values == ownedSettings.values;
-    if (!apply(config, before.service)) {
+    const bool stillOwned = d_->ownedSettings.valid && before.service == d_->ownedSettings.service &&
+                            before.values == d_->ownedSettings.values;
+    if (!apply(d_->run, config, before.service)) {
         const QString reason = g_lastError;
-        const bool restored = restore(before);
+        const bool restored = restore(d_->run, before);
         if (!restored) {
-            if (!stillOwned) originalSettings = before;
-            ownedSettings = snapshot(before.service);
+            if (!stillOwned) d_->originalSettings = before;
+            d_->ownedSettings = snapshot(d_->run, before.service);
         }
         g_lastError = reason + (restored ? QString() : QStringLiteral(" Previous proxy settings could not be fully restored."));
         return false;
     }
-    const ProxySnapshot after = snapshot(before.service);
+    const ProxySnapshot after = snapshot(d_->run, before.service);
     if (!after.valid) {
         const QString reason = g_lastError;
-        const bool restored = restore(before);
+        const bool restored = restore(d_->run, before);
         if (!restored) {
-            if (!stillOwned) originalSettings = before;
-            ownedSettings = snapshot(before.service);
+            if (!stillOwned) d_->originalSettings = before;
+            d_->ownedSettings = snapshot(d_->run, before.service);
         }
         g_lastError = reason + (restored ? QString() : QStringLiteral(" Previous proxy settings could not be fully restored."));
         return false;
     }
-    if (!stillOwned) originalSettings = before;
-    ownedSettings = after;
+    if (!stillOwned) d_->originalSettings = before;
+    d_->ownedSettings = after;
     g_lastError.clear();
     return true;
 }
 
-bool SystemProxy::ownsProxy() {
+bool SystemProxyBackend::ownsProxy() {
     const QMutexLocker lock(&g_proxyMutex);
-    if (!ownedSettings.valid) return false;
-    const ProxySnapshot now = snapshot(ownedSettings.service);
-    return now.valid && now.service == ownedSettings.service && now.values == ownedSettings.values;
+    if (!d_->ownedSettings.valid) return false;
+    const ProxySnapshot now = snapshot(d_->run, d_->ownedSettings.service);
+    return now.valid && now.service == d_->ownedSettings.service &&
+           now.values == d_->ownedSettings.values;
 }
 
-bool SystemProxy::restoreOwned() {
+bool SystemProxyBackend::restoreOwned() {
     const QMutexLocker lock(&g_proxyMutex);
     g_lastError.clear();
-    if (!ownedSettings.valid) {
-        if (!originalSettings.valid) return true;
+    if (!d_->ownedSettings.valid) {
+        if (!d_->originalSettings.valid) return true;
         g_lastError = QStringLiteral("Cannot safely restore proxy settings because their current state could not be read.");
         return false;
     }
-    const ProxySnapshot now = snapshot(ownedSettings.service);
+    const ProxySnapshot now = snapshot(d_->run, d_->ownedSettings.service);
     if (!now.valid) return false;
-    if (now.values != ownedSettings.values || now.service != ownedSettings.service) {
-        ownedSettings = {};
-        originalSettings = {};
+    if (now.values != d_->ownedSettings.values || now.service != d_->ownedSettings.service) {
+        d_->ownedSettings = {};
+        d_->originalSettings = {};
         return true;
     }
-    if (!restore(originalSettings)) {
+    if (!restore(d_->run, d_->originalSettings)) {
         const QString reason = g_lastError;
-        ownedSettings = snapshot(ownedSettings.service);
+        d_->ownedSettings = snapshot(d_->run, d_->ownedSettings.service);
         g_lastError = reason;
         return false;
     }
-    ownedSettings = {};
-    originalSettings = {};
+    d_->ownedSettings = {};
+    d_->originalSettings = {};
     return true;
 }
 
-bool SystemProxy::disable() {
+bool SystemProxyBackend::disable() {
     const QMutexLocker lock(&g_proxyMutex);
-    if (ownedSettings.valid) return restoreOwned();
+    if (d_->ownedSettings.valid) return restoreOwned();
     g_lastError.clear();
 #if defined(Q_OS_MACOS)
-    const QString service = primaryService();
-    return !service.isEmpty() && setProxyStates(service, QStringLiteral("off"));
+    const QString service = primaryService(d_->run);
+    return !service.isEmpty() && setProxyStates(d_->run, service, QStringLiteral("off"));
 #elif defined(Q_OS_WIN)
     QSettings settings(kInternetSettings, QSettings::NativeFormat);
     settings.setValue(QStringLiteral("ProxyEnable"), 0u);
     return commit(settings);
 #elif defined(Q_OS_LINUX)
-    return setKey(kProxySchema, QStringLiteral("mode"), QStringLiteral("none"));
+    return setKey(d_->run, kProxySchema, QStringLiteral("mode"), QStringLiteral("none"));
 #else
     g_lastError = QStringLiteral("This platform has no supported proxy mechanism.");
     return false;
 #endif
 }
 
-ProxyConfig SystemProxy::current() {
+ProxyConfig SystemProxyBackend::current() {
     const QMutexLocker lock(&g_proxyMutex);
     g_lastError.clear();
     ProxyConfig config;
 #if defined(Q_OS_MACOS)
-    const QString service = primaryService();
+    const QString service = primaryService(d_->run);
     QString report;
     if (service.isEmpty() ||
-        !run(kNetworksetup, {QStringLiteral("-getwebproxy"), service}, &report)) {
+        !d_->run(kNetworksetup, {QStringLiteral("-getwebproxy"), service}, &report)) {
         return {};
     }
     // A switched-off proxy keeps its last server, which is not what the OS is
@@ -537,9 +558,10 @@ ProxyConfig SystemProxy::current() {
     if (!parseProxyReport(report, &config)) {
         return {};
     }
-    config.bypass = readBypass(service);
+    config.bypass = readBypass(d_->run, service);
     ProxyConfig socks;
-    if (run(kNetworksetup, {"-getsocksfirewallproxy", service}, &report) && parseProxyReport(report, &socks))
+    if (d_->run(kNetworksetup, {"-getsocksfirewallproxy", service}, &report) &&
+        parseProxyReport(report, &socks))
         config.socksPort = socks.port;
 #elif defined(Q_OS_WIN)
     QSettings settings(kInternetSettings, QSettings::NativeFormat);
@@ -563,14 +585,14 @@ ProxyConfig SystemProxy::current() {
     config.bypass = settings.value(QStringLiteral("ProxyOverride")).toString().replace(
         QLatin1Char(';'), QLatin1Char(','));
 #elif defined(Q_OS_LINUX)
-    if (getKey(kProxySchema, QStringLiteral("mode")) != QLatin1String("manual")) {
+    if (getKey(d_->run, kProxySchema, QStringLiteral("mode")) != QLatin1String("manual")) {
         return {};
     }
     const QString schema = kProxySchema + QStringLiteral(".http");
-    config.host = getKey(schema, QStringLiteral("host"));
-    config.port = getKey(schema, QStringLiteral("port")).toUShort();
-    config.socksPort = getKey(kProxySchema + ".socks", "port").toUShort();
-    config.bypass = getKey(kProxySchema, QStringLiteral("ignore-hosts"))
+    config.host = getKey(d_->run, schema, QStringLiteral("host"));
+    config.port = getKey(d_->run, schema, QStringLiteral("port")).toUShort();
+    config.socksPort = getKey(d_->run, kProxySchema + ".socks", "port").toUShort();
+    config.bypass = getKey(d_->run, kProxySchema, QStringLiteral("ignore-hosts"))
                         .remove(QLatin1Char('['))
                         .remove(QLatin1Char(']'))
                         .remove(QLatin1Char('\''))
@@ -579,7 +601,7 @@ ProxyConfig SystemProxy::current() {
     return config;
 }
 
-SystemProxyState SystemProxy::state() {
+SystemProxyState SystemProxyBackend::state() {
     const QMutexLocker lock(&g_proxyMutex);
     SystemProxyState result;
     result.supported = isSupported();
@@ -596,7 +618,40 @@ SystemProxyState SystemProxy::state() {
     return result;
 }
 
-bool SystemProxy::isEnabled() { return current().port != 0; }
+bool SystemProxyBackend::isEnabled() { return current().port != 0; }
+
+QString SystemProxyBackend::lastError() const { return g_lastError; }
+
+namespace {
+
+/// The application keeps one view of the machine's proxy, so ownership survives
+/// across the static calls below exactly as it did when these were globals.
+SystemProxyBackend &sharedBackend() {
+    static SystemProxyBackend backend;
+    return backend;
+}
+
+}  // namespace
+
+bool SystemProxy::isSupported() {
+#if defined(Q_OS_MACOS)
+    return QFileInfo::exists(kNetworksetup);
+#elif defined(Q_OS_WIN)
+    return true;
+#elif defined(Q_OS_LINUX)
+    return !gsettings().isEmpty();
+#else
+    return false;
+#endif
+}
+
+bool SystemProxy::enable(const ProxyConfig &config) { return sharedBackend().enable(config); }
+bool SystemProxy::ownsProxy() { return sharedBackend().ownsProxy(); }
+bool SystemProxy::restoreOwned() { return sharedBackend().restoreOwned(); }
+bool SystemProxy::disable() { return sharedBackend().disable(); }
+ProxyConfig SystemProxy::current() { return sharedBackend().current(); }
+SystemProxyState SystemProxy::state() { return sharedBackend().state(); }
+bool SystemProxy::isEnabled() { return sharedBackend().isEnabled(); }
 
 QString SystemProxy::lastError() { return g_lastError; }
 

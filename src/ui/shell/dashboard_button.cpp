@@ -39,7 +39,13 @@ QSettings settings() { return QSettings("clash-qt", "clash-qt"); }
 }  // namespace
 
 DashboardButton::DashboardButton(core::MihomoClient *client, QWidget *parent)
-    : QToolButton(parent), client_(client), menu_(new QMenu(this)) {
+    : DashboardButton(client, platform::BrowserLauncher::operations(), parent) {}
+
+DashboardButton::DashboardButton(core::MihomoClient *client, platform::BrowserOperations *browsers,
+                                 QWidget *parent)
+    : QToolButton(parent), client_(client),
+      browserOps_(browsers ? browsers : platform::BrowserLauncher::operations()),
+      menu_(new QMenu(this)) {
     setText(tr("Dashboard"));
     setPopupMode(QToolButton::MenuButtonPopup);
     setMenu(menu_);
@@ -80,8 +86,8 @@ void DashboardButton::openDashboard() {
             message->open();
         }
     });
-    watcher->setFuture(QtConcurrent::run([url, browser] {
-        return platform::BrowserLauncher::open(url, browser);
+    watcher->setFuture(QtConcurrent::run([browsers = browserOps_, url, browser] {
+        return browsers->open(url, browser);
     }));
 }
 
@@ -126,7 +132,7 @@ void DashboardButton::refreshBrowsers() {
         // Updating only after discovery completes keeps opening the menu immediate.
         rebuildMenu();
     });
-    watcher->setFuture(QtConcurrent::run([] { return platform::BrowserLauncher::available(); }));
+    watcher->setFuture(QtConcurrent::run([browsers = browserOps_] { return browsers->available(); }));
 }
 
 void DashboardButton::applyConnectionState(bool connected) {

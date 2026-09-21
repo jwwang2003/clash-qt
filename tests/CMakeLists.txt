@@ -33,13 +33,11 @@ qt_add_executable(system-proxy-async-tests platform/system_proxy_async_test.cpp)
 target_link_libraries(system-proxy-async-tests PRIVATE Qt6::Test clash_platform)
 add_test(NAME system-proxy-async COMMAND system-proxy-async-tests)
 
-# proxy-tests textually includes platform/proxy/system_proxy.cpp to substitute
-# its command runner, so it must NOT also link clash_platform: that would define
-# platform::SystemProxy twice. BASE-SEAM replaces the inclusion with an injected
-# command runner, and this target then links the library like the others.
+# Substitutes SystemProxyBackend's command runner through its constructor, so it
+# links the production library like every other suite. It must not additionally
+# compile system_proxy.cpp: that would define platform::SystemProxy twice.
 qt_add_executable(proxy-tests platform/system_proxy_test.cpp)
-target_include_directories(proxy-tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
-target_link_libraries(proxy-tests PRIVATE Qt6::Test clash_types)
+target_link_libraries(proxy-tests PRIVATE Qt6::Test clash_platform)
 add_test(NAME proxy COMMAND proxy-tests)
 
 if(CLASH_QT_BUILD_APP)
@@ -76,13 +74,14 @@ if(CLASH_QT_BUILD_APP)
         clash_mihomo_impl)
     add_test(NAME routing-controls COMMAND routing-controls-tests)
 
-    # dashboard-async-tests supplies its own platform::BrowserLauncher definitions
-    # at link time, so it must not pull the real ones in. BASE-SEAM replaces that
-    # with browser operations injected into DashboardButton.
+    # Injects BrowserOperations through DashboardButton's constructor, so it links
+    # the real platform library. clash_platform is named explicitly rather than
+    # relied on transitively: today it arrives via clash_mihomo_impl's PUBLIC D2
+    # edge, and that edge is removed in P3.
     qt_add_executable(dashboard-async-tests ui/dashboard_async_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/shell/dashboard_button.cpp")
     target_link_libraries(dashboard-async-tests PRIVATE Qt6::Test Qt6::Widgets
-        Qt6::Concurrent clash_mihomo_impl)
+        Qt6::Concurrent clash_mihomo_impl clash_platform)
     add_test(NAME dashboard-async COMMAND dashboard-async-tests)
 endif()
 

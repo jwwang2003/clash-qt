@@ -347,4 +347,22 @@ bool BrowserLauncher::open(const QUrl &url, const QString &browserId) {
     return openDefault(url);
 }
 
+namespace {
+
+/// Holds nothing, so one shared instance serves every caller.
+class LauncherOperations final : public BrowserOperations {
+public:
+    QVector<Browser> available() override { return BrowserLauncher::available(); }
+    bool open(const QUrl &url, const QString &browserId) override {
+        return BrowserLauncher::open(url, browserId);
+    }
+};
+
+}  // namespace
+
+BrowserOperations *BrowserLauncher::operations() {
+    static LauncherOperations operations;
+    return &operations;
+}
+
 }  // namespace platform
