@@ -138,6 +138,11 @@ Status values: `queued`, `running`, `ready-for-integration`, `verified`, `blocke
 | MOVE-CORE | worker B / Opus | PRE-MOVE | `src/core/**`, `src/platform/browser_launcher.*`, `src/service/**` | verified | 24 moves, 17 include rows, helper byte-identical |
 | MOVE-TEST | worker C / Opus | PRE-MOVE | `tests/**` | verified | 12 moves, 29 include rows, 117 slot signatures preserved |
 | P1-STEP2 | coordinator | all MOVE-* | `CMakeLists.txt`, all manifests, `README.md` | verified | configure+build clean; 131 passed / 0 failed / 2 skipped, identical to baseline |
+| P2-BUILD | coordinator | P1 | root+per-dir CMake, `cmake/**`, `scripts/build/**`, `Makefile`, `CMakePresets.json`, `tests/CMakeLists.txt` | verified | 8 libraries build; headless configure registers 10/14; `make core` produces provenance; facade verified on Make 3.81 **and** 4.4.1; `doctor` failure path tested |
+| BASE-SEAM | worker A / Opus | P1 | named proxy/browser/dashboard/helper-client files + their suites | verified | 3 seams removed; 14/14; per-suite totals identical to baseline |
+| BASE-FIXTURE | worker B / Opus | P1 | `tests/support/**`, `tests/fixtures/**` | running | — |
+| BASE-ARCH | worker C / Opus | P1 | `tests/architecture/**` | running | — |
+| COMPONENT-BASE | worker A / Opus | `component-r1` | `src/core/component/**`, `tests/contracts/component/**` | running | dispatched into the slot BASE-SEAM freed |
 
 ## P1 relocation evidence (verified)
 
@@ -170,6 +175,36 @@ until then a skipped case must not be counted as a pass.
 | App driving the locally built core | G1 produced a binary and G2's component does not exist yet. No real-core integration path has been run end to end. |
 | Skip visibility | `data-pages` reports "Passed" at the CTest level while silently skipping 2 native-GPU cases. |
 | Native rendering | Everything ran offscreen or unattended. QML view reaching Ready on a real display, tray menu population and graph rendering are unconfirmed. |
+
+## P2 evidence so far (verified)
+
+| Check | Result |
+| --- | --- |
+| Static libraries | 8 targets per D1; `clash_types` INTERFACE, `clash_yaml` a leaf so the component never depends on `clash_config` |
+| Headless backend | `CLASH_QT_BUILD_APP=OFF` configures with zero Widgets/Quick/Graphs and registers 10 of 14 tests |
+| Local-source core | `make core` → `v1.19.31` from `ab405bad`, provenance manifest with toolchain, tags and sha256 |
+| Make facade | `help` and `doctor` verified under GNU Make **3.81 and 4.4.1**; `doctor` fails (exit 1) on a missing prerequisite |
+| CTest lanes | labels applied; routine lane 14, `ui` lane 4; `real-core`/`native`/`privileged`/`benchmark` reserved and empty |
+| Seam removal | all three intrusive seams gone; greps return zero |
+| Full suite after integration | **14/14**, per-suite totals identical to the pre-refactor baseline |
+| App launch | output identical to the P1 tree |
+
+Root `CMakeLists.txt`: 212 lines → 74.
+
+### Coordination lesson recorded
+
+A coordinator build picked up BASE-SEAM's half-written `dashboard_button.h`: separate
+build directories do **not** isolate concurrent source changes. Verification was
+restricted to targets outside the active lease and the full run deferred to the
+barrier. Future waves: either declare a stable-source build window or verify only
+outside active leases.
+
+### Deviation accepted (BASE-SEAM, seam c)
+
+A plain timeout constructor value was specified, but the deadline starts at send
+time, so a 20 ms value expires before `runtime_test.cpp` can assert the client is
+busy — measured as a real failure, not hypothesised. An injectable `RequestDeadline`
+was used instead, defaulting to the internal single-shot timer. Accepted.
 
 ## Next ready packages
 
