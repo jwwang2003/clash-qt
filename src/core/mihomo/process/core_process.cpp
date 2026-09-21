@@ -14,26 +14,28 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
-#include <QStandardPaths>
 #include <QTimer>
 #include <QUrl>
 
 #include "core/mihomo/controller_discovery.h"
 #include "core/config/yaml_util.h"
-#include "platform/service/privileged_service_client.h"
 
 namespace core {
 namespace {
 
-constexpr int kProbeIntervalMs = 200;
-// A core that is still logging is still working: a first run downloading geo
-// databases takes far longer than a fixed budget, so the deadline tracks
-// silence rather than elapsed time, bounded so a wedged core still fails.
-constexpr int kReadyIdleMs = 10000;
-constexpr int kServiceReadyIdleMs = 60000;
-constexpr int kReadyHardCapMs = 180000;
-constexpr int kTerminateWaitMs = 3000;
 constexpr int kLogTailLines = 8;
+
+/// "no controller", explicitly. core::Endpoint's default is the localhost
+/// DEFAULT (127.0.0.1:9090), which isValid() accepts, so assigning Endpoint{}
+/// to mean "cleared" made a stopped core look as though it were listening on
+/// 9090. The published managedEndpoint() has to answer false there.
+Endpoint noEndpoint() {
+    Endpoint endpoint;
+    endpoint.host.clear();
+    endpoint.port = 0;
+    endpoint.secret.clear();
+    return endpoint;
+}
 
 QJsonValue serviceJson(const YAML::Node &node, int depth = 0) {
     if (depth > 128) throw YAML::BadConversion(node.Mark());
@@ -58,110 +60,30 @@ QJsonValue serviceJson(const YAML::Node &node, int depth = 0) {
     return QJsonValue::Null;
 }
 
-QStringList bundledBinaries() {
-#ifdef Q_OS_MACOS
-    return {
-        "/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo",
-        "/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo-alpha",
-    };
-#elif defined(Q_OS_WIN)
-    QStringList paths;
-    for (const char *variable : {"LOCALAPPDATA", "ProgramFiles", "ProgramFiles(x86)"}) {
-        const QString root = qEnvironmentVariable(variable);
-        if (root.isEmpty()) continue;
-        paths << root + "/Programs/Clash Verge/verge-mihomo.exe"
-              << root + "/Programs/Clash Verge/verge-mihomo-alpha.exe"
-              << root + "/Clash Verge/verge-mihomo.exe"
-              << root + "/Clash Verge/verge-mihomo-alpha.exe";
-    }
-    return paths;
-#else
-    return {
-        "/usr/lib/clash-verge-rev/verge-mihomo",
-        "/usr/lib/clash-verge-rev/verge-mihomo-alpha",
-        "/opt/clash-verge-rev/verge-mihomo",
-        "/opt/clash-verge-rev/verge-mihomo-alpha",
-    };
-#endif
-}
-
 }  // namespace
 
-CoreProcess::CoreProcess(QObject *parent, platform::PrivilegedServiceClient *serviceClient)
-    : QObject(parent), serviceClient_(serviceClient ? serviceClient : new platform::PrivilegedServiceClient(this)),
-      servicePoll_(new QTimer(this)), injectedService_(serviceClient != nullptr),
+CoreProcess::CoreProcess(QObject *parent, PrivilegedCoreService *service)
+    : QObject(parent),
+      ownedService_(service ? nullptr
+                            : std::unique_ptr<PrivilegedCoreService>(new NullPrivilegedCoreService)),
+      service_(service ? service : ownedService_.get()),
+      servicePoll_(new QTimer(this)), injectedService_(service != nullptr),
       network_(new QNetworkAccessManager(this)) {
+    // A plain listener, not signal/slot: signals are what put a platform type on
+    // this class's surface in the first place (DECISION D2).
+    endpoint_ = noEndpoint();
+    service_->setListener(this);
     servicePoll_->setInterval(1000);
     connect(servicePoll_, &QTimer::timeout, this, [this] {
-        if (!serviceActive_ || serviceStopping_ || serviceClient_->isBusy()) return;
-        serviceClient_->requestLogs();
-        serviceClient_->requestStatus();
-    });
-    connect(serviceClient_, &platform::PrivilegedServiceClient::coreStarted, this, [this](const QJsonObject &endpoint) {
-        if (!serviceActive_ || serviceStopping_) return;
-        Endpoint controller;
-        controller.host = endpoint.value("host").toString();
-        controller.port = endpoint.value("port").toInt();
-        controller.secret = endpoint.value("secret").toString();
-        if (!controller.isValid()) { fail(tr("The privileged service returned an invalid controller endpoint.")); return; }
-        servicePoll_->start();
-        awaitController(controller);
-    });
-    connect(serviceClient_, &platform::PrivilegedServiceClient::coreStopped, this, [this] {
-        if (!serviceActive_) return;
-        servicePoll_->stop();
-        serviceActive_ = false;
-        serviceStopping_ = false;
-        finishStop();
-    });
-    connect(serviceClient_, &platform::PrivilegedServiceClient::logsReceived, this, [this](const QString &lines) {
-        if (!serviceActive_) return;
-        QString fresh = lines;
-        if (lines.startsWith(serviceLogTail_)) fresh = lines.mid(serviceLogTail_.size());
-        else {
-            const QStringList previousLines = serviceLogTail_.split('\n', Qt::SkipEmptyParts);
-            const QStringList currentLines = lines.split('\n', Qt::SkipEmptyParts);
-            qsizetype overlap = std::min(previousLines.size(), currentLines.size());
-            while (overlap > 0 && previousLines.sliced(previousLines.size() - overlap) != currentLines.first(overlap))
-                --overlap;
-            fresh = currentLines.sliced(overlap).join('\n');
-        }
-        serviceLogTail_ = lines;
-        for (const QString &line : fresh.split('\n', Qt::SkipEmptyParts)) publishLine(line);
-    });
-    connect(serviceClient_, &platform::PrivilegedServiceClient::statusReceived, this, [this](const QJsonObject &status) {
-        if (serviceActive_ && !serviceStopping_ && (state_ == CoreState::Running || state_ == CoreState::Starting) &&
-            status.value("state").toString() == "stopped") {
-            const QString details = logTail_.join('\n');
-            fail(details.isEmpty() ? tr("The privileged core exited unexpectedly.")
-                                  : tr("The privileged core exited unexpectedly.\n%1").arg(details));
-        }
-    });
-    connect(serviceClient_, &platform::PrivilegedServiceClient::connectedChanged, this, [this](bool connected) {
-        if (!connected && serviceActive_) serviceDisconnected();
-    });
-    connect(serviceClient_, &platform::PrivilegedServiceClient::requestFinished, this,
-            [this](const QString &operation, bool success, const QString &error) {
-        if (success || !serviceActive_) return;
-        if (operation == "start") {
-            servicePoll_->stop();
-            serviceActive_ = false;
-            serviceStopping_ = false;
-            if (stopResult_ == CoreState::Stopped && state_ == CoreState::Stopping) finishStop();
-            else fail(tr("Privileged core start failed: %1").arg(error));
-        } else if (operation == "stop") {
-            servicePoll_->stop();
-            serviceActive_ = false;
-            serviceStopping_ = false;
-            serviceClient_->close();
-            fail(tr("Privileged core stop failed: %1").arg(error));
-        }
+        if (!serviceActive_ || serviceStopping_ || service_->isBusy()) return;
+        service_->requestLogs();
+        service_->requestStatus();
     });
 }
 
 CoreProcess::~CoreProcess() {
-    serviceClient_->disconnect(this);
-    serviceClient_->close();
+    service_->setListener(nullptr);
+    service_->close();
     cancelValidation();
     cancelProbe();
     for (QProcess *process : findChildren<QProcess *>()) {
@@ -173,26 +95,104 @@ CoreProcess::~CoreProcess() {
     }
 }
 
-QString CoreProcess::discoverBinary() {
-#ifdef Q_OS_WIN
-    const QString bundled = QCoreApplication::applicationDirPath() + "/mihomo.exe";
-#else
-    const QString bundled = QCoreApplication::applicationDirPath() + "/mihomo";
-#endif
-    if (const QFileInfo info(bundled); info.isFile() && info.isExecutable())
-        return info.absoluteFilePath();
-    const QString onPath = QStandardPaths::findExecutable("mihomo");
-    if (!onPath.isEmpty()) return onPath;
+// ---------------------------------------------------------------- the service
 
-    for (const QString &candidate : bundledBinaries()) {
-        const QFileInfo info(candidate);
-        if (info.isFile() && info.isExecutable()) return info.absoluteFilePath();
+void CoreProcess::privilegedCoreStarted(const QJsonObject &endpoint) {
+    if (!serviceActive_ || serviceStopping_) return;
+    Endpoint controller;
+    controller.host = endpoint.value("host").toString();
+    controller.port = endpoint.value("port").toInt();
+    controller.secret = endpoint.value("secret").toString();
+    if (!controller.isValid()) {
+        fail(CoreFailure::ServiceUnavailable,
+             tr("The privileged service returned an invalid controller endpoint."));
+        return;
     }
-    return {};
+    servicePoll_->start();
+    awaitController(controller);
 }
+
+void CoreProcess::privilegedCoreStopped() {
+    if (!serviceActive_) return;
+    servicePoll_->stop();
+    serviceActive_ = false;
+    serviceStopping_ = false;
+    finishStop();
+}
+
+void CoreProcess::privilegedLogsReceived(const QString &lines) {
+    if (!serviceActive_) return;
+    QString fresh = lines;
+    if (lines.startsWith(serviceLogTail_)) fresh = lines.mid(serviceLogTail_.size());
+    else {
+        const QStringList previousLines = serviceLogTail_.split('\n', Qt::SkipEmptyParts);
+        const QStringList currentLines = lines.split('\n', Qt::SkipEmptyParts);
+        qsizetype overlap = std::min(previousLines.size(), currentLines.size());
+        while (overlap > 0 && previousLines.sliced(previousLines.size() - overlap) != currentLines.first(overlap))
+            --overlap;
+        fresh = currentLines.sliced(overlap).join('\n');
+    }
+    serviceLogTail_ = lines;
+    for (const QString &line : fresh.split('\n', Qt::SkipEmptyParts)) publishLine(line);
+}
+
+void CoreProcess::privilegedStatusReceived(const QJsonObject &status) {
+    emit serviceStatusReceived(status);
+    if (serviceActive_ && !serviceStopping_ && (state_ == CoreState::Running || state_ == CoreState::Starting) &&
+        status.value("state").toString() == "stopped") {
+        const QString details = logTail_.join('\n');
+        fail(CoreFailure::CoreExited,
+             details.isEmpty() ? tr("The privileged core exited unexpectedly.")
+                              : tr("The privileged core exited unexpectedly.\n%1").arg(details));
+    }
+}
+
+void CoreProcess::privilegedConnectedChanged(bool connected) {
+    emit serviceConnectedChanged(connected);
+    if (!connected && serviceActive_) serviceDisconnected();
+}
+
+void CoreProcess::requestServiceStatus() { service_->requestStatus(); }
+
+CoreFailure CoreProcess::lastFailure() const { return lastFailure_; }
+
+void CoreProcess::privilegedRequestFinished(const QString &operation, bool success,
+                                            const QString &error) {
+    if (success || !serviceActive_) return;
+    if (operation == "start") {
+        servicePoll_->stop();
+        serviceActive_ = false;
+        serviceStopping_ = false;
+        if (stopResult_ == CoreState::Stopped && state_ == CoreState::Stopping) finishStop();
+        else fail(CoreFailure::ServiceUnavailable, tr("Privileged core start failed: %1").arg(error));
+    } else if (operation == "stop") {
+        servicePoll_->stop();
+        serviceActive_ = false;
+        serviceStopping_ = false;
+        service_->close();
+        fail(CoreFailure::ServiceUnavailable, tr("Privileged core stop failed: %1").arg(error));
+    }
+}
+
+// ----------------------------------------------------------------- the engine
+
+QString CoreProcess::discoverBinary() { return resolveManagedEngine().path; }
 
 void CoreProcess::setBinaryPath(const QString &path) { binaryPath_ = path; }
 QString CoreProcess::binaryPath() const { return binaryPath_; }
+
+EngineResolution CoreProcess::engine() const {
+    return binaryPath_.isEmpty() ? resolveManagedEngine() : describeChosenEngine(binaryPath_);
+}
+
+EngineResolution CoreProcess::resolvedEngine() const { return resolvedEngine_; }
+
+CoreTimings CoreProcess::timings() const { return timings_; }
+
+void CoreProcess::setTimings(const CoreTimings &timings) {
+    timings_ = timings;
+    if (readyTimer_) readyTimer_->setInterval(timings_.probeIntervalMs);
+}
 
 bool CoreProcess::serviceSupported() {
 #ifdef Q_OS_MACOS
@@ -204,8 +204,13 @@ bool CoreProcess::serviceSupported() {
 bool CoreProcess::serviceAvailable() {
     return serviceSupported() && QFileInfo::exists("/var/run/org.clash-qt.service/socket");
 }
+bool CoreProcess::isServiceSupported() const { return service_->isSupported(); }
+bool CoreProcess::isServiceAvailable() const { return service_->isAvailable(); }
+
 bool CoreProcess::setUseService(bool enabled) {
-    if (enabled && !serviceSupported() && !injectedService_) return false;
+    // The injected service is the authority. A component handed no privileged
+    // service has none, whatever the platform supports.
+    if (enabled && !service_->isSupported()) return false;
     if (state_ != CoreState::Stopped && state_ != CoreState::Failed) return false;
     if (process_ || retiring_ || validation_ || serviceActive_ || serviceParsing_ || !cancelingValidations_.isEmpty()) return false;
     useService_ = enabled;
@@ -216,7 +221,7 @@ bool CoreProcess::usesPrivilegedService() const { return serviceActive_; }
 
 void CoreProcess::serviceDisconnected() {
     const bool wasStopping = serviceStopping_;
-    const QString connectionError = serviceClient_->connectionError();
+    const QString connectionError = service_->connectionError();
     servicePoll_->stop();
     serviceActive_ = false;
     serviceStopping_ = false;
@@ -226,11 +231,12 @@ void CoreProcess::serviceDisconnected() {
         stopResult_ = CoreState::Failed;
         stopError_ = tr("The privileged service disconnected before confirming core shutdown.");
         if (!connectionError.isEmpty()) stopError_ += '\n' + connectionError;
+        lastFailure_ = CoreFailure::ServiceDisconnected;
         finishStop();
     } else {
         QString reason = tr("The privileged service connection was lost. Its core lease has ended.");
         if (!connectionError.isEmpty()) reason += '\n' + connectionError;
-        fail(reason);
+        fail(CoreFailure::ServiceDisconnected, reason);
     }
 }
 
@@ -245,18 +251,28 @@ void CoreProcess::start(const QString &configPath, const QString &workDir) {
         stopError_.clear();
         terminateProcess();
     }
-    if (binaryPath_.isEmpty()) binaryPath_ = discoverBinary();
-    if (binaryPath_.isEmpty()) {
-        const QString reason = tr("No mihomo binary found in PATH or in a local Clash Verge Rev install.");
-        if (state_ == CoreState::Running) emit failed(reason);
-        else fail(reason);
+    // G1. The managed engine is the one this project staged, or the local build
+    // CLASH_QT_CORE_BINARY names. There is no fallback to PATH and none to
+    // another Clash installation: an engine we did not build is an explicit
+    // choice the user makes, and it is reported as such.
+    const EngineResolution resolution = engine();
+    if (!resolution.isResolved()) {
+        const QString reason = resolution.problem;
+        if (state_ == CoreState::Running) reportFailure(CoreFailure::BinaryNotFound, reason);
+        else fail(CoreFailure::BinaryNotFound, reason);
         return;
     }
+    if (binaryPath_.isEmpty()) binaryPath_ = resolution.path;
+    resolvedEngine_ = resolution;
+    // Reported on its own signal, NOT on logLine: logLine is the core's own
+    // output, it refreshes the readiness deadline and it feeds the failure tail.
+    // MihomoBackend republishes this on the observer's log channel.
+    emit engineResolved(resolution.path, resolution.label, resolution.provenance);
     // The old core stays live while its replacement is validated. Validation
     // may download geo data, so it cannot run synchronously on the UI thread.
     validatingConfigPath_ = configPath;
     validatingWorkDir_ = workDir;
-    validatingBinary_ = binaryPath_;
+    validatingBinary_ = resolution.path;
     auto *validation = new QProcess(this);
     validation_ = validation;
     validation->setProcessChannelMode(QProcess::MergedChannels);
@@ -272,9 +288,11 @@ void CoreProcess::start(const QString &configPath, const QString &workDir) {
         if (validation_ == validation && error == QProcess::FailedToStart)
             finishValidation(false, validation->errorString());
     });
-    QTimer::singleShot(15000, validation, [this, validation] {
+    const int validationTimeoutMs = timings_.validationTimeoutMs;
+    QTimer::singleShot(validationTimeoutMs, validation, [this, validation, validationTimeoutMs] {
         if (validation_ == validation)
-            finishValidation(false, tr("Validation timed out after 15 seconds."));
+            finishValidation(false, tr("Validation timed out after %1 seconds.")
+                                        .arg(validationTimeoutMs / 1000));
     });
     if (state_ != CoreState::Running && !retiring_) setState(CoreState::Starting);
     if (validation_ != validation) return;
@@ -310,8 +328,8 @@ void CoreProcess::finishValidation(bool valid, const QString &reason) {
     cancelValidation();
     if (!valid) {
         const QString message = tr("Core configuration validation failed: %1").arg(reason);
-        if (state_ == CoreState::Running) emit failed(message);
-        else fail(message);
+        if (state_ == CoreState::Running) reportFailure(CoreFailure::ValidationFailed, message);
+        else fail(CoreFailure::ValidationFailed, message);
         return;
     }
     if (useService_) {
@@ -325,8 +343,8 @@ void CoreProcess::finishValidation(bool valid, const QString &reason) {
             if (generation != launchGeneration_) return;
             serviceParsing_ = false;
             if (!result.second.isEmpty()) {
-                if (state_ == CoreState::Running) emit failed(result.second);
-                else fail(result.second);
+                if (state_ == CoreState::Running) reportFailure(CoreFailure::ConfigUnreadable, result.second);
+                else fail(CoreFailure::ConfigUnreadable, result.second);
                 return;
             }
             serviceConfig_ = result.first;
@@ -363,7 +381,7 @@ void CoreProcess::launchProcess(const QString &configPath, const QString &workDi
     configPath_ = configPath;
     workDir_ = workDir;
 
-    endpoint_ = Endpoint{};
+    endpoint_ = noEndpoint();
     logBuffer_.clear();
     logTail_.clear();
     if (useService_) {
@@ -371,7 +389,7 @@ void CoreProcess::launchProcess(const QString &configPath, const QString &workDi
         serviceActive_ = true;
         serviceStopping_ = false;
         setState(CoreState::Starting);
-        if (serviceActive_ && !serviceStopping_) serviceClient_->startCore(serviceConfig_);
+        if (serviceActive_ && !serviceStopping_) service_->startCore(serviceConfig_);
         return;
     }
 
@@ -380,7 +398,8 @@ void CoreProcess::launchProcess(const QString &configPath, const QString &workDi
     connect(process_, &QProcess::readyReadStandardOutput, this, &CoreProcess::drainOutput);
     connect(process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error != QProcess::FailedToStart) return;
-        fail(tr("Cannot launch %1: %2").arg(binaryPath_, process_->errorString()));
+        fail(CoreFailure::LaunchFailed,
+             tr("Cannot launch %1: %2").arg(binaryPath_, process_->errorString()));
     });
     connect(process_, &QProcess::finished, this,
             [this](int exitCode) { handleFinished(exitCode); });
@@ -403,7 +422,7 @@ void CoreProcess::stop() {
     stopError_.clear();
     if (readyTimer_) readyTimer_->stop();
     cancelProbe();
-    endpoint_ = Endpoint{};
+    endpoint_ = noEndpoint();
     terminateProcess();
 }
 
@@ -413,7 +432,7 @@ void CoreProcess::terminateProcess() {
             serviceStopping_ = true;
             servicePoll_->stop();
             setState(CoreState::Stopping);
-            serviceClient_->stopCore();
+            service_->stopCore();
         }
         return;
     }
@@ -437,7 +456,7 @@ void CoreProcess::terminateProcess() {
         child->deleteLater();
         finishStop();
     });
-    QTimer::singleShot(kTerminateWaitMs, child, [this, child] {
+    QTimer::singleShot(timings_.terminateWaitMs, child, [this, child] {
         if (retiring_ == child && child->state() != QProcess::NotRunning) child->kill();
     });
     setState(CoreState::Stopping);
@@ -445,7 +464,7 @@ void CoreProcess::terminateProcess() {
 }
 
 void CoreProcess::finishStop() {
-    endpoint_ = Endpoint{};
+    endpoint_ = noEndpoint();
     if (pendingLaunch_) {
         const LaunchRequest request = *pendingLaunch_;
         pendingLaunch_.reset();
@@ -500,19 +519,20 @@ QStringList CoreProcess::activeConfigPaths() const {
 void CoreProcess::awaitController(const std::optional<Endpoint> &serviceEndpoint) {
     const std::optional<Endpoint> parsed = serviceEndpoint ? serviceEndpoint : endpointFromConfigFile(configPath_);
     if (!parsed) {
-        fail(tr("No usable external-controller in %1.").arg(configPath_));
+        fail(CoreFailure::ConfigUnreadable,
+             tr("No usable external-controller in %1.").arg(configPath_));
         return;
     }
 
     pendingEndpoint_ = *parsed;
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    readyDeadlineMs_ = now + (serviceActive_ ? kServiceReadyIdleMs : kReadyIdleMs);
-    readyHardDeadlineMs_ = now + kReadyHardCapMs;
+    readyDeadlineMs_ = now + (serviceActive_ ? timings_.serviceIdleDeadlineMs : timings_.idleDeadlineMs);
+    readyHardDeadlineMs_ = now + timings_.hardCapMs;
     if (!readyTimer_) {
         readyTimer_ = new QTimer(this);
-        readyTimer_->setInterval(kProbeIntervalMs);
         connect(readyTimer_, &QTimer::timeout, this, &CoreProcess::probeController);
     }
+    readyTimer_->setInterval(timings_.probeIntervalMs);
     readyTimer_->start();
 }
 
@@ -521,16 +541,17 @@ void CoreProcess::probeController() {
 
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     if (now > readyDeadlineMs_ || now > readyHardDeadlineMs_) {
-        fail(tr("Core did not answer on %1 and went quiet for %2 seconds.\n%3")
+        fail(CoreFailure::ReadyTimeout,
+             tr("Core did not answer on %1 and went quiet for %2 seconds.\n%3")
                  .arg(pendingEndpoint_.httpBase())
-                 .arg((serviceActive_ ? kServiceReadyIdleMs : kReadyIdleMs) / 1000)
+                 .arg((serviceActive_ ? timings_.serviceIdleDeadlineMs : timings_.idleDeadlineMs) / 1000)
                  .arg(logTail_.join('\n')));
         return;
     }
 
     if (probeReply_) return;
     QNetworkRequest request{QUrl(pendingEndpoint_.httpBase() + "/version")};
-    request.setTransferTimeout(2000);
+    request.setTransferTimeout(timings_.probeTimeoutMs);
     if (!pendingEndpoint_.secret.isEmpty()) {
         request.setRawHeader("Authorization", "Bearer " + pendingEndpoint_.secret.toUtf8());
     }
@@ -584,7 +605,7 @@ void CoreProcess::publishLine(QString line) {
 
     if (state_ == CoreState::Starting) {
         readyDeadlineMs_ = QDateTime::currentMSecsSinceEpoch() +
-                           (serviceActive_ ? kServiceReadyIdleMs : kReadyIdleMs);
+                           (serviceActive_ ? timings_.serviceIdleDeadlineMs : timings_.idleDeadlineMs);
     }
 
     emit logLine(line);
@@ -595,7 +616,8 @@ void CoreProcess::handleFinished(int exitCode) {
     publishLine(logBuffer_);
     logBuffer_.clear();
 
-    fail(tr("Core exited with code %1.\n%2").arg(exitCode).arg(logTail_.join('\n')));
+    fail(CoreFailure::CoreExited,
+         tr("Core exited with code %1.\n%2").arg(exitCode).arg(logTail_.join('\n')));
 }
 
 void CoreProcess::discardProcess() {
@@ -611,6 +633,16 @@ void CoreProcess::setState(CoreState state) {
     emit stateChanged(state_);
 }
 
+void CoreProcess::reportFailure(CoreFailure kind, const QString &reason) {
+    lastFailure_ = kind;
+    emit failed(reason);
+}
+
+void CoreProcess::fail(CoreFailure kind, const QString &reason) {
+    lastFailure_ = kind;
+    fail(reason);
+}
+
 void CoreProcess::fail(const QString &reason) {
     ++launchGeneration_;
     serviceParsing_ = false;
@@ -618,7 +650,7 @@ void CoreProcess::fail(const QString &reason) {
     pendingLaunch_.reset();
     if (readyTimer_) readyTimer_->stop();
     cancelProbe();
-    endpoint_ = Endpoint{};
+    endpoint_ = noEndpoint();
     stopResult_ = CoreState::Failed;
     stopError_ = reason;
     terminateProcess();

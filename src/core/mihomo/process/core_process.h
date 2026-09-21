@@ -5,8 +5,11 @@
 #include <QStringList>
 #include <QHash>
 #include <QJsonObject>
+#include <memory>
 #include <optional>
 
+#include "core/mihomo/process/engine_discovery.h"
+#include "core/backend/privileged_core_service.h"
 #include "core/types.h"
 
 class QNetworkAccessManager;
@@ -14,34 +17,88 @@ class QNetworkReply;
 class QProcess;
 class QTimer;
 
-namespace platform { class PrivilegedServiceClient; }
-
 namespace core {
 
 enum class CoreState { Stopped, Starting, Running, Stopping, Failed };
+
+/// Why the last failure happened, as a code rather than as prose. The `failed`
+/// signal carries a localised, human message; a message is not something a
+/// caller can switch on, and matching on its text breaks the moment it is
+/// translated. Read it from lastFailure() while handling `failed` or
+/// `stopFinished`.
+enum class CoreFailure : quint8 {
+    None = 0,
+    Unspecified,
+    BinaryNotFound,
+    ValidationFailed,
+    LaunchFailed,
+    CoreExited,
+    ReadyTimeout,
+    ServiceUnavailable,
+    ServiceDisconnected,
+    ConfigUnreadable,
+};
+
+/// Readiness and termination budget. The values are the backend contract's
+/// (BACKEND_CONTRACT.md section 3) and are what the defaults below hold; they are
+/// instance state rather than file-scope constants so that a test can observe a
+/// silence-based deadline being refreshed without waiting ten real seconds, and
+/// so that BackendCapabilities::timings() can report the backend's REAL budget
+/// rather than a constant that might have drifted from it.
+struct CoreTimings {
+    int probeIntervalMs = 200;
+    int probeTimeoutMs = 2000;
+    int idleDeadlineMs = 10000;
+    int serviceIdleDeadlineMs = 60000;
+    int hardCapMs = 180000;
+    int terminateWaitMs = 3000;
+    int validationTimeoutMs = 15000;
+};
 
 /// Owns the mihomo child process: locating a binary, launching it against a
 /// generated config, and reporting liveness.
 ///
 /// Contract with the ui module. Extend, do not reshape.
-class CoreProcess : public QObject {
+class CoreProcess : public QObject, private PrivilegedCoreServiceListener {
     Q_OBJECT
 
 public:
-    explicit CoreProcess(QObject *parent = nullptr, platform::PrivilegedServiceClient *serviceClient = nullptr);
+    /// `service` is the privileged-execution seam (DECISION D2). Null means this
+    /// component was given no privileged service, and service mode is then
+    /// REFUSED rather than silently selected. The composition root adapts
+    /// platform::PrivilegedServiceClient onto the interface; the platform type is
+    /// deliberately absent from this signature.
+    explicit CoreProcess(QObject *parent = nullptr, PrivilegedCoreService *service = nullptr);
     ~CoreProcess() override;
 
-    /// Looks for a usable mihomo in PATH, then in a local Clash Verge Rev
-    /// install. Empty when none is found.
+    /// The MANAGED engine path, or empty. G1: the staged engine (or the local
+    /// build $CLASH_QT_CORE_BINARY names) and nothing else. It never returns an
+    /// executable found on PATH or belonging to another Clash installation -
+    /// those are offered by core::externalEngineCandidates() as an explicit,
+    /// separately labelled user choice.
     static QString discoverBinary();
 
     void setBinaryPath(const QString &path);
     QString binaryPath() const;
+    /// What this process would run right now, with its label and provenance.
+    /// Always reportable: when nothing resolves, problem() carries what to do.
+    EngineResolution engine() const;
+    /// The engine the last start() actually launched. Empty before the first.
+    EngineResolution resolvedEngine() const;
+
     bool setUseService(bool enabled);
     bool isServiceMode() const;
     bool usesPrivilegedService() const;
+    /// Instance answers, from the injected service. The statics below describe
+    /// the PLATFORM and are kept only for existing callers; a component that was
+    /// handed no privileged service has none, whatever the platform supports.
+    bool isServiceSupported() const;
+    bool isServiceAvailable() const;
     static bool serviceSupported();
     static bool serviceAvailable();
+
+    CoreTimings timings() const;
+    void setTimings(const CoreTimings &timings);
 
     /// Launches the core with `configPath` as its config and `workDir` as its
     /// home directory (where it expects Country.mmdb, geosite.dat and friends).
@@ -50,6 +107,13 @@ public:
     void restart();
 
     CoreState state() const;
+    /// The code behind the most recent `failed` / unconfirmed `stopFinished`.
+    CoreFailure lastFailure() const;
+    /// Asks the privileged service for its status. The answer arrives on
+    /// serviceStatusReceived(). Published so a consumer does not open a SECOND
+    /// connection to the one privileged socket (DECISION D3): two live
+    /// connections to it is a correctness hazard, not a layering complaint.
+    void requestServiceStatus();
     /// Controller the running core listens on, parsed from the config it was
     /// launched with.
     Endpoint endpoint() const;
@@ -65,8 +129,23 @@ signals:
     /// Terminal response to stop(): false means lease cleanup was requested but
     /// service disconnect prevented confirmation that the privileged child exited.
     void stopFinished(bool confirmed, const QString &error);
+    /// G1: whatever engine a launch resolved is reported, so provenance can never
+    /// be implied. Emitted once per start(), before the child is launched.
+    void engineResolved(const QString &path, const QString &label, const QString &provenance);
+    /// Re-published from the injected privileged service (DECISION D3).
+    void serviceStatusReceived(const QJsonObject &status);
+    void serviceConnectedChanged(bool connected);
 
 private:
+    // --- PrivilegedCoreServiceListener
+    void privilegedConnectedChanged(bool connected) override;
+    void privilegedStatusReceived(const QJsonObject &status) override;
+    void privilegedCoreStarted(const QJsonObject &endpoint) override;
+    void privilegedCoreStopped() override;
+    void privilegedLogsReceived(const QString &logs) override;
+    void privilegedRequestFinished(const QString &operation, bool success,
+                                   const QString &error) override;
+
     void finishValidation(bool valid, const QString &reason = {});
     void cancelValidation();
     void launchValidated(const QString &configPath, const QString &workDir, const QString &binary);
@@ -83,13 +162,19 @@ private:
     void discardProcess();
     void setState(CoreState state);
     void fail(const QString &reason);
+    void fail(CoreFailure kind, const QString &reason);
+    void reportFailure(CoreFailure kind, const QString &reason);
 
     struct LaunchRequest { QString configPath, workDir, binary; };
     std::optional<LaunchRequest> pendingLaunch_;
-    platform::PrivilegedServiceClient *serviceClient_ = nullptr;
+    std::unique_ptr<PrivilegedCoreService> ownedService_;
+    PrivilegedCoreService *service_ = nullptr;
     QTimer *servicePoll_ = nullptr;
     QJsonObject serviceConfig_;
     QString serviceLogTail_;
+    CoreTimings timings_;
+    EngineResolution resolvedEngine_;
+    CoreFailure lastFailure_ = CoreFailure::None;
     bool useService_ = false;
     bool serviceActive_ = false;
     bool serviceStopping_ = false;

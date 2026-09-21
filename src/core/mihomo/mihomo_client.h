@@ -26,28 +26,50 @@ public:
     explicit MihomoClient(QObject *parent = nullptr);
 
     void setEndpoint(const Endpoint &endpoint);
+    /// Stops talking to the current controller: bumps the endpoint epoch,
+    /// aborts every in-flight request, clears live state and closes the
+    /// streams. It NEVER terminates the controller - detaching is not a kill
+    /// switch - and, unlike setEndpoint, it issues nothing afterwards.
+    void detach();
     const Endpoint &endpoint() const { return endpoint_; }
     bool isConnected() const { return connected_; }
 
     // --- REST ---
-    void fetchVersion();
-    void fetchProxies();
-    void fetchRules();
-    void fetchConfigs();
-    void selectNode(const QString &group, const QString &node);
-    void resetGroupSelection(const QString &group);
-    void testGroupDelay(const QString &group);
-    void testNodeDelay(const QString &node);
-    void patchMode(const QString &mode);
-    void patchConfig(const QJsonObject &patch);
-    /// Confirmed asynchronous TUN change. Further calls are ignored while pending.
-    void setTunEnabled(bool enabled);
+    //
+    // Each mutating call returns the identity of the operation it submitted, or
+    // 0 when it submitted nothing. Exactly one requestSettled(operation, ...) is
+    // emitted for every non-zero id, after any payload signal that operation
+    // produced. That is what lets MihomoBackend stamp a completion with the
+    // RequestId and the Generation the work was SUBMITTED under, instead of
+    // guessing which fire-and-forget call a bare signal belongs to.
+    //
+    // A caller that does not care may ignore the value; every existing call site
+    // does, and a non-void slot connects exactly as a void one did.
+    quint64 fetchVersion();
+    quint64 fetchProxies();
+    quint64 fetchRules();
+    quint64 fetchConfigs();
+    quint64 selectNode(const QString &group, const QString &node);
+    quint64 resetGroupSelection(const QString &group);
+    quint64 testGroupDelay(const QString &group);
+    quint64 testNodeDelay(const QString &node);
+    quint64 patchMode(const QString &mode);
+    quint64 patchConfig(const QJsonObject &patch);
+    /// Confirmed asynchronous TUN change. Further calls are ignored while
+    /// pending, and 0 is returned then. The identity is the TUN change id, which
+    /// is a per-operation REQUEST identity and not a generation.
+    quint64 setTunEnabled(bool enabled);
     bool isTunChangePending() const { return tunChangePending_; }
-    void closeConnection(const QString &id);
-    void closeAllConnections();
-    void updateGeoDatabases();
-    void queryDns(const QString &name, const QString &type = "A");
-    void flushDnsCache(bool fakeIp = false);
+    quint64 closeConnection(const QString &id);
+    quint64 closeAllConnections();
+    quint64 updateGeoDatabases();
+    quint64 queryDns(const QString &name, const QString &type = "A");
+    quint64 flushDnsCache(bool fakeIp = false);
+
+    /// The operation whose reply handler is running right now, or 0. A payload
+    /// signal emitted outside a reply handler - a stream sample, or the cleared
+    /// live state - reports 0, which is what marks it unsolicited.
+    quint64 currentOperation() const { return currentOperation_; }
 
     // --- streams ---
     void openTrafficStream();
@@ -60,6 +82,16 @@ public:
     void closeMemoryStream();
 
 signals:
+    /// Emitted BEFORE any in-flight request is aborted, immediately after the
+    /// epoch that invalidates it is bumped. mihomo_client.cpp documents why the
+    /// order matters: finished() may run synchronously inside abort(), so an
+    /// observer that learns of the invalidation afterwards would already have
+    /// accepted the reply it was meant to discard.
+    void invalidating();
+    /// The single terminal event of a REST operation. `superseded` is true when
+    /// the reply belonged to an endpoint or request epoch that has moved on;
+    /// `error` is empty exactly on success.
+    void requestSettled(quint64 operation, bool superseded, const QString &error);
     void endpointChanged();
     void connectedChanged(bool connected);
     void versionReceived(const QString &version);
@@ -81,6 +113,23 @@ signals:
 
 private:
     QNetworkReply *get(const QString &path);
+    quint64 beginOperation();
+    void settle(quint64 operation, bool superseded, const QString &error);
+    /// Scopes currentOperation() to one reply handler.
+    class ReplyScope {
+      public:
+        ReplyScope(MihomoClient *self, quint64 operation)
+            : self_(self), previous_(self->currentOperation_) { self_->currentOperation_ = operation; }
+        // Restores rather than clears: a nested handler runs whenever a reply is
+        // aborted from inside this one, and the outer payload still belongs to
+        // the outer operation.
+        ~ReplyScope() { self_->currentOperation_ = previous_; }
+        ReplyScope(const ReplyScope &) = delete;
+        ReplyScope &operator=(const ReplyScope &) = delete;
+      private:
+        MihomoClient *self_;
+        quint64 previous_ = 0;
+    };
     void applyAuth(QNetworkRequest &request) const;
     QNetworkReply *trackReply(QNetworkReply *reply);
     bool isCurrentReply(QNetworkReply *reply) const;
@@ -99,6 +148,8 @@ private:
     void handleMemoryMessage(const QString &message);
 
     Endpoint endpoint_;
+    quint64 operation_ = 0;
+    quint64 currentOperation_ = 0;
     quint64 endpointEpoch_ = 0;
     quint64 requestEpoch_ = 0;
     bool connected_ = false;

@@ -25,6 +25,7 @@
 #include <memory>
 
 #include "core/mihomo/process/core_process.h"
+#include "app/composition/privileged_service_adapter.h"
 #include "platform/service/privileged_service_client.h"
 #include "support/fixture_files.h"
 #include "support/scoped_environment.h"
@@ -168,7 +169,11 @@ private slots:
         };
         ManualDeadline deadline;
         platform::PrivilegedServiceClient client(nullptr, socketPath, &deadline);
-        core::CoreProcess process(nullptr, &client);
+        // DECISION D2: the composition root - here, the test - adapts the
+        // concrete platform client onto the component-owned seam. CoreProcess's
+        // constructor no longer names a platform type.
+        core::PrivilegedServiceClientAdapter service(&client, socketPath);
+        core::CoreProcess process(nullptr, &service);
         process.setBinaryPath(binary);
         QVERIFY(process.setUseService(true));
         QVERIFY(process.isServiceMode());

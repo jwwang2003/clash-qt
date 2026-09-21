@@ -171,6 +171,7 @@
       "_role": "Component-private per G2. The UI must reach it through the published component contract.",
       "deps": [
         "clash_types",
+        "clash_backend",
         "clash_yaml"
       ],
       "external": [
@@ -278,6 +279,88 @@
         "core/backend/telemetry.h",
         "core/backend/types.h"
       ]
+    },
+    "clash_app_lifecycle": {
+      "_role": "Startup and shutdown coordination lifted out of main.cpp. Links neither platform nor profiles nor Widgets: everything reaches it through ports, which is what makes the quit gate testable by holding each condition.",
+      "deps": [
+        "clash_backend"
+      ],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": [
+        "app/lifecycle/quit_guard.h",
+        "app/lifecycle/shutdown_ports.h",
+        "app/lifecycle/shutdown_coordinator.h"
+      ]
+    },
+    "clash_app_backup": {
+      "_role": "Owns the process's one core::BackupStore, so shutdown no longer discovers it through the widget tree.",
+      "deps": [
+        "clash_backend",
+        "clash_app_lifecycle",
+        "clash_backups"
+      ],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Network",
+        "yaml-cpp::yaml-cpp"
+      ],
+      "public_headers": [
+        "app/backup/backup_session.h",
+        "app/backup/backup_store_session.h",
+        "app/backup/backup_coordinator.h"
+      ]
+    },
+    "clash_app_runtime": {
+      "_role": "Reload scheduling, snapshot retention and routing intent. One reload gate, one routing controller.",
+      "deps": [
+        "clash_backend",
+        "clash_platform",
+        "clash_profiles"
+      ],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Concurrent",
+        "Qt6::Core",
+        "Qt6::Gui",
+        "Qt6::Network",
+        "Qt6::Qml",
+        "Qt6::QmlIntegration",
+        "Qt6::WebSockets",
+        "yaml-cpp::yaml-cpp"
+      ],
+      "public_headers": [
+        "app/runtime/config_source.h",
+        "app/runtime/profile_config_source.h",
+        "app/runtime/runtime_coordinator.h",
+        "app/runtime/routing_controller.h"
+      ]
+    },
+    "clash_app_composition": {
+      "_role": "Composition-root adapters. The only layer permitted to see both sides of the privileged seam: IR-CORE-NOT-PLATFORM keeps it out of core, IR-PLATFORM-NOT-CORE keeps it out of platform.",
+      "deps": [
+        "clash_backend",
+        "clash_platform"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Concurrent",
+        "Qt6::Core",
+        "Qt6::Gui",
+        "Qt6::Network"
+      ],
+      "public_headers": [
+        "app/composition/privileged_service_adapter.h"
+      ]
     }
   },
   "consumers": {
@@ -289,13 +372,17 @@
     "clash-qt": {
       "_note": "Links the backend libraries directly; clash-qt-service-helper is an add_dependencies() edge, which the File API reports and which must therefore be declared like any other.",
       "deps": [
-        "clash_config",
-        "clash_profiles",
-        "clash_backups",
-        "clash_telemetry",
-        "clash_platform",
         "clash-qt-service-helper",
-        "clash_preferences"
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry"
       ],
       "optional": true
     },
@@ -571,31 +658,6 @@
     }
   ],
   "exceptions": [
-    {
-      "id": "D2-mihomo-impl-links-platform",
-      "class": "architecture",
-      "kind": "target_edge",
-      "from": "clash_mihomo_impl",
-      "to": "clash_platform",
-      "owner": "MOD-CORE",
-      "remove_in": "P3",
-      "reason": "DECISION D2. platform::PrivilegedServiceClient appears in CoreProcess's constructor signature (src/core/mihomo/process/core_process.h:31, forward-declared at :17), so the edge is PUBLIC. It is removed by injecting an abstract interface owned by clash_mihomo_impl; the privileged client is NOT absorbed into the component package."
-    },
-    {
-      "id": "D2-core-process-includes-platform-header",
-      "class": "architecture",
-      "kind": "include",
-      "rule": "IR-CORE-NOT-PLATFORM",
-      "owner": "MOD-CORE",
-      "remove_in": "P3",
-      "reason": "DECISION D2, seen at file level. The single include site behind the baselined target edge. Frozen at one site: a second core file reaching into platform fails the check.",
-      "sites": [
-        {
-          "file": "src/core/mihomo/process/core_process.cpp",
-          "include": "platform/service/privileged_service_client.h"
-        }
-      ]
-    },
     {
       "id": "G2-consumers-link-component-private",
       "class": "migration-baseline",

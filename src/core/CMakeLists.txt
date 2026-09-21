@@ -10,6 +10,7 @@ target_sources(clash_backend INTERFACE FILE_SET HEADERS
     FILES
         backend/attachment.h backend/backend.h backend/capabilities.h
         backend/control.h backend/lifecycle.h backend/observer.h
+        backend/privileged_core_service.h
         backend/telemetry.h backend/types.h)
 target_include_directories(clash_backend INTERFACE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(clash_backend INTERFACE clash_types)
@@ -84,15 +85,15 @@ target_link_libraries(clash_telemetry PUBLIC clash_types)
 # component interface, never by linking this directly. The architecture checker
 # enforces that once the component boundary exists.
 add_library(clash_mihomo_impl STATIC
+    mihomo/mihomo_backend.cpp
     mihomo/controller_discovery.cpp
     mihomo/mihomo_client.cpp
     mihomo/provider_client.cpp
     mihomo/process/core_process.cpp)
+# D2 is DISCHARGED: CoreProcess now takes core::PrivilegedCoreService, an
+# interface this library owns and publishes through clash_backend. The concrete
+# platform client is adapted in the composition root, so no platform type
+# appears in this component's surface and the edge is gone, not baselined.
 target_link_libraries(clash_mihomo_impl
-    PUBLIC  clash_types
-            # BASELINED EXCEPTION (decision D2, owner P3/MOD-CORE):
-            # platform::PrivilegedServiceClient appears in CoreProcess's
-            # constructor signature, so this edge is PUBLIC today. It is removed
-            # by injecting an abstract interface owned by this library.
-            clash_platform
+    PUBLIC  clash_types clash_backend
     PRIVATE Qt6::Network Qt6::WebSockets Qt6::Concurrent clash_yaml)

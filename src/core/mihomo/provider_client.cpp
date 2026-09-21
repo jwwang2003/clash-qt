@@ -61,28 +61,40 @@ void ProviderClient::finish(const QString &key) {
     emit busyChanged(!pending_.isEmpty());
 }
 
-void ProviderClient::fetch(bool rules) {
+void ProviderClient::settle(const QString &key, bool superseded, const QString &error) {
+    emit requestSettled(key, superseded, error);
+}
+
+QString ProviderClient::fetch(bool rules) {
     const Endpoint endpoint = client_->endpoint();
     const quint64 epoch = epoch_;
     const QString key = QString::number(epoch) + ':' + basePath(rules);
-    if (pending_.contains(key)) return;
+    // Coalesced, not rejected: the caller joins the outstanding operation and is
+    // handed its key. Minting one id per submission would mint two and issue
+    // both, which is exactly what this set exists to prevent.
+    if (pending_.contains(key)) return key;
     pending_.insert(key);
     emit busyChanged(true);
     auto *reply = request(basePath(rules));
     connect(reply, &QNetworkReply::finished, this, [this, reply, rules, endpoint, key, epoch] {
         reply->deleteLater();
         finish(key);
-        if (epoch != epoch_ || !sameEndpoint(endpoint)) return;
+        if (epoch != epoch_ || !sameEndpoint(endpoint)) { settle(key, true, {}); return; }
+        KeyScope scope(this, key);
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {
-            emit errorOccurred(tr("Could not load providers: %1").arg(reply->errorString()));
+            const QString message = tr("Could not load providers: %1").arg(reply->errorString());
+            emit errorOccurred(message);
+            settle(key, false, message);
             return;
         }
         QJsonParseError error;
         const auto document = QJsonDocument::fromJson(reply->readAll(), &error);
         if (error.error != QJsonParseError::NoError || !document.isObject() ||
             !document.object().value("providers").isObject()) {
-            emit errorOccurred(tr("The controller returned an invalid provider list."));
+            const QString message = tr("The controller returned an invalid provider list.");
+            emit errorOccurred(message);
+            settle(key, false, message);
             return;
         }
         QVector<Provider> providers;
@@ -109,21 +121,23 @@ void ProviderClient::fetch(bool rules) {
             providers.append(provider);
         }
         emit providersReceived(rules, providers);
+        settle(key, false, {});
     });
+    return key;
 }
 
-void ProviderClient::update(bool rules, const QString &name) { operate(rules, name, false); }
+QString ProviderClient::update(bool rules, const QString &name) { return operate(rules, name, false); }
 
-void ProviderClient::healthCheck(const QString &name) { operate(false, name, true); }
+QString ProviderClient::healthCheck(const QString &name) { return operate(false, name, true); }
 
-void ProviderClient::operate(bool rules, const QString &name, bool healthCheck) {
-    if (name.isEmpty()) return;
+QString ProviderClient::operate(bool rules, const QString &name, bool healthCheck) {
+    if (name.isEmpty()) return {};
     const Endpoint endpoint = client_->endpoint();
     const quint64 epoch = epoch_;
     const QString path = basePath(rules) + '/' + QString::fromLatin1(QUrl::toPercentEncoding(name)) +
                          (healthCheck ? "/healthcheck" : "");
     const QString key = QString::number(epoch) + ':' + path;
-    if (pending_.contains(key)) return;
+    if (pending_.contains(key)) return key;
     pending_.insert(key);
     emit busyChanged(true);
     auto *reply = request(path, !healthCheck);
@@ -131,20 +145,25 @@ void ProviderClient::operate(bool rules, const QString &name, bool healthCheck) 
             [this, reply, rules, name, healthCheck, endpoint, key, epoch] {
         reply->deleteLater();
         finish(key);
-        if (epoch != epoch_ || !sameEndpoint(endpoint)) return;
+        if (epoch != epoch_ || !sameEndpoint(endpoint)) { settle(key, true, {}); return; }
+        KeyScope scope(this, key);
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {
-            emit errorOccurred(tr("%1 failed for %2: %3")
-                                   .arg(healthCheck ? tr("Health check") : tr("Update"), name,
-                                        reply->errorString()));
+            const QString message = tr("%1 failed for %2: %3")
+                                        .arg(healthCheck ? tr("Health check") : tr("Update"), name,
+                                             reply->errorString());
+            emit errorOccurred(message);
+            settle(key, false, message);
             return;
         }
         emit operationFinished(healthCheck ? tr("Health check completed for %1.").arg(name)
                                             : tr("Updated %1.").arg(name));
+        settle(key, false, {});
         if (rules) client_->fetchRules();
         else client_->fetchProxies();
         fetch(rules);
     });
+    return key;
 }
 
 }  // namespace core

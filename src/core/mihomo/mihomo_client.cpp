@@ -40,6 +40,10 @@ void MihomoClient::setEndpoint(const Endpoint &endpoint) {
         return;
     }
     ++endpointEpoch_;
+    // Bump, announce, THEN abort. finished() may run synchronously inside
+    // abort(), so an observer told afterwards would already have accepted the
+    // very reply the bump was meant to discard.
+    emit invalidating();
     finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller changed."));
     lastTunEnabled_ = false;
     endpoint_ = endpoint;
@@ -69,6 +73,26 @@ void MihomoClient::setEndpoint(const Endpoint &endpoint) {
     refreshState();
 }
 
+void MihomoClient::detach() {
+    ++endpointEpoch_;
+    emit invalidating();
+    finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller changed."));
+    lastTunEnabled_ = false;
+    endpoint_ = Endpoint{};
+    endpoint_.host.clear();
+    endpoint_.port = 0;
+    endpoint_.secret.clear();
+    for (auto *reply : network_->findChildren<QNetworkReply *>())
+        if (reply->isRunning()) reply->abort();
+    setConnected(false);
+    clearLiveState();
+    closeTrafficStream();
+    closeConnectionsStream();
+    closeLogStream();
+    closeMemoryStream();
+    emit endpointChanged();
+}
+
 void MihomoClient::refreshState() {
     fetchVersion();
     fetchProxies();
@@ -77,6 +101,10 @@ void MihomoClient::refreshState() {
 }
 
 void MihomoClient::clearLiveState() {
+    // Never attributed to whichever reply handler happens to be running: the
+    // cleared live state answers no request, and a consumer must see it as the
+    // unsolicited publication it is.
+    ReplyScope scope(this, 0);
     emit proxiesUpdated({}, {});
     emit rulesUpdated({});
     emit connectionsUpdated({}, 0, 0);
@@ -88,6 +116,7 @@ void MihomoClient::setConnected(bool connected) {
     if (connected_ == connected) return;
     connected_ = connected;
     if (!connected) {
+        emit invalidating();
         finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller disconnected. Its state could not be confirmed."));
         lastTunEnabled_ = false;
         // An old in-flight snapshot must not repopulate the just-cleared offline UI.
@@ -117,47 +146,68 @@ void MihomoClient::applyAuth(QNetworkRequest &request) const {
     }
 }
 
+quint64 MihomoClient::beginOperation() { return ++operation_; }
+
+void MihomoClient::settle(quint64 operation, bool superseded, const QString &error) {
+    if (operation == 0) return;
+    emit requestSettled(operation, superseded, error);
+}
+
 QNetworkReply *MihomoClient::get(const QString &path) {
     QNetworkRequest request{QUrl(endpoint_.httpBase() + path)};
     applyAuth(request);
     return trackReply(network_->get(request));
 }
 
-void MihomoClient::fetchVersion() {
+quint64 MihomoClient::fetchVersion() {
+    const quint64 operation = beginOperation();
     QNetworkReply *reply = get("/version");
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
+            const QString error = tr("Cannot reach controller: %1").arg(reply->errorString());
             setConnected(false);
-            emit errorOccurred(tr("Cannot reach controller: %1").arg(reply->errorString()));
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
         const QJsonObject object = QJsonDocument::fromJson(reply->readAll()).object();
         const QString version = object.value("version").toString();
         if (version.isEmpty()) {
+            const QString error = tr("Controller returned an invalid version response");
             setConnected(false);
-            emit errorOccurred(tr("Controller returned an invalid version response"));
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
         setConnected(true);
         emit versionReceived(version);
+        settle(operation, false, {});
     });
+    return operation;
 }
 
-void MihomoClient::fetchProxies() {
+quint64 MihomoClient::fetchProxies() {
+    const quint64 operation = beginOperation();
     QNetworkReply *reply = get("/proxies");
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Failed to load proxies: %1").arg(reply->errorString()));
+            const QString error = tr("Failed to load proxies: %1").arg(reply->errorString());
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
 
         const auto document = QJsonDocument::fromJson(reply->readAll());
         if (!document.isObject() || !document.object().value("proxies").isObject()) {
-            emit errorOccurred(tr("Controller returned an invalid proxy response"));
+            const QString error = tr("Controller returned an invalid proxy response");
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
         const QJsonObject proxies = document.object().value("proxies").toObject();
@@ -214,10 +264,13 @@ void MihomoClient::fetchProxies() {
         });
 
         emit proxiesUpdated(groups, nodes);
+        settle(operation, false, {});
     });
+    return operation;
 }
 
-void MihomoClient::selectNode(const QString &group, const QString &node) {
+quint64 MihomoClient::selectNode(const QString &group, const QString &node) {
+    const quint64 operation = beginOperation();
     QNetworkRequest request{QUrl(endpoint_.httpBase() + "/proxies/" + QUrl::toPercentEncoding(group))};
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     applyAuth(request);
@@ -225,33 +278,46 @@ void MihomoClient::selectNode(const QString &group, const QString &node) {
     const QJsonDocument body{QJsonObject{{"name", node}}};
     QNetworkReply *reply = trackReply(network_->put(request, body.toJson(QJsonDocument::Compact)));
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply, group, node] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, group, node, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Could not switch %1: %2").arg(group, reply->errorString()));
+            const QString error = tr("Could not switch %1: %2").arg(group, reply->errorString());
+            emit errorOccurred(error);
+            settle(operation, false, error);
             fetchProxies();
             return;
         }
         emit nodeSelected(group, node);
+        settle(operation, false, {});
         fetchProxies();
     });
+    return operation;
 }
 
-void MihomoClient::resetGroupSelection(const QString &group) {
+quint64 MihomoClient::resetGroupSelection(const QString &group) {
+    const quint64 operation = beginOperation();
     QNetworkRequest request{QUrl(endpoint_.httpBase() + "/proxies/" + QUrl::toPercentEncoding(group))};
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->deleteResource(request));
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
-        if (reply->error() != QNetworkReply::NoError)
-            emit errorOccurred(tr("Could not restore automatic selection: %1").arg(reply->errorString()));
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
+        QString error;
+        if (reply->error() != QNetworkReply::NoError) {
+            error = tr("Could not restore automatic selection: %1").arg(reply->errorString());
+            emit errorOccurred(error);
+        }
+        settle(operation, false, error);
         fetchProxies();
     });
+    return operation;
 }
 
-void MihomoClient::testGroupDelay(const QString &group) {
+quint64 MihomoClient::testGroupDelay(const QString &group) {
+    const quint64 operation = beginOperation();
     QUrl url(endpoint_.httpBase() + "/group/" + QUrl::toPercentEncoding(group) + "/delay");
     QUrlQuery query;
     query.addQueryItem("url", kLatencyTestUrl);
@@ -262,17 +328,23 @@ void MihomoClient::testGroupDelay(const QString &group) {
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->get(request));
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
+        QString error;
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Latency test failed: %1").arg(reply->errorString()));
+            error = tr("Latency test failed: %1").arg(reply->errorString());
+            emit errorOccurred(error);
         }
+        settle(operation, false, error);
         fetchProxies();
     });
+    return operation;
 }
 
-void MihomoClient::testNodeDelay(const QString &node) {
+quint64 MihomoClient::testNodeDelay(const QString &node) {
+    const quint64 operation = beginOperation();
     QUrl url(endpoint_.httpBase() + "/proxies/" + QUrl::toPercentEncoding(node) + "/delay");
     QUrlQuery query;
     query.addQueryItem("url", kLatencyTestUrl);
@@ -281,28 +353,40 @@ void MihomoClient::testNodeDelay(const QString &node) {
     QNetworkRequest request{url};
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->get(request));
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
-        if (reply->error() != QNetworkReply::NoError)
-            emit errorOccurred(tr("Latency test failed: %1").arg(reply->errorString()));
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
+        QString error;
+        if (reply->error() != QNetworkReply::NoError) {
+            error = tr("Latency test failed: %1").arg(reply->errorString());
+            emit errorOccurred(error);
+        }
+        settle(operation, false, error);
         fetchProxies();
     });
+    return operation;
 }
 
-void MihomoClient::fetchRules() {
+quint64 MihomoClient::fetchRules() {
+    const quint64 operation = beginOperation();
     QNetworkReply *reply = get("/rules");
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Failed to load rules: %1").arg(reply->errorString()));
+            const QString error = tr("Failed to load rules: %1").arg(reply->errorString());
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
 
         const auto document = QJsonDocument::fromJson(reply->readAll());
         if (!document.isObject() || !document.object().value("rules").isArray()) {
-            emit errorOccurred(tr("Controller returned an invalid rules response"));
+            const QString error = tr("Controller returned an invalid rules response");
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
         const QJsonArray items = document.object().value("rules").toArray();
@@ -316,26 +400,38 @@ void MihomoClient::fetchRules() {
         }
 
         emit rulesUpdated(rules);
+        settle(operation, false, {});
     });
+    return operation;
 }
 
-void MihomoClient::fetchConfigs() {
+quint64 MihomoClient::fetchConfigs() {
+    const quint64 operation = beginOperation();
     QNetworkReply *reply = get("/configs");
     const quint64 tunRevision = tunChangeId_;
-    connect(reply, &QNetworkReply::finished, this, [this, reply, tunRevision] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, tunRevision, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply) || tunRevision != tunChangeId_) return;
+        // A config poll begun before a confirmed TUN snapshot is superseded by
+        // it, exactly as an endpoint or request epoch supersedes a reply.
+        if (!isCurrentReply(reply) || tunRevision != tunChangeId_) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Failed to load configuration: %1").arg(reply->errorString()));
+            const QString error = tr("Failed to load configuration: %1").arg(reply->errorString());
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
         const auto document = QJsonDocument::fromJson(reply->readAll());
         if (!document.isObject() || !document.object().value("mode").isString()) {
-            emit errorOccurred(tr("Controller returned an invalid configuration response"));
+            const QString error = tr("Controller returned an invalid configuration response");
+            emit errorOccurred(error);
+            settle(operation, false, error);
             return;
         }
         publishConfig(document.object());
+        settle(operation, false, {});
     });
+    return operation;
 }
 
 void MihomoClient::publishConfig(const QJsonObject &object) {
@@ -363,14 +459,14 @@ void MihomoClient::finishTunChange(bool actual, const QString &error) {
     emit tunChangeFinished(requested, actual, error);
 }
 
-void MihomoClient::setTunEnabled(bool enabled) {
-    if (tunChangePending_) return;
+quint64 MihomoClient::setTunEnabled(bool enabled) {
+    if (tunChangePending_) return 0;
     tunChangePending_ = true;
     tunRequested_ = enabled;
     const quint64 operation = ++tunChangeId_;
     if (!connected_) {
         finishTunChange(lastTunEnabled_, tr("Connect to the controller before changing TUN."));
-        return;
+        return operation;
     }
 
     QNetworkReply *reply = get("/configs");
@@ -426,6 +522,7 @@ void MihomoClient::setTunEnabled(bool enabled) {
             confirmTunChange(operation, error);
         });
     });
+    return operation;
 }
 
 void MihomoClient::confirmTunChange(quint64 operation, const QString &patchError) {
@@ -457,61 +554,80 @@ void MihomoClient::confirmTunChange(quint64 operation, const QString &patchError
     });
 }
 
-void MihomoClient::patchMode(const QString &mode) {
-    patchConfig(QJsonObject{{"mode", mode}});
+quint64 MihomoClient::patchMode(const QString &mode) {
+    return patchConfig(QJsonObject{{"mode", mode}});
 }
 
-void MihomoClient::patchConfig(const QJsonObject &patch) {
+quint64 MihomoClient::patchConfig(const QJsonObject &patch) {
+    const quint64 operation = beginOperation();
     QNetworkRequest request{QUrl(endpoint_.httpBase() + "/configs")};
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->sendCustomRequest(
         request, "PATCH", QJsonDocument(patch).toJson(QJsonDocument::Compact)));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, patch] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, patch, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Could not update configuration: %1").arg(reply->errorString()));
+            const QString error = tr("Could not update configuration: %1").arg(reply->errorString());
+            emit errorOccurred(error);
+            settle(operation, false, error);
             // Read back the actual state so optimistic widgets roll back on rejection.
             fetchConfigs();
             return;
         }
         if (patch.contains("mode")) emit modeChanged(patch.value("mode").toString());
+        settle(operation, false, {});
         fetchConfigs();
     });
+    return operation;
 }
 
-void MihomoClient::closeConnection(const QString &id) {
+quint64 MihomoClient::closeConnection(const QString &id) {
+    const quint64 operation = beginOperation();
     QNetworkRequest request{
         QUrl(endpoint_.httpBase() + "/connections/" + QUrl::toPercentEncoding(id))};
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->deleteResource(request));
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
+        QString error;
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Could not close connection: %1").arg(reply->errorString()));
+            error = tr("Could not close connection: %1").arg(reply->errorString());
+            emit errorOccurred(error);
         }
+        settle(operation, false, error);
     });
+    return operation;
 }
 
-void MihomoClient::closeAllConnections() {
+quint64 MihomoClient::closeAllConnections() {
+    const quint64 operation = beginOperation();
     QNetworkRequest request{QUrl(endpoint_.httpBase() + "/connections")};
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->deleteResource(request));
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
+        QString error;
         if (reply->error() != QNetworkReply::NoError) {
-            emit errorOccurred(tr("Could not close connections: %1").arg(reply->errorString()));
+            error = tr("Could not close connections: %1").arg(reply->errorString());
+            emit errorOccurred(error);
         }
+        settle(operation, false, error);
     });
+    return operation;
 }
 
-void MihomoClient::updateGeoDatabases() {
-    if (geoUpdate_) return;
+quint64 MihomoClient::updateGeoDatabases() {
+    if (geoUpdate_) return 0;
+    const quint64 operation = beginOperation();
     QNetworkRequest request{QUrl(endpoint_.httpBase() + "/configs/geo")};
     applyAuth(request);
     request.setTransferTimeout(180000);
@@ -519,51 +635,66 @@ void MihomoClient::updateGeoDatabases() {
     QNetworkReply *reply = trackReply(network_->post(request, "{}"));
     geoUpdate_ = reply;
     QTimer::singleShot(180000, reply, [reply] { if (reply->isRunning()) reply->abort(); });
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, operation] {
         if (geoUpdate_ == reply) geoUpdate_ = nullptr;
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         const QString error = reply->error() == QNetworkReply::NoError && status >= 200 && status < 300
             ? QString() : tr("Could not update GEO databases (HTTP %1): %2").arg(status).arg(reply->errorString());
         emit geoDatabasesUpdated(error);
+        settle(operation, false, error);
         if (!error.isEmpty()) emit errorOccurred(error);
         else fetchRules();
     });
+    return operation;
 }
 
-void MihomoClient::queryDns(const QString &name, const QString &type) {
+quint64 MihomoClient::queryDns(const QString &name, const QString &type) {
+    const quint64 operation = beginOperation();
     QUrlQuery query;
     query.addQueryItem("name", name);
     query.addQueryItem("type", type);
     QNetworkReply *reply = get("/dns/query?" + query.toString(QUrl::FullyEncoded));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, name] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, name, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
         if (reply->error() != QNetworkReply::NoError) {
             emit dnsQueryFinished(name, {}, reply->errorString());
+            settle(operation, false, reply->errorString());
             return;
         }
         const auto document = QJsonDocument::fromJson(reply->readAll());
         if (!document.isObject()) {
-            emit dnsQueryFinished(name, {}, tr("Invalid DNS response from controller"));
+            const QString error = tr("Invalid DNS response from controller");
+            emit dnsQueryFinished(name, {}, error);
+            settle(operation, false, error);
             return;
         }
         emit dnsQueryFinished(name, document.object(), {});
+        settle(operation, false, {});
     });
+    return operation;
 }
 
-void MihomoClient::flushDnsCache(bool fakeIp) {
+quint64 MihomoClient::flushDnsCache(bool fakeIp) {
+    const quint64 operation = beginOperation();
     QNetworkRequest request{QUrl(endpoint_.httpBase() +
         (fakeIp ? "/cache/fakeip/flush" : "/cache/dns/flush"))};
     applyAuth(request);
     QNetworkReply *reply = trackReply(network_->post(request, QByteArray()));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, fakeIp] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, fakeIp, operation] {
         reply->deleteLater();
-        if (!isCurrentReply(reply)) return;
-        emit dnsCacheFlushed(fakeIp, reply->error() == QNetworkReply::NoError
-                                        ? QString() : reply->errorString());
+        if (!isCurrentReply(reply)) { settle(operation, true, {}); return; }
+        ReplyScope scope(this, operation);
+        const QString error = reply->error() == QNetworkReply::NoError ? QString()
+                                                                      : reply->errorString();
+        emit dnsCacheFlushed(fakeIp, error);
+        settle(operation, false, error);
     });
+    return operation;
 }
 
 QWebSocket *MihomoClient::openStream(const QString &path,

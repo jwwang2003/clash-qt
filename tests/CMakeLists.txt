@@ -2,6 +2,25 @@
 # build; renames are a separate, recorded change.
 find_package(Qt6 6.9 REQUIRED COMPONENTS Test)
 
+# Helpers shared with the test subdirectories. Defined before any
+# add_subdirectory(), because a child scope only sees functions already defined.
+function(clash_qt_label test_name)
+    if(TEST ${test_name})
+        set_tests_properties(${test_name} PROPERTIES LABELS "${ARGN}")
+    endif()
+endfunction()
+
+function(clash_qt_isolate_test test_name)
+    get_test_property(${test_name} ENVIRONMENT existing_env)
+    if(existing_env STREQUAL "NOTFOUND")
+        set(existing_env "")
+    endif()
+    list(APPEND existing_env
+        "CLASH_QT_DATA_DIR=${CMAKE_BINARY_DIR}/test-data/${test_name}")
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${existing_env}")
+endfunction()
+
+
 # Backend suites now link the production libraries instead of recompiling their
 # sources, so a test exercises the same objects the application ships.
 
@@ -277,6 +296,11 @@ if(CLASH_QT_BUILD_APP)
     add_test(NAME traffic-frame-pacing COMMAND traffic-frame-pacing-tests)
 endif()
 
+add_subdirectory(app/lifecycle)
+add_subdirectory(app/backup)
+add_subdirectory(app/runtime)
+add_subdirectory(core/mihomo)
+
 # Architecture checks. Reads evaluated CMake target dependencies through the File
 # API, so transitive and generated edges are included rather than guessed at from
 # the text of these files.
@@ -292,14 +316,6 @@ add_subdirectory(architecture)
 #   privileged  needs an exclusive disposable host
 #   benchmark   measured, machine-specific budgets
 #
-# Written out one call per suite rather than as a data list: CMake flattens
-# semicolons inside a quoted string into separate list elements, which silently
-# desynchronises a paired name/labels list.
-function(clash_qt_label test_name)
-    if(TEST ${test_name})
-        set_tests_properties(${test_name} PROPERTIES LABELS "${ARGN}")
-    endif()
-endfunction()
 
 clash_qt_label(controller            integration core mihomo)
 clash_qt_label(provider              integration core mihomo)
@@ -346,6 +362,8 @@ clash_qt_label(backend-contract    unit contract backend)
 # also uses ScopedEnvironment simply overrides this with something narrower. The
 # point is that forgetting is no longer sufficient to reach the real store.
 # ---------------------------------------------------------------------------
+# Subdirectory tests apply this themselves via clash_qt_isolate_test(); CMake
+# does not allow a parent scope to set properties on a child's tests.
 get_property(clash_qt_all_tests DIRECTORY PROPERTY TESTS)
 foreach(test_name IN LISTS clash_qt_all_tests)
     get_test_property(${test_name} ENVIRONMENT existing_env)
