@@ -141,7 +141,7 @@ Status values: `queued`, `running`, `ready-for-integration`, `verified`, `blocke
 | P2-BUILD | coordinator | P1 | root+per-dir CMake, `cmake/**`, `scripts/build/**`, `Makefile`, `CMakePresets.json`, `tests/CMakeLists.txt` | verified | 8 libraries build; headless configure registers 10/14; `make core` produces provenance; facade verified on Make 3.81 **and** 4.4.1; `doctor` failure path tested |
 | BASE-SEAM | worker A / Opus | P1 | named proxy/browser/dashboard/helper-client files + their suites | verified | 3 seams removed; 14/14; per-suite totals identical to baseline |
 | BASE-FIXTURE | worker B / Opus | P1 | `tests/support/**`, `tests/fixtures/**` | running | — |
-| BASE-ARCH | worker C / Opus | P1 | `tests/architecture/**` | running | — |
+| BASE-ARCH | worker C / Opus | P1 | `tests/architecture/**` | verified | 6 rules, 10 self-tests, all failing-when-violated; ratchet verified independently at integration; 17/17 CTest |
 | COMPONENT-BASE | worker A / Opus | `component-r1` | `src/core/component/**`, `tests/contracts/component/**` | running | dispatched into the slot BASE-SEAM freed |
 
 ## P1 relocation evidence (verified)
@@ -244,3 +244,25 @@ CMake/manifest reconciliation. `096addf` no longer exists on the branch. Nothing
 
 **Rule adopted:** while any worker holds a lease, the coordinator commits only with an
 explicit pathspec (`git commit -- <path>`), never a bare `git commit`.
+
+
+## Resolved correction — `.gitignore` silently excluded `scripts/`
+
+**What happened.** `.gitignore` carried the unanchored pattern `build*/`, which matches
+a directory named `build` at **any** depth — including `scripts/build/`. Commit
+`c9e66a5` reported adding the local-core build wrapper and the `doctor` probe, but
+`git add -- scripts` silently did nothing and neither file entered the repository,
+while `cmake/Mihomo.cmake` referenced one of them. A fresh clone would have failed
+both `make core` and `make doctor`.
+
+**Why it was not caught earlier.** Every verification ran in the working tree, where
+the files exist. Nothing exercised a pristine checkout, so the gap was invisible to
+build and test evidence alike.
+
+**Fix.** Patterns anchored to the repository root (`/build*/`, `/.cache/`). Verified
+that all ten build directories are still ignored and that nothing else was hidden —
+only `.DS_Store` files, which is intended.
+
+**Guard added.** A fresh `git clone` of the branch is now configured from scratch as
+part of integration, not just the working tree. First run: clone contains
+`scripts/build/`, and `cmake -DCLASH_QT_BUILD_APP=OFF` configures cleanly.
