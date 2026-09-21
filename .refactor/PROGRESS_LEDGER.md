@@ -384,10 +384,37 @@ engine `build/dev/core/mihomo` + `mihomo-provenance.json`, staged app
 `build/dev/stage/clash-qt.app` (135 MB, Qt frameworks/plugins and the privileged
 helper included).
 
-### Open gap — G1 acceptance not yet met
+### G1 packaging gap — closed
 
-`make package` does **not** stage the locally built engine into the distribution.
-G1 requires packaging to consume that exact build output. The helper is staged; the
-engine is not. Needs a packaging decision on its bundle-relative home and a
-corresponding install rule, plus the runtime lookup to resolve it there. Until then
-a packaged app has no managed engine.
+`make package` now stages the engine at `clash-qt.app/Contents/MacOS/mihomo`, beside
+the application executable, which is the first place `CoreProcess::discoverBinary()`
+looks, so no runtime change was needed. `mihomo-provenance.json` ships in
+`Contents/Resources`. The install runs **after** the Qt deployment script, because
+macdeployqt rewrites and signs what it finds and the engine is a self-contained Go
+binary that must not be processed as a Qt executable. `package` now depends on `core`
+as well as `build`: the engine target is deliberately not in ALL, so a package built
+without it would have shipped with no managed engine.
+
+Verified: the staged engine runs and reports `v1.19.31`, and its sha256 matches the
+provenance manifest exactly.
+
+### OPEN — G1 violation in engine discovery, assigned to MOD-CORE
+
+`CoreProcess::discoverBinary()` falls back, after the bundled path, to
+`QStandardPaths::findExecutable("mihomo")` and then to `bundledBinaries()`, which
+hardcodes:
+
+```
+/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo
+/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo-alpha
+```
+
+G1 states the managed engine must never silently use PATH, another Clash
+installation, or a downloaded binary. **This developer's machine has Clash Verge
+installed and running**, so an app without a staged engine would silently supervise
+*that* binary while reporting its own provenance.
+
+Required of MOD-CORE, which owns `core_process.cpp`: the managed path resolves the
+staged engine or fails with an actionable message. Any discovery of an unrelated
+installation becomes an explicit, separately labelled user choice — never a silent
+fallback — and whatever is resolved must be reported so provenance cannot be implied.

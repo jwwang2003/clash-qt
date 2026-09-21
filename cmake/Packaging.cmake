@@ -68,3 +68,21 @@ if(UNIX AND NOT APPLE)
     install(FILES assets/clash-qt.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 endif()
+
+# Stage the locally built engine beside the application executable. G1 requires
+# the package to consume this exact build output. discoverBinary() already looks
+# next to the executable first, so no runtime change is needed to find it.
+#
+# Installed AFTER the Qt deployment script on purpose: macdeployqt rewrites and
+# signs what it finds in the bundle, and the engine is a self-contained Go binary
+# that must not be processed as a Qt executable.
+if(APPLE)
+    install(PROGRAMS "${CLASH_QT_CORE_BINARY}"
+        DESTINATION "clash-qt.app/Contents/MacOS")
+    install(FILES "${CLASH_QT_CORE_DIR}/mihomo-provenance.json"
+        DESTINATION "clash-qt.app/Contents/Resources")
+else()
+    install(PROGRAMS "${CLASH_QT_CORE_BINARY}" DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES "${CLASH_QT_CORE_DIR}/mihomo-provenance.json"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/clash-qt)
+endif()

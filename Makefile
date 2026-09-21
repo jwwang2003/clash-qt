@@ -95,7 +95,9 @@ test-native: build
 	 test -n "$(CLASH_QT_NATIVE_HOST)" && \
 	 $(CTEST) --preset $(PRESET) --label-regex "native|privileged"
 
-package: build
+# Depends on core as well as build: the engine target is deliberately not in ALL,
+# so a package built without it would ship without a managed engine.
+package: build core
 	@$(CMAKE) --install $(BUILD_DIR) --prefix $(BUILD_DIR)/stage && echo "package: staged in $(BUILD_DIR)/stage"
 
 clean:
