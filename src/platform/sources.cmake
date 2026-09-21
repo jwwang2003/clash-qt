@@ -1,6 +1,6 @@
 # Owned by the platform module (browsers, system proxy, autostart, hotkeys).
 target_sources(clash-qt PRIVATE
-    src/platform/browser_launcher.cpp
+    src/platform/browser/browser_launcher.cpp
     src/platform/service/privileged_service_client.cpp
     src/platform/service/privileged_service_installer.cpp
 )

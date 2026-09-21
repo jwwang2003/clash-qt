@@ -1,4 +1,4 @@
-# Owned by the core/profile module.
+# Owned by the core/profiles module.
 target_sources(clash-qt PRIVATE
-    src/core/profile/profile_store.cpp
+    src/core/profiles/profile_store.cpp
 )

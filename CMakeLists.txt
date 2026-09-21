@@ -12,7 +12,7 @@ find_package(yaml-cpp REQUIRED)
 qt_standard_project_setup(REQUIRES 6.9)
 set(CMAKE_AUTORCC ON)
 
-set_source_files_properties(src/ui/qml/TrafficGraph.qml PROPERTIES QT_RESOURCE_ALIAS TrafficGraph.qml)
+set_source_files_properties(src/ui/pages/overview/qml/TrafficGraph.qml PROPERTIES QT_RESOURCE_ALIAS TrafficGraph.qml)
 function(add_traffic_graph_module target)
     target_link_libraries(${target} PRIVATE Qt6::Quick Qt6::Graphs)
     qt_add_qml_module(${target}
@@ -20,7 +20,7 @@ function(add_traffic_graph_module target)
         VERSION 1.0
         RESOURCE_PREFIX /qt/qml
         OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qml/${target}/ClashQt"
-        QML_FILES src/ui/qml/TrafficGraph.qml
+        QML_FILES src/ui/pages/overview/qml/TrafficGraph.qml
     )
 endfunction()
 
@@ -63,7 +63,7 @@ if(WIN32)
 endif()
 if(APPLE)
     enable_language(OBJCXX)
-    add_executable(clash-qt-service-helper src/service/macos_helper.mm)
+    add_executable(clash-qt-service-helper src/services/macos/macos_helper.mm)
     set_target_properties(clash-qt-service-helper PROPERTIES AUTOMOC OFF AUTORCC OFF)
     target_compile_options(clash-qt-service-helper PRIVATE -fobjc-arc)
     target_link_libraries(clash-qt-service-helper PRIVATE "-framework Foundation" "-framework Security")
@@ -123,62 +123,62 @@ include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     qt_add_executable(runtime-tests
-        tests/runtime_test.cpp
-        src/core/profile/profile_store.cpp
-        src/core/enhance/config_enhancer.cpp
-        src/core/yaml_util.cpp
-        src/core/process/core_process.cpp
+        tests/core/runtime_test.cpp
+        src/core/profiles/profile_store.cpp
+        src/core/config/enhance/config_enhancer.cpp
+        src/core/config/yaml_util.cpp
+        src/core/mihomo/process/core_process.cpp
         src/platform/service/privileged_service_client.cpp
-        src/core/controller_discovery.cpp
+        src/core/mihomo/controller_discovery.cpp
     )
     target_include_directories(runtime-tests PRIVATE src)
     target_link_libraries(runtime-tests PRIVATE Qt6::Test Qt6::Network Qt6::Qml Qt6::Concurrent yaml-cpp::yaml-cpp)
     add_test(NAME runtime COMMAND runtime-tests)
     qt_add_executable(controller-tests
-        tests/controller_test.cpp
-        src/core/mihomo_client.cpp
-        src/core/controller_discovery.cpp
+        tests/core/controller_test.cpp
+        src/core/mihomo/mihomo_client.cpp
+        src/core/mihomo/controller_discovery.cpp
     )
     target_include_directories(controller-tests PRIVATE src)
     target_link_libraries(controller-tests PRIVATE Qt6::Test Qt6::Network Qt6::WebSockets yaml-cpp::yaml-cpp)
     add_test(NAME controller COMMAND controller-tests)
-    qt_add_executable(provider-tests tests/provider_test.cpp src/core/provider_client.cpp src/core/mihomo_client.cpp)
+    qt_add_executable(provider-tests tests/core/provider_test.cpp src/core/mihomo/provider_client.cpp src/core/mihomo/mihomo_client.cpp)
     target_include_directories(provider-tests PRIVATE src)
     target_link_libraries(provider-tests PRIVATE Qt6::Test Qt6::Network Qt6::WebSockets)
     add_test(NAME provider COMMAND provider-tests)
-    qt_add_executable(backup-tests tests/backup_test.cpp src/core/backup_store.cpp)
+    qt_add_executable(backup-tests tests/core/backup_test.cpp src/core/backups/backup_store.cpp)
     target_include_directories(backup-tests PRIVATE src)
     target_link_libraries(backup-tests PRIVATE Qt6::Test Qt6::Network Qt6::Concurrent yaml-cpp::yaml-cpp)
     add_test(NAME backup COMMAND backup-tests)
-    qt_add_executable(data-pages-tests tests/data_pages_test.cpp
-        src/core/mihomo_client.cpp src/ui/proxies_page.cpp src/ui/connections_page.cpp
-        src/ui/rules_page.cpp src/ui/logs_page.cpp src/ui/formatting.cpp src/ui/theme.cpp
-        src/ui/home_page.cpp src/ui/settings_section.cpp src/ui/resources.qrc src/ui/combo_box.cpp
-        src/ui/traffic_graph.cpp src/core/traffic_history.cpp
-        src/ui/providers_page.cpp src/core/provider_client.cpp)
+    qt_add_executable(data-pages-tests tests/ui/data_pages_test.cpp
+        src/core/mihomo/mihomo_client.cpp src/ui/pages/proxies/proxies_page.cpp src/ui/pages/connections/connections_page.cpp
+        src/ui/pages/rules/rules_page.cpp src/ui/pages/logs/logs_page.cpp src/ui/theme/formatting.cpp src/ui/theme/theme.cpp
+        src/ui/pages/overview/home_page.cpp src/ui/widgets/settings_section.cpp src/ui/resources/resources.qrc src/ui/widgets/combo_box.cpp
+        src/ui/pages/overview/traffic_graph.cpp src/core/telemetry/traffic_history.cpp
+        src/ui/pages/providers/providers_page.cpp src/core/mihomo/provider_client.cpp)
     target_include_directories(data-pages-tests PRIVATE src)
     target_link_libraries(data-pages-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::Concurrent)
     add_traffic_graph_module(data-pages-tests)
     add_test(NAME data-pages COMMAND data-pages-tests)
-    qt_add_executable(proxy-tests tests/system_proxy_test.cpp)
+    qt_add_executable(proxy-tests tests/platform/system_proxy_test.cpp)
     target_include_directories(proxy-tests PRIVATE src)
     target_link_libraries(proxy-tests PRIVATE Qt6::Test)
     add_test(NAME proxy COMMAND proxy-tests)
-    qt_add_executable(privileged-service-tests tests/privileged_service_client_test.cpp
+    qt_add_executable(privileged-service-tests tests/platform/privileged_service_client_test.cpp
         src/platform/service/privileged_service_client.cpp)
     target_include_directories(privileged-service-tests PRIVATE src)
     target_link_libraries(privileged-service-tests PRIVATE Qt6::Test Qt6::Network)
     add_test(NAME privileged-service COMMAND privileged-service-tests)
     if(APPLE)
         add_test(NAME privileged-helper COMMAND clash-qt-service-helper --self-test)
-        add_executable(privileged-helper-ipc-tests src/service/macos_helper.mm)
+        add_executable(privileged-helper-ipc-tests src/services/macos/macos_helper.mm)
         set_target_properties(privileged-helper-ipc-tests PROPERTIES AUTOMOC OFF AUTORCC OFF)
         target_compile_definitions(privileged-helper-ipc-tests PRIVATE CLASH_QT_HELPER_TESTING=1)
         target_compile_options(privileged-helper-ipc-tests PRIVATE -fobjc-arc)
         target_link_libraries(privileged-helper-ipc-tests PRIVATE "-framework Foundation" "-framework Security")
         add_test(NAME privileged-helper-ipc COMMAND privileged-helper-ipc-tests --ipc-self-test)
     endif()
-    qt_add_executable(system-proxy-async-tests tests/system_proxy_async_test.cpp
+    qt_add_executable(system-proxy-async-tests tests/platform/system_proxy_async_test.cpp
         src/platform/proxy/system_proxy_service.cpp src/platform/proxy/system_proxy.cpp)
     target_include_directories(system-proxy-async-tests PRIVATE src)
     target_link_libraries(system-proxy-async-tests PRIVATE Qt6::Test Qt6::Concurrent)
@@ -186,23 +186,23 @@ if(BUILD_TESTING)
         target_link_libraries(system-proxy-async-tests PRIVATE wininet)
     endif()
     add_test(NAME system-proxy-async COMMAND system-proxy-async-tests)
-    qt_add_executable(tray-tests tests/tray_test.cpp src/ui/proxy_environment.cpp
-        src/ui/tray_proxy_menu.cpp src/core/mihomo_client.cpp)
+    qt_add_executable(tray-tests tests/ui/tray_test.cpp src/ui/shell/proxy_environment.cpp
+        src/ui/shell/tray_proxy_menu.cpp src/core/mihomo/mihomo_client.cpp)
     target_include_directories(tray-tests PRIVATE src)
     target_link_libraries(tray-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::WebSockets)
     add_test(NAME tray COMMAND tray-tests)
-    qt_add_executable(routing-controls-tests tests/routing_controls_test.cpp
-        src/ui/routing_controls.cpp src/ui/toggle_switch.cpp src/ui/theme.cpp src/core/mihomo_client.cpp
-        src/ui/resources.qrc)
+    qt_add_executable(routing-controls-tests tests/ui/routing_controls_test.cpp
+        src/ui/shell/routing_controls.cpp src/ui/widgets/toggle_switch.cpp src/ui/theme/theme.cpp src/core/mihomo/mihomo_client.cpp
+        src/ui/resources/resources.qrc)
     target_include_directories(routing-controls-tests PRIVATE src)
     target_link_libraries(routing-controls-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::WebSockets)
     add_test(NAME routing-controls COMMAND routing-controls-tests)
-    qt_add_executable(dashboard-async-tests tests/dashboard_async_test.cpp
-        src/ui/dashboard_button.cpp src/core/mihomo_client.cpp)
+    qt_add_executable(dashboard-async-tests tests/ui/dashboard_async_test.cpp
+        src/ui/shell/dashboard_button.cpp src/core/mihomo/mihomo_client.cpp)
     target_include_directories(dashboard-async-tests PRIVATE src)
     target_link_libraries(dashboard-async-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::Concurrent)
     add_test(NAME dashboard-async COMMAND dashboard-async-tests)
-    qt_add_executable(traffic-history-tests tests/traffic_history_test.cpp src/core/traffic_history.cpp)
+    qt_add_executable(traffic-history-tests tests/core/traffic_history_test.cpp src/core/telemetry/traffic_history.cpp)
     target_include_directories(traffic-history-tests PRIVATE src)
     target_link_libraries(traffic-history-tests PRIVATE Qt6::Test)
     add_test(NAME traffic-history COMMAND traffic-history-tests)

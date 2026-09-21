@@ -1,4 +1,4 @@
-# Owned by the core/process module.
+# Owned by the core/mihomo/process module.
 target_sources(clash-qt PRIVATE
-    src/core/process/core_process.cpp
+    src/core/mihomo/process/core_process.cpp
 )

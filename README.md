@@ -152,10 +152,15 @@ need native validation before claiming support equivalent to Verge Rev.
 
 ## Layout
 
-- `src/core/`: controller client, processes, profiles, enhancements and backups.
-- `src/platform/`: browser launching, system proxy, autostart and global hotkeys.
-- `src/ui/`: native pages, shared theme, main window and tray.
-- `tests/`: local HTTP, filesystem, process and widget regressions.
+- `src/app/`: application-wide context shared by the composition root.
+- `src/core/`: backend responsibilities, one folder each — `mihomo/` (controller
+  client, discovery, providers, and the managed `process/`), `config/` (YAML and
+  `enhance/`), `profiles/`, `backups/` and `telemetry/`.
+- `src/platform/`: OS adapters — `browser/`, `proxy/`, `service/` and `system/`.
+- `src/services/macos/`: the standalone privileged helper executable.
+- `src/ui/`: `shell/` (main window, tray, toolbar), `pages/<feature>/` (each page
+  beside its own implementation), `widgets/`, `theme/` and `resources/`.
+- `tests/`: grouped as `core/`, `platform/` and `ui/`.
 
 Each module owns its `sources.cmake`. Public core headers form the UI contract;
 prefer extending them to changing existing signal signatures.
