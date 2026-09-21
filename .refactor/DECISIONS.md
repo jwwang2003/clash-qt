@@ -120,3 +120,57 @@ requirement to avoid `/bin/sh` forces the same shape anyway.
 ids, a signed `Result` and distinct error codes. See
 [COMPONENT_CONTRACT.md](COMPONENT_CONTRACT.md) for the three reference defects that
 are deliberately not reproduced.
+
+
+---
+
+## D7 — Architecture checker baselines, ratified
+
+BASE-ARCH shipped **four** baselined entries rather than the one D2 named, and asked
+for ratification. **Ratified**, with conditions.
+
+**What is baselined.** D2's `clash_mihomo_impl → clash_platform` edge plus its single
+include site, and a separate `migration-baseline` class covering the G2 coupling that
+already exists: **8 link sites and 20 include sites** of the component-private mihomo
+headers by UI and application code. Owner **MOD-CORE**, removal phase **P3**.
+
+**Why baselining is right here.** Without it the checker is red on day one, and a
+permanently red check is ignored exactly as fast as a permanently green one. The test
+strategy prescribes this: baseline named existing exceptions with an owning removal
+phase, and refuse new ones casually. The ratchet is what makes it honest — any 9th
+linker or 21st include fails.
+
+**Condition: the ratchet must actually bite, and it does.** Verified independently at
+integration, not taken on the worker's word: injecting one extra UI include of
+`core/mihomo/mihomo_client.h` fails `arch-graph` with
+`ARCH-R5-INCLUDE-IR-COMPONENT-PRIVATE src/ui/widgets/toggle_switch.cpp:1`, and the
+check passes again once reverted. The baselines are printed under their own heading
+so they cannot be mistaken for a clean result.
+
+**Accepted limitation.** Test-strategy rule 1 says configuration targets must not
+acquire an HTTP dependency. That is **not achievable** for `clash_config`: `Qt6::Qml`
+re-exports `Qt6::Network`, and `Qt6::Qml` is required because `QJSEngine` runs the
+profile enhancement scripts. Declared with a note rather than enforced. Recording it
+as a known gap is correct; silently dropping the rule would not be.
+
+**D2's cost is wider than the edge itself.** Through `clash_platform`,
+`clash_mihomo_impl` transitively sees `Qt6::Gui`, Carbon, CoreServices and Security.
+These are listed, not exempted, so Widgets/Quick/Graphs still fail there. The listing
+clears when D2 clears.
+
+**Consequence for COMPONENT-BASE.** `src/core/component/` will trip
+`ARCH-R4-UNDECLARED-TARGET` the moment it becomes a library. That is the ratchet
+working; the coordinator adds it to `modules` with its allowed dependencies at
+registration, rather than widening the rule.
+
+**New declared dependency.** The checker is Python. Python is therefore a *test-only*
+prerequisite, reported by `make doctor` as a note rather than a hard failure: a clean
+Windows machine has no interpreter, and the application itself needs none.
+
+**What the checker provably does not cover**, recorded so it is not mistaken for full
+coverage: the include scan is textual, so no template instantiation or symbol-level
+use; runtime coupling through Qt signals, meta-object lookup and the dynamic-property
+bus is invisible; a header-only dependency with no link edge is invisible to the edge
+rule; and only one configuration is checked, so Windows and Linux platform
+dependencies are unverified. Test-strategy item 5, replaceable implementations, is not
+implemented — it needs MOD-CORE's contract to exist first.

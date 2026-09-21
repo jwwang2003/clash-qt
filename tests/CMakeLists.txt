@@ -112,6 +112,11 @@ if(TEST data-pages)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
 endif()
 
+# Architecture checks. Reads evaluated CMake target dependencies through the File
+# API, so transitive and generated edges are included rather than guessed at from
+# the text of these files.
+add_subdirectory(architecture)
+
 # CTest labels select the lanes the Make facade exposes.
 #   unit        deterministic, no real I/O beyond a temp directory
 #   integration real Qt networking, filesystem or child processes against fixtures

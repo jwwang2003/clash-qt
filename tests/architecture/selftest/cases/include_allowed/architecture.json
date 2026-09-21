@@ -1,0 +1,34 @@
+{
+  "_about": "ALLOWED include scan. Qt Qml in core, Qt Gui in platform, Qt Widgets in the UI, core/types.h everywhere. Expected: PASS. This is the D4 false-positive guard: if the Qt rule were written as 'ban anything QML-ish' or 'ban all of Qt Gui', this case would fail.",
+  "modules": {},
+  "consumers": {},
+  "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
+  "include_rules": [
+    {
+      "id": "IR-NO-UPWARD-INCLUDE",
+      "applies_to": ["src/core/**", "src/platform/**"],
+      "forbid_project_includes": ["ui/**"],
+      "message": "a backend file must not include UI code"
+    },
+    {
+      "id": "IR-NO-DESKTOP-QT",
+      "applies_to": ["src/core/**", "src/platform/**"],
+      "forbid_qt_modules": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
+      "message": "backend code must not use Qt Widgets, Quick or Graphs"
+    },
+    {
+      "id": "IR-PLATFORM-NOT-CORE",
+      "applies_to": ["src/platform/**"],
+      "forbid_project_includes": ["core/**"],
+      "allow_includes": ["core/types.h", "core/types/**"],
+      "message": "platform adapters must not depend on core services"
+    },
+    {
+      "id": "IR-COMPONENT-PRIVATE",
+      "applies_to": ["src/ui/**"],
+      "forbid_project_includes": ["core/mihomo/**"],
+      "message": "G2: the UI must use the published component contract"
+    }
+  ],
+  "exceptions": []
+}
