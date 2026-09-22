@@ -65,20 +65,32 @@ class ModuleLoader {
     bool createSession(com::ComPtr<abi::IBackendSession> &out);
 
     /// Releases the module root and, when that is safe, unmaps the library.
-    /// Refuses entirely - changing nothing - while the module reports live
-    /// objects, and says so through lastError().
     ///
-    /// Returns true when the module was released. Ask isMapped() for whether
-    /// the image went with it. Two things can keep it:
-    ///   * the module answered kFalse, because it could not pin the shared
-    ///     runtime it brought into the process and unmapping it would take
-    ///     QtNetwork and friends with it (see IModuleLifetime::PrepareUnload);
-    ///   * SOMEONE ELSE still holds a reference to the module root. The loader
-    ///     knows because the final Release() it performs does not reach zero,
-    ///     and a root whose destructor has not run is a vtable in this image
-    ///     that the holder can still call.
-    /// Either way the mapping is leaked rather than pulled from under a live
-    /// pointer, and lastError() says which it was.
+    /// THE CALLER PROTOCOL, AND WHY IT IS SHAPED LIKE THIS
+    /// A loader that simply dropped every reference and then looked at the
+    /// remainder learned "somebody else is holding this" at the exact moment it
+    /// had nothing left to hold, so it could neither retry nor recover: the
+    /// module was latched shut and its image leaked for the life of the
+    /// process. This implementation instead:
+    ///   1. releases its ROOT interface while keeping its IModuleLifetime one,
+    ///      so the object is still pinned and the question is answerable;
+    ///   2. calls PrepareUnload(), which requires that the asking caller be the
+    ///      ONLY holder and zero objects be alive, and which refuses WITHOUT
+    ///      latching anything;
+    ///   3. on refusal, restores the root through QueryInterface - legal
+    ///      because the lifetime reference never let the object die - and
+    ///      returns false with a diagnostic;
+    ///   4. on success, drops the last reference and unmaps.
+    /// A refused unload therefore changes NOTHING: isLoaded() is still true,
+    /// createSession() still works, and the same call succeeds once the other
+    /// holder releases. That retry is the behaviour this class promises.
+    ///
+    /// Returns true when the module was released, false when it refused and
+    /// nothing changed. Ask isMapped() for whether the image went with a
+    /// successful release; it stays when the module answered kFalse, because it
+    /// could not pin the shared runtime it brought into the process and
+    /// unmapping it would take QtNetwork and friends with it (see
+    /// IModuleLifetime::PrepareUnload). lastError() says which case it was.
     bool unload();
 
     /// Whether this loader still holds the image mapped. False after a
@@ -115,6 +127,10 @@ class ModuleLoader {
   private:
     bool fail(com::Result code, const QString &message);
     void closeHandle();
+    /// Step 3 of the protocol above: takes the root interface back while the
+    /// lifetime reference still pins the object. False only if the module
+    /// refuses its own module id, which would be a module bug.
+    bool restoreRoot();
 
     QString artifactPath_;
     void *handle_ = nullptr;

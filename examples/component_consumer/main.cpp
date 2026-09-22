@@ -474,23 +474,55 @@ int main(int argc, char **argv) {
     // module needed it, and dlclose took it away while QtNetwork's host-lookup
     // manager still held a registration on QCoreApplication::destroyed. The
     // module pins its runtime now, and the image genuinely goes.
-    bool mayUnmap = true;
+    //
+    // THE CALLER PROTOCOL, WHICH IS WHY THIS IS LONGER THAN "CALL PrepareUnload".
+    // PrepareUnload requires the ASKING CALLER to be the module's only holder,
+    // so the question "may I unmap" has a meaningful answer at all: a module
+    // that could not tell your references from a third party's would either
+    // refuse forever or unmap under someone else's pointer. So:
+    //   1. take IModuleLifetime, then GIVE BACK the root reference. The object
+    //      is still pinned by the lifetime reference, so the root POINTER stays
+    //      valid - it is borrowed from here on;
+    //   2. ask. A refusal changes nothing and latches nothing;
+    //   3. on a refusal, take the root back with QueryInterface and carry on
+    //      using the module, or try again later;
+    //   4. on success, drop the lifetime reference last and unmap.
+    host->Release();
+
+    bool mayUnmap = false;
     abi::IModuleLifetime *lifetime = nullptr;
     if (com::IsSuccess(root->QueryInterface(abi::kIModuleLifetimeId,
                                             reinterpret_cast<void **>(&lifetime))) &&
         lifetime != nullptr) {
         std::printf("live objects before unload: %d\n", lifetime->LiveObjectCount());
+        root->Release();  // step 1; `root` is borrowed from here on
         const com::Result prepared = lifetime->PrepareUnload();
         mayUnmap = prepared == com::kOk || prepared == com::kAlreadyClosed;
-        std::printf("unmappable: %s\n", mayUnmap ? "yes" : "no (image stays mapped)");
+        if (!mayUnmap) {
+            // Step 3. Nothing was released and nothing was latched, so a real
+            // consumer would keep using the module and retry; this sample has
+            // nothing left to do with it, so it only reports and takes the root
+            // back so its own teardown is symmetrical.
+            std::printf("unmappable: no (%d) - the module is still usable\n", prepared);
+            com::IComponentModule *again = nullptr;
+            if (com::IsSuccess(lifetime->QueryInterface(com::kIComponentModuleId,
+                                                        reinterpret_cast<void **>(&again)))) {
+                again->Release();
+            }
+        } else {
+            std::printf("unmappable: yes\n");
+        }
+        // Step 4. The LAST reference of any kind into this module. Nothing may
+        // be released after this that came from it, and nothing here does: the
+        // wire decoding above is this file's own, which is the point of writing
+        // it by hand.
         lifetime->Release();
+    } else {
+        // A module with no lifetime interface cannot be asked, so the image
+        // stays: "we called dlclose and nothing crashed" is not evidence.
+        std::printf("unmappable: unknown (no IModuleLifetime)\n");
+        root->Release();
     }
-
-    host->Release();
-    // The LAST root reference. Nothing may be released after this that came
-    // from the module, and nothing here does: the wire decoding above is this
-    // file's own, which is the point of writing it by hand.
-    root->Release();
 
     if (mayUnmap) {
         closeLibrary(handle);

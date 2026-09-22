@@ -135,6 +135,24 @@ com::Result BackendModule::PrepareUnload() noexcept {
         if ((state & kUnloadingBit) != 0) {
             return com::kAlreadyClosed;  // prepared before, and still idempotent
         }
+        // THE CALLER MUST BE THE ONLY HOLDER, AND THIS REFUSAL DOES NOT LATCH.
+        //
+        // The protocol (module_loader.h) is that the caller releases its ROOT
+        // interface and keeps only its IModuleLifetime reference before asking,
+        // so exactly one reference here means nobody else holds a vtable in
+        // this image. A second holder cannot appear while we look: taking a
+        // reference requires already having one, and by hypothesis there is no
+        // other to take.
+        //
+        // Answering kInvalidState WITHOUT setting the latch is the whole repair
+        // for the retained-root defect. Latching would leave a module that can
+        // neither create an object nor be unloaded - unusable and un-unloadable
+        // for the life of the process - so the caller is told "not yet", the
+        // module stays completely usable, and the SAME call works once the
+        // other holder lets go.
+        if (references_.Value() != 1) {
+            return com::kInvalidState;
+        }
         if (state_.compare_exchange_weak(state, state | kUnloadingBit, std::memory_order_acq_rel,
                                          std::memory_order_acquire)) {
             break;

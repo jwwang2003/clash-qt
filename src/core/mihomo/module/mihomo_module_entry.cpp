@@ -42,6 +42,11 @@ core::module::WrappedBackend makeRealBackend(core::PrivilegedCoreService *servic
         std::move(backend),
         [dispatcher] { return dispatcher->producedSequence(); },
         [dispatcher] { return dispatcher->deliverySequence(); },
+        // The one accessor that is read from OUTSIDE a delivery: a host asks it
+        // to decide whether this image may be unmapped, and the session's Close
+        // drains against it. Still borrowed from the unique_ptr above, and still
+        // never called after that pointer is reset.
+        [dispatcher] { return dispatcher->pendingNativeWork(); },
     };
 }
 

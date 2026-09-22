@@ -23,6 +23,17 @@
 // latch the refusal" is a check-to-act race: another thread creates an object
 // between the two and the loader unmaps an image that is in use. The count and
 // the refusal therefore live in ONE atomic word and move together.
+//
+// A REFUSAL IS RECOVERABLE, BECAUSE IT DOES NOT LATCH
+// PrepareUnload answers kInvalidState in two cases - objects are still alive,
+// or somebody other than the asking caller still holds a reference to this root
+// - and in NEITHER does it set the unloading bit. The module remains completely
+// usable, and the same call succeeds once the obstruction goes. The alternative,
+// which this code had and which an audit reproduced, is a module that refuses
+// to create objects AND can never be unmapped: a permanent leak dressed as
+// safety. The caller protocol that makes the second case answerable - release
+// the root interface, keep the lifetime reference, restore the root on refusal
+// - is documented in integrations/component/module_loader.h.
 
 #include <atomic>
 #include <cstdint>

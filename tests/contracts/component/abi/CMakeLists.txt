@@ -27,6 +27,7 @@ qt_add_executable(connection-snapshot-marshal-tests
 target_link_libraries(connection-snapshot-marshal-tests PRIVATE Qt6::Test clash_component_marshal)
 add_test(NAME connection-snapshot-codec COMMAND connection-snapshot-marshal-tests
     thePackedSnapshotSurvivesARoundTripAtEverySize
+    everyTimeRepresentationSurvivesAtSnapshotScale
     repeatedStringsAreStoredOnceSoTheBufferStaysSmall)
 clash_qt_label(connection-snapshot-codec unit component)
 clash_qt_isolate_test(connection-snapshot-codec)

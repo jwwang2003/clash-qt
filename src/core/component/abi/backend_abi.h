@@ -85,6 +85,27 @@ struct IBackendHost : IObject {
 //   inside the module. A session that is still open when its last reference
 //   goes is closed first: the destructor must not leave a managed core running
 //   behind a released object.
+//
+//   RELEASE'S RETURN VALUE MEANS WHAT component-r1 SAYS IT MEANS. Zero is
+//   returned only when the object has actually been destroyed and its storage
+//   freed. A session whose destruction cannot happen on the calling thread -
+//   its QProcess, socket notifiers and network access manager belong to the
+//   thread that installed the host - or cannot happen yet, because a runnable
+//   the wrapped backend submitted is still executing code inside this image,
+//   does NOT report zero. It keeps a cleanup reference of its own and returns
+//   the resulting NONZERO count; the owner thread's cleanup drops that
+//   reference later, and THAT release is the one that returns zero and
+//   destroys. The caller's own reference is gone either way, and a nonzero
+//   answer is not an error it has to act on - it is the truthful statement
+//   that a holder (the pending cleanup) still exists, which is also why
+//   IModuleLifetime::LiveObjectCount() still counts the session and why an
+//   unmap in that window is correctly refused.
+//
+//   Release is not a stop. It never waits for an engine and never reports one:
+//   a confirmed stop is Close's answer and stopCompleted's, per backend-r4
+//   section 6. An inert session - one that never had a host - and a quiescent
+//   one being released on its own owner thread are destroyed synchronously
+//   inside Release, and those do return zero.
 struct IBackendSession : IObject {
     // Installs the host. Exactly one host per session:
     //   kOk              accepted; the session took a strong reference

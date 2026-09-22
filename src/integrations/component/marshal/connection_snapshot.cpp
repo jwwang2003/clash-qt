@@ -5,23 +5,31 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QHash>
+#include <QTimeZone>
 
 #include "core/component/abi/wire.h"
+#include "integrations/component/marshal/backend_marshal.h"
 
 namespace clashqt::integration::marshal {
 namespace {
 
 namespace abi = ::clashqt::com::abi;
 
-// The validator walks the record's 12 TextRefs as an array, which is only
+// The validator walks the record's TextRefs as an array, which is only
 // legitimate because they are declared consecutively with no padding between
 // them. Checked here rather than assumed, so reordering the record in wire.h
 // breaks the build instead of the bounds check.
-static_assert(offsetof(abi::ConnectionRecord, processPath) ==
-                  offsetof(abi::ConnectionRecord, id) + 11 * sizeof(abi::TextRef),
-              "the 12 TextRef fields must stay consecutive and unpadded");
+//
+// 14, not 12: the two zone identifiers are interned in the same blob as every
+// other string and are bounds-checked by the same loop.
+constexpr std::size_t kTextRefsPerRecord = 14;
+static_assert(offsetof(abi::ConnectionRecord, endZone) ==
+                  offsetof(abi::ConnectionRecord, id) +
+                      (kTextRefsPerRecord - 1) * sizeof(abi::TextRef),
+              "the 14 TextRef fields must stay consecutive and unpadded");
 static_assert(offsetof(abi::ConnectionRecord, chainFirst) ==
-                  offsetof(abi::ConnectionRecord, id) + 12 * sizeof(abi::TextRef),
+                  offsetof(abi::ConnectionRecord, id) +
+                      kTextRefsPerRecord * sizeof(abi::TextRef),
               "the TextRef run ends where chainFirst begins");
 
 // A blob big enough to need a 64-bit offset is not a telemetry snapshot, it is
@@ -71,12 +79,32 @@ QString textOf(const abi::TextRef &ref, const std::uint8_t *blob) {
                              static_cast<qsizetype>(ref.length));
 }
 
-QDateTime timeOf(std::int64_t ms) {
-    return ms == abi::kNoTimestamp ? QDateTime() : QDateTime::fromMSecsSinceEpoch(ms);
-}
-
 std::int64_t msOf(const QDateTime &value) {
     return value.isValid() ? value.toMSecsSinceEpoch() : abi::kNoTimestamp;
+}
+
+/// The four fixed-width fields plus the blob reference one timestamp needs.
+/// Written through the same helpers the general codec uses, so the two
+/// encodings cannot come to disagree about what "preserved" means.
+void packTime(BlobBuilder &blob, const QDateTime &value, std::int64_t *ms, std::uint8_t *spec,
+              std::int32_t *offsetSeconds, abi::TextRef *zone) {
+    *ms = msOf(value);
+    *spec = timeRepresentationOf(value);
+    *offsetSeconds = value.isValid() ? value.offsetFromUtc() : 0;
+    *zone = blob.add(timeZoneIdOf(value));
+}
+
+bool offsetWithinBounds(std::int32_t seconds) noexcept {
+    return seconds >= -abi::kMaxUtcOffsetSeconds && seconds <= abi::kMaxUtcOffsetSeconds;
+}
+
+/// A named zone must actually name something. Checked against the blob the
+/// record points into, before any text is handed to QDateTime.
+bool zonePayloadValid(const abi::TextRef &ref, const std::uint8_t *blob) {
+    if (ref.length == 0) {
+        return false;
+    }
+    return QTimeZone(textOf(ref, blob).toUtf8()).isValid();
 }
 
 bool fail(QString *reason, const char *text) {
@@ -130,8 +158,10 @@ std::vector<std::uint8_t> packConnectionSnapshot(cb::Generation generation,
         record.download = connection.download;
         record.uploadRate = connection.uploadRate;
         record.downloadRate = connection.downloadRate;
-        record.startMs = msOf(connection.start);
-        record.endMs = msOf(connection.end);
+        packTime(blob, connection.start, &record.startMs, &record.startSpec,
+                 &record.startOffsetSeconds, &record.startZone);
+        packTime(blob, connection.end, &record.endMs, &record.endSpec, &record.endOffsetSeconds,
+                 &record.endZone);
         records.push_back(record);
     }
 
@@ -230,7 +260,7 @@ bool unpackConnectionSnapshot(const void *data, std::size_t size, ConnectionSnap
     for (std::uint32_t index = 0; index < header.count; ++index) {
         const abi::ConnectionRecord &record = records[index];
         const abi::TextRef *fields = &record.id;
-        for (std::size_t field = 0; field < 12; ++field) {
+        for (std::size_t field = 0; field < kTextRefsPerRecord; ++field) {
             if (!refWithinBlob(fields[field], header.blobSize)) {
                 return fail(reason, "a record field points outside the blob");
             }
@@ -238,6 +268,23 @@ bool unpackConnectionSnapshot(const void *data, std::size_t size, ConnectionSnap
         if (record.chainFirst > header.chainSlots ||
             record.chainCount > header.chainSlots - record.chainFirst) {
             return fail(reason, "a chain run is outside the chain section");
+        }
+        // The timestamp representation is validated HERE, with everything else,
+        // so a record naming an unknown zone costs a scan rather than half a
+        // snapshot delivered alongside an error.
+        if (record.startSpec > abi::kTimeRepresentationMax ||
+            record.endSpec > abi::kTimeRepresentationMax) {
+            return fail(reason, "a timestamp names an unknown time representation");
+        }
+        if (!offsetWithinBounds(record.startOffsetSeconds) ||
+            !offsetWithinBounds(record.endOffsetSeconds)) {
+            return fail(reason, "a timestamp offset is outside the representable range");
+        }
+        if ((record.startSpec == abi::kTimeNamedZone && record.startMs != abi::kNoTimestamp &&
+             !zonePayloadValid(record.startZone, blob)) ||
+            (record.endSpec == abi::kTimeNamedZone && record.endMs != abi::kNoTimestamp &&
+             !zonePayloadValid(record.endZone, blob))) {
+            return fail(reason, "a timestamp names a zone this build cannot resolve");
         }
     }
 
@@ -269,8 +316,19 @@ bool unpackConnectionSnapshot(const void *data, std::size_t size, ConnectionSnap
         connection.download = record.download;
         connection.uploadRate = record.uploadRate;
         connection.downloadRate = record.downloadRate;
-        connection.start = timeOf(record.startMs);
-        connection.end = timeOf(record.endMs);
+        // Every part was validated above, so `ok` cannot be false here; it is
+        // read anyway rather than ignored, because a validator and a decoder
+        // that disagree is how a half-built snapshot escapes.
+        bool startOk = false;
+        bool endOk = false;
+        connection.start = dateTimeFromParts(record.startMs, record.startSpec,
+                                             record.startOffsetSeconds,
+                                             textOf(record.startZone, blob), &startOk);
+        connection.end = dateTimeFromParts(record.endMs, record.endSpec, record.endOffsetSeconds,
+                                           textOf(record.endZone, blob), &endOk);
+        if (!startOk || !endOk) {
+            return fail(reason, "a timestamp could not be rebuilt from its representation");
+        }
         snapshot.connections.append(connection);
     }
 

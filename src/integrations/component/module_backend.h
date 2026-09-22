@@ -82,8 +82,16 @@ class ModuleBackend final : public cb::MihomoBackend, private core::PrivilegedCo
     /// success.
     bool shutdown(bool stopManagedCore = true, int timeoutMs = 3000);
 
-    /// Requests the module has not settled. Zero is what makes unloading safe.
+    /// Requests the module has not settled, plus native work it has running on
+    /// its own pool. Zero is what makes unloading safe.
     std::int32_t outstandingWork() const;
+
+    /// Just the native half of the number above: runnables the module submitted
+    /// to a pool it owns and has not seen exit. A host that wants to know
+    /// whether code in the module's IMAGE is still executing - rather than
+    /// whether a request is still open - asks this. -1 when the module is too
+    /// old to answer, which is not the same as zero and is not reported as it.
+    std::int32_t pendingNativeWork() const;
 
     /// True while a command of this object is on the stack - the state that
     /// makes a delivery re-entrant, published so a test can assert it never

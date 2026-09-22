@@ -119,6 +119,7 @@ class ConnectionSnapshotMarshalTest : public QObject {
     // ---- correctness, at every size, in the ordinary lane
     void thePackedSnapshotSurvivesARoundTripAtEverySize_data();
     void thePackedSnapshotSurvivesARoundTripAtEverySize();
+    void everyTimeRepresentationSurvivesAtSnapshotScale();
     void repeatedStringsAreStoredOnceSoTheBufferStaysSmall();
 
     // ---- the measurement, in the benchmark lane
@@ -172,7 +173,66 @@ void ConnectionSnapshotMarshalTest::thePackedSnapshotSurvivesARoundTripAtEverySi
         QCOMPARE(got.start, want.start);
         QCOMPARE(got.end.isValid(), want.end.isValid());
         QCOMPARE(got.end, want.end);
+        // operator== compares INSTANTS. The connections page renders these two
+        // fields with toString(Qt::ISODate), so a packed record that kept the
+        // instant and dropped the representation would satisfy every line above
+        // and still change what the user reads.
+        QCOMPARE(got.start.toString(Qt::ISODate), want.start.toString(Qt::ISODate));
+        QCOMPARE(got.end.toString(Qt::ISODate), want.end.toString(Qt::ISODate));
+        QCOMPARE(static_cast<int>(got.start.timeSpec()), static_cast<int>(want.start.timeSpec()));
+        QCOMPARE(got.start.offsetFromUtc(), want.start.offsetFromUtc());
     }
+}
+
+void ConnectionSnapshotMarshalTest::everyTimeRepresentationSurvivesAtSnapshotScale() {
+    // The round-trip above uses the representation the application actually
+    // produces. This one uses all of them at once, at a size where a
+    // per-record zone identifier would show up in the buffer, so the claim
+    // "representation preserved" and the claim "still one interned buffer" are
+    // made together rather than traded off.
+    const QDateTime utc(QDate(2026, 9, 22), QTime(10, 30, 0), QTimeZone::UTC);
+    const QVector<QDateTime> representations{
+        utc,
+        utc.toOffsetFromUtc(5 * 3600 + 45 * 60),
+        utc.toTimeZone(QTimeZone("Asia/Tokyo")),
+        utc.toTimeZone(QTimeZone("America/St_Johns")),
+        utc.toLocalTime(),
+        QDateTime(),
+    };
+
+    QVector<cb::Connection> source = makeSnapshot(500);
+    for (int index = 0; index < source.size(); ++index) {
+        source[index].start = representations.at(index % representations.size());
+        source[index].end = representations.at((index + 3) % representations.size());
+    }
+
+    const std::vector<std::uint8_t> packed =
+        marshal::packConnectionSnapshot(cb::Generation::Initial, cb::makeSpan(source), 0, 0);
+    marshal::ConnectionSnapshot decoded;
+    QString reason;
+    QVERIFY2(marshal::unpackConnectionSnapshot(packed.data(), packed.size(), &decoded, &reason),
+             qPrintable(reason));
+    QCOMPARE(decoded.connections.size(), source.size());
+    for (int index = 0; index < source.size(); ++index) {
+        const cb::Connection &want = source.at(index);
+        const cb::Connection &got = decoded.connections.at(index);
+        QCOMPARE(got.start.toString(Qt::ISODate), want.start.toString(Qt::ISODate));
+        QCOMPARE(got.end.toString(Qt::ISODate), want.end.toString(Qt::ISODate));
+        QCOMPARE(static_cast<int>(got.start.timeSpec()), static_cast<int>(want.start.timeSpec()));
+        QCOMPARE(static_cast<int>(got.end.timeSpec()), static_cast<int>(want.end.timeSpec()));
+        QCOMPARE(got.start.offsetFromUtc(), want.start.offsetFromUtc());
+        QCOMPARE(got.end.offsetFromUtc(), want.end.offsetFromUtc());
+    }
+
+    // Two distinct zone identifiers across 500 rows, stored twice and not a
+    // thousand times. The whole snapshot is still one contiguous buffer.
+    const std::vector<std::uint8_t> withoutZones = marshal::packConnectionSnapshot(
+        cb::Generation::Initial, cb::makeSpan(makeSnapshot(500)), 0, 0);
+    QVERIFY2(packed.size() - withoutZones.size() < 128,
+             qPrintable(QStringLiteral("zone identifiers cost %1 bytes across 500 rows")
+                            .arg(packed.size() - withoutZones.size())));
+    const auto *header = reinterpret_cast<const abi::ConnectionSnapshotHeader *>(packed.data());
+    QCOMPARE(static_cast<std::size_t>(header->blobOffset) + header->blobSize, packed.size());
 }
 
 void ConnectionSnapshotMarshalTest::repeatedStringsAreStoredOnceSoTheBufferStaysSmall() {

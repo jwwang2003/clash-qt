@@ -82,6 +82,18 @@ CoreProcess::CoreProcess(QObject *parent, PrivilegedCoreService *service)
 }
 
 CoreProcess::~CoreProcess() {
+    // FIRST, and it blocks. Everything below tears down objects the parse
+    // runnable does not touch; what it DOES touch is the code of this
+    // translation unit, and when that code lives in a dynamically loaded module
+    // the consumer is entitled to unmap the image once this object is gone.
+    // Cancelling makes a queued runnable exit at its first statement and tells
+    // a running one to stop at its next check; waiting is what turns
+    // "cancelled" into "has actually left this image". The wait is bounded by
+    // the 8 MiB document cap the parse enforces.
+    cancelServiceParse();
+    if (parsePool_) {
+        parsePool_->waitForDone();
+    }
     service_->setListener(nullptr);
     service_->close();
     cancelValidation();
@@ -243,7 +255,7 @@ void CoreProcess::serviceDisconnected() {
 void CoreProcess::start(const QString &configPath, const QString &workDir) {
     explicitStop_ = false;
     ++launchGeneration_;
-    serviceParsing_ = false;
+    cancelServiceParse();
     cancelValidation();
     pendingLaunch_.reset();
     if ((process_ || serviceActive_) && state_ != CoreState::Running) {
@@ -299,6 +311,17 @@ void CoreProcess::start(const QString &configPath, const QString &workDir) {
     validation->start(validatingBinary_, {"-t", "-d", workDir, "-f", configPath});
 }
 
+void CoreProcess::cancelServiceParse() {
+    if (parseCancelled_) parseCancelled_->store(true, std::memory_order_release);
+    serviceParsing_ = false;
+}
+
+int CoreProcess::pendingNativeWork() const noexcept {
+    if (!parseWork_) return 0;
+    const int pending = parseWork_->load(std::memory_order_acquire);
+    return pending > 0 ? pending : 0;
+}
+
 void CoreProcess::cancelValidation() {
     if (!validation_) return;
     QProcess *validation = validation_;
@@ -336,10 +359,26 @@ void CoreProcess::finishValidation(bool valid, const QString &reason) {
         const quint64 generation = launchGeneration_;
         serviceParsing_ = true;
         using Parsed = QPair<QJsonObject, QString>;
+        if (!parsePool_) {
+            parsePool_ = std::make_unique<QThreadPool>();
+            // One at a time: there is never more than one launch being
+            // prepared, and a single worker makes "has the runnable exited"
+            // one question rather than a set of them.
+            parsePool_->setMaxThreadCount(1);
+            parsePool_->setExpiryTimeout(1000);
+        }
+        parseWork_ = std::make_shared<std::atomic<int>>(0);
+        parseCancelled_ = std::make_shared<std::atomic<bool>>(false);
+        auto work = parseWork_;
+        auto cancelled = parseCancelled_;
         auto *watcher = new QFutureWatcher<Parsed>(this);
-        connect(watcher, &QFutureWatcher<Parsed>::finished, this, [this, watcher, generation, configPath, workDir, binary] {
+        connect(watcher, &QFutureWatcher<Parsed>::finished, this, [this, watcher, cancelled, generation, configPath, workDir, binary] {
             const Parsed result = watcher->result();
             watcher->deleteLater();
+            // Checked BEFORE the result is believed: a cancelled parse returns
+            // a placeholder, not an answer, and reporting it as a config
+            // failure would turn a stop into a spurious error.
+            if (cancelled->load(std::memory_order_acquire)) { serviceParsing_ = false; return; }
             if (generation != launchGeneration_) return;
             serviceParsing_ = false;
             if (!result.second.isEmpty()) {
@@ -350,11 +389,22 @@ void CoreProcess::finishValidation(bool valid, const QString &reason) {
             serviceConfig_ = result.first;
             launchValidated(configPath, workDir, binary);
         });
-        watcher->setFuture(QtConcurrent::run([configPath]() -> Parsed {
+        // Claimed BEFORE submission, so the count covers a runnable that is
+        // still queued as well as one that is running. Released by the guard
+        // below, from inside the runnable, so it reports the runnable's own
+        // exit and not the watcher's.
+        work->fetch_add(1, std::memory_order_acq_rel);
+        watcher->setFuture(QtConcurrent::run(parsePool_.get(), [configPath, work, cancelled]() -> Parsed {
+            struct Done {
+                std::shared_ptr<std::atomic<int>> work;
+                ~Done() { work->fetch_sub(1, std::memory_order_acq_rel); }
+            } done{work};
+            if (cancelled->load(std::memory_order_acquire)) return {{}, QStringLiteral("cancelled")};
             QFile file(configPath);
             if (!file.open(QIODevice::ReadOnly)) return {{}, file.errorString()};
             const QByteArray bytes = file.read(8 * 1024 * 1024 + 1);
             if (bytes.size() > 8 * 1024 * 1024) return {{}, CoreProcess::tr("Service configuration exceeds the 8 MiB limit.")};
+            if (cancelled->load(std::memory_order_acquire)) return {{}, QStringLiteral("cancelled")};
             try {
                 const YAML::Node config = YAML::Load(bytes.toStdString());
                 if (!config.IsMap()) return {{}, CoreProcess::tr("Service configuration must be a YAML mapping.")};
@@ -415,7 +465,7 @@ void CoreProcess::launchProcess(const QString &configPath, const QString &workDi
 void CoreProcess::stop() {
     explicitStop_ = true;
     ++launchGeneration_;
-    serviceParsing_ = false;
+    cancelServiceParse();
     cancelValidation();
     pendingLaunch_.reset();
     stopResult_ = CoreState::Stopped;
@@ -660,7 +710,7 @@ void CoreProcess::fail(CoreFailure kind, const QString &reason) {
 
 void CoreProcess::fail(const QString &reason) {
     ++launchGeneration_;
-    serviceParsing_ = false;
+    cancelServiceParse();
     cancelValidation();
     pendingLaunch_.reset();
     if (readyTimer_) readyTimer_->stop();

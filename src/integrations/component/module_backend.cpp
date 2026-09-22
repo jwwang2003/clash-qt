@@ -197,6 +197,20 @@ std::int32_t ModuleBackend::outstandingWork() const {
     return session_ ? session_->OutstandingWork() : 0;
 }
 
+std::int32_t ModuleBackend::pendingNativeWork() const {
+    std::vector<std::uint8_t> reply;
+    if (com::IsFailure(call(abi::kCmdPendingNativeWork, noArgs(), &reply))) {
+        // A module older than wire revision 3 answers kNotImplemented. Saying
+        // -1 rather than 0 keeps "I cannot tell you" distinct from "nothing is
+        // running": a caller that treated them alike would unmap on the
+        // strength of an answer it never got.
+        return -1;
+    }
+    marshal::ByteReader in(reply.data(), reply.size());
+    const std::int32_t pending = in.i32();
+    return in.finished() ? pending : -1;
+}
+
 // ------------------------------------------------------- command plumbing
 
 void ModuleBackend::noteFailure(std::uint32_t command, com::Result status) const {

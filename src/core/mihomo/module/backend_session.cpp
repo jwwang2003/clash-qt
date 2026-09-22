@@ -4,8 +4,11 @@
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
+#include <QEvent>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QObject>
+#include <QThread>
 
 #include "core/mihomo/module/backend_module.h"
 #include "integrations/component/marshal/backend_marshal.h"
@@ -54,10 +57,83 @@ bool settlesWithACompletion(std::uint32_t command) noexcept {
     }
 }
 
+/// The event that asks the owner thread to perform a teardown a foreign thread
+/// is not allowed to perform. Registered rather than hard-coded, so it cannot
+/// collide with a host's own user events.
+QEvent::Type retireEventType() noexcept {
+    static const auto type = static_cast<QEvent::Type>(QEvent::registerEventType());
+    return type;
+}
+
+/// How long a cleanup that found a module-owned runnable still in flight waits
+/// before looking again. Short enough that a released session is reclaimed
+/// promptly, long enough that the owner's event loop is not starved by a
+/// re-post per iteration - the object is counted throughout, so nothing is
+/// unsafe while it elapses.
+constexpr int kCleanupRetryMs = 5;
+
 }  // namespace
 
+/// A QObject with the owner thread's affinity and nothing else. It exists so a
+/// deferred cleanup has somewhere to run; Qt delivers the event on the owner
+/// thread and the teardown happens there.
+///
+/// No Q_OBJECT, deliberately: it declares no signals or slots, so the module
+/// needs no moc pass for it and the build registration stays exactly as it was.
+class BackendSession::OwnerThreadRetire final : public QObject {
+  public:
+    explicit OwnerThreadRetire(BackendSession *session) noexcept : session_(session) {}
+
+    /// Asks for another cleanup pass shortly. Returns false when no timer could
+    /// be started, which is the caller's cue to ask through the event queue
+    /// instead - never its cue to destroy anything early.
+    bool rearm() noexcept {
+        if (timer_ != 0) {
+            return true;
+        }
+        timer_ = startTimer(kCleanupRetryMs);
+        return timer_ != 0;
+    }
+
+  protected:
+    bool event(QEvent *incoming) override {
+        if (incoming->type() == retireEventType()) {
+            BackendSession *session = session_;
+            // May destroy the session, and with it this object - the same shape
+            // as Qt's own DeferredDelete, which calls `delete` on the receiver
+            // from inside its event(). Nothing of `this` is touched afterwards.
+            session->runOwnerThreadCleanup();
+            return true;
+        }
+        return QObject::event(incoming);
+    }
+
+    void timerEvent(QTimerEvent *incoming) override {
+        if (incoming->timerId() != timer_) {
+            QObject::timerEvent(incoming);
+            return;
+        }
+        // Killed BEFORE the pass, because the pass may delete this object and
+        // because a pass that finds work still running re-arms deliberately.
+        killTimer(timer_);
+        timer_ = 0;
+        BackendSession *session = session_;
+        session->runOwnerThreadCleanup();
+    }
+
+  private:
+    BackendSession *session_;
+    int timer_ = 0;
+};
+
+BackendSession::ModuleCount::~ModuleCount() {
+    if (owner_ != nullptr) {
+        owner_->objectDestroyed();
+    }
+}
+
 BackendSession::BackendSession(BackendModule *owner, BackendFactory factory) noexcept
-    : owner_(owner), factory_(std::move(factory)) {}
+    : moduleCount_(owner), owner_(owner), factory_(std::move(factory)) {}
 
 BackendSession::~BackendSession() {
     // A session that is still open when its last reference goes is closed
@@ -67,10 +143,10 @@ BackendSession::~BackendSession() {
     if (!closed_) {
         Close(abi::kCloseDefault, 0);
     }
-    if (owner_ != nullptr) {
-        owner_->objectDestroyed();
-        owner_ = nullptr;
-    }
+    // The module's count is NOT released here. moduleCount_ is the first member
+    // declared, so it is the last destroyed, and the count survives until
+    // retire_, wrapped_, privileged_ and every other member have gone. See the
+    // note at the top of the header.
 }
 
 void BackendSession::setCommandExtension(CommandExtension extension) {
@@ -94,10 +170,99 @@ std::int32_t BackendSession::AddRef() noexcept { return references_.Increment();
 
 std::int32_t BackendSession::Release() noexcept {
     const std::int32_t remaining = references_.Decrement();
-    if (remaining == 0) {
+    if (remaining != 0) {
+        return remaining;
+    }
+    // Zero holders: this thread now owns the object outright. Nobody else can
+    // be inside AddRef, because nobody else has a pointer it would be legal to
+    // call it on, so the count below is this thread's to move.
+    if (!mustDeferFinalCleanup()) {
+        delete this;
+        // component-r1's zero, and it means what it says: the destructor has
+        // run and the storage is gone.
+        return 0;
+    }
+    // It could not be destroyed here. Saying "0" now would report a destruction
+    // that has not happened and will not happen on this thread; instead the
+    // cleanup takes a REAL reference and the count reports it. The object,
+    // the module's count for it and therefore the mapping all survive until
+    // that reference is dropped - which is the same interval as before, now
+    // described honestly.
+    const std::int32_t held = references_.Increment();
+    scheduleOwnerThreadCleanup();
+    return held;
+}
+
+bool BackendSession::mustDeferFinalCleanup() const noexcept {
+    // component-r1 permits Release from ANY thread and this class does not
+    // narrow that. What it cannot do is DESTROY from any thread: an activated
+    // session owns a QProcess, its socket notifiers and a
+    // QNetworkAccessManager, and tearing those down off their own thread is
+    // undefined - it was observed as a SIGSEGV inside QSocketNotifier, after
+    // the object had already reported itself gone.
+    QThread *const owner = ownerThread_.load(std::memory_order_acquire);
+    if (owner == nullptr) {
+        // No host was ever installed, so there is no Qt collaborator and no
+        // pool: an inert object, synchronously destructible anywhere.
+        return false;
+    }
+    if (retire_ == nullptr || QCoreApplication::instance() == nullptr) {
+        // Nothing to defer TO. retire_ is created with ownerThread_ so the
+        // first half cannot happen; the second means Qt's own machinery has
+        // already gone, and with it the notifiers whose affinity is at issue.
+        return false;
+    }
+    if (owner != QThread::currentThread()) {
+        return true;
+    }
+    // The owner thread, but the wrapped backend still has runnables on a pool
+    // it owns. They execute instructions in this image, so the object outlives
+    // them - and it does so by being counted rather than by blocking here.
+    // Close(timeoutMs) is the call that exists to drain them on a budget; a
+    // Release that stalled the owner's loop for the length of a config parse
+    // would be a worse answer than an honest count.
+    return nativeWorkCount() > 0;
+}
+
+void BackendSession::scheduleOwnerThreadCleanup() noexcept {
+    try {
+        QCoreApplication::postEvent(retire_.get(), new QEvent(retireEventType()));
+    } catch (...) {
+        // Out of memory while asking for the cleanup. The object is left ALIVE
+        // and COUNTED rather than destroyed on a thread that may not destroy
+        // it: a loader is told one object is outstanding and refuses to unmap,
+        // which is the safe answer even though this one is never reclaimed.
+    }
+}
+
+void BackendSession::runOwnerThreadCleanup() noexcept {
+    if (nativeWorkCount() > 0) {
+        // Not yet. A runnable the wrapped backend submitted is still executing
+        // code in this image; destroying now would run this object's members
+        // out from under it. Keep the cleanup reference and look again.
+        if (!retire_->rearm()) {
+            scheduleOwnerThreadCleanup();
+        }
+        return;
+    }
+    dropCleanupReference();
+}
+
+void BackendSession::dropCleanupReference() noexcept {
+    // The reference Release transferred here. It is the last one, so this
+    // decrement is the one that reaches zero - on the thread that may legally
+    // destroy this object's Qt collaborators.
+    if (references_.Decrement() == 0) {
         delete this;
     }
-    return remaining;
+}
+
+std::int32_t BackendSession::nativeWorkCount() const noexcept {
+    if (!wrapped_.pendingNativeWork) {
+        return 0;
+    }
+    const int pending = wrapped_.pendingNativeWork();
+    return pending > 0 ? static_cast<std::int32_t>(pending) : 0;
 }
 
 com::Result BackendSession::SetHost(abi::IBackendHost *host) noexcept {
@@ -136,11 +301,18 @@ com::Result BackendSession::setHostImpl(abi::IBackendHost *host) {
     // different runtime, which is undefined rather than merely wrong.
     try {
         privileged_ = std::make_unique<HostPrivilegedService>(host_);
+        // Allocated BEFORE the backend, because from the moment the backend
+        // exists this session owns Qt objects with this thread's affinity and a
+        // cross-thread final Release needs somewhere to post to. Created here
+        // rather than in the constructor so it belongs to the thread that will
+        // actually own those objects, which is the one calling SetHost.
+        retire_ = std::make_unique<OwnerThreadRetire>(this);
         wrapped_ = factory_ ? factory_(privileged_.get()) : WrappedBackend{};
     } catch (...) {
         wrapped_ = WrappedBackend{};
     }
     if (!wrapped_.backend) {
+        retire_.reset();
         privileged_.reset();
         host_->Release();
         host_ = nullptr;
@@ -149,6 +321,9 @@ com::Result BackendSession::setHostImpl(abi::IBackendHost *host) {
         return com::kFail;
     }
     wrapped_.backend->addObserver(this);
+    // Published only once the backend exists and retire_ is in place, so a
+    // concurrent Release never sees an owner thread without a landing pad.
+    ownerThread_.store(QThread::currentThread(), std::memory_order_release);
     clearError();
     return com::kOk;
 }
@@ -213,7 +388,11 @@ void BackendSession::settle(cb::RequestId id) {
 }
 
 std::int32_t BackendSession::OutstandingWork() noexcept {
-    return static_cast<std::int32_t>(inFlight_.size());
+    // Requests that have not settled, PLUS runnables the wrapped backend has on
+    // its own pool. The second term is not bookkeeping pedantry: those
+    // runnables execute instructions in this module's image, so a host that saw
+    // zero here could unmap the code that is running.
+    return static_cast<std::int32_t>(inFlight_.size()) + nativeWorkCount();
 }
 
 com::Result BackendSession::Invoke(std::uint32_t command, const void *args, std::size_t size,
@@ -238,11 +417,22 @@ com::Result BackendSession::invokeImpl(std::uint32_t command, const void *args, 
     if (closed_) {
         return com::kAlreadyClosed;
     }
+    // Cleared HERE, not only on success. LastError() is documented as the
+    // diagnostic for the LAST failed call, and a caller that reads it after a
+    // fresh failure must not be handed the previous one: a stale message names
+    // the wrong command and sends the reader looking in the wrong place. Every
+    // exit below either sets a diagnostic or leaves this cleared state.
+    clearError();
     if (command >= abi::kCmdTestControlBase) {
         // The shipping module has no extension, so the test-control range is
         // kNotImplemented there. This is the whole mechanism that keeps a
         // failure-injection switch out of the shipping ABI.
         if (!extension_) {
+            setError(com::kNotImplemented,
+                     QStringLiteral("command 0x%1 is in the test-control range, which a shipping "
+                                    "module does not implement")
+                         .arg(command, 0, 16),
+                     QStringLiteral("Invoke"));
             return com::kNotImplemented;
         }
         return extension_(*this, command, args, size, reply);
@@ -257,6 +447,20 @@ com::Result BackendSession::invokeImpl(std::uint32_t command, const void *args, 
     marshal::ByteWriter out;
     const com::Result status = dispatch(command, in, out);
     if (com::IsFailure(status)) {
+        // A decode that failed INSIDE dispatch used to return here silently,
+        // leaving LastError() answering kNotFound - or, worse, a diagnostic
+        // from some earlier call - for a failure that had just happened. Every
+        // refusal names itself now, and a dispatch that already set a more
+        // specific message keeps it.
+        if (com::IsSuccess(lastErrorCode_)) {
+            setError(status,
+                     status == com::kNotImplemented
+                         ? QStringLiteral("command 0x%1 is not implemented by this module")
+                               .arg(command, 0, 16)
+                         : QStringLiteral("arguments for command 0x%1 did not decode")
+                               .arg(command, 0, 16),
+                     QStringLiteral("Invoke"));
+        }
         return status;
     }
     if (!in.finished()) {
@@ -295,6 +499,14 @@ com::Result BackendSession::dispatch(std::uint32_t command, marshal::ByteReader 
         // observer by production rather than by arrival. Answered before the
         // switch so it cannot be mistaken for one.
         out.u64(wrapped_.producedSequence ? wrapped_.producedSequence() : 0);
+        return com::kOk;
+    }
+
+    if (command == abi::kCmdPendingNativeWork) {
+        // Also not a backend-r4 operation: what the module has running on its
+        // own pool, so a host can ask before it decides to unload rather than
+        // inferring quiescence from a request counter that never knew about it.
+        out.i32(nativeWorkCount());
         return com::kOk;
     }
 
@@ -696,20 +908,30 @@ com::Result BackendSession::closeImpl(std::uint32_t flags, std::uint32_t timeout
 
         // Drain on the shared event loop. The wrapped backend queues its
         // deliveries, so pumping here is what lets them arrive; a bare sleep
-        // would not.
+        // would not. Native pool work is drained against the same deadline: a
+        // finished watcher or a cancel flag proves the HOST's half is done, not
+        // that the module-defined runnable has exited.
         QElapsedTimer elapsed;
         elapsed.start();
-        while (!inFlight_.isEmpty() && elapsed.elapsed() < static_cast<qint64>(timeoutMs)) {
+        while ((!inFlight_.isEmpty() || nativeWorkCount() > 0) &&
+               elapsed.elapsed() < static_cast<qint64>(timeoutMs)) {
             QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
         }
-        if (!inFlight_.isEmpty()) {
+        const std::int32_t stillNative = nativeWorkCount();
+        if (!inFlight_.isEmpty() || stillNative > 0) {
             // Honest: work was abandoned. Teardown still happens below,
             // because leaving the observer attached to a backend nobody owns
-            // is worse than an abandoned request.
+            // is worse than an abandoned request. The teardown itself does NOT
+            // abandon the native runnable - destroying the wrapped backend
+            // blocks until its pool has drained - so a kTimeout here means
+            // "this took longer than you allowed", never "code is still running
+            // in an image you may now unmap".
             outcome = com::kTimeout;
             setError(com::kTimeout,
-                     QStringLiteral("%1 request(s) were still outstanding at close")
-                         .arg(inFlight_.size()),
+                     QStringLiteral("%1 request(s) and %2 native task(s) were still outstanding "
+                                    "at close")
+                         .arg(inFlight_.size())
+                         .arg(stillNative),
                      QStringLiteral("Close"));
         }
         wrapped_.backend->removeObserver(this);

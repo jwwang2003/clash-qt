@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QHash>
 #include <QJsonObject>
+#include <atomic>
 #include <memory>
 #include <optional>
 
@@ -15,6 +16,7 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 class QProcess;
+class QThreadPool;
 class QTimer;
 
 namespace core {
@@ -132,6 +134,22 @@ public:
     /// (backend-r3, "known weak coverage"). It must always read 0.
     int probeCompletionsAfterCancel() const;
 
+    /// Runnables this object has SUBMITTED to the pool it owns and has not yet
+    /// seen exit - queued ones included. Today that is the service-mode config
+    /// parse, which is moved off the event loop because an 8 MiB YAML document
+    /// must not stall it.
+    ///
+    /// WHY THIS IS PUBLISHED AT ALL. When this class is compiled into a
+    /// dynamically loaded module, the runnable's instructions live in that
+    /// module's image. A watcher that has emitted finished(), or a cancel flag
+    /// that has been set, says the HOST's half is over; neither says the
+    /// runnable has left the module's code. A consumer deciding whether the
+    /// image may be unmapped needs the second fact, and this is it. The
+    /// destructor's wait is what makes the answer eventually zero; this is what
+    /// makes the waiting observable, and reportable as a timeout, rather than a
+    /// silent stall.
+    int pendingNativeWork() const noexcept;
+
 signals:
     void stateChanged(CoreState state);
     void ready(const Endpoint &endpoint);
@@ -160,6 +178,10 @@ private:
 
     void finishValidation(bool valid, const QString &reason = {});
     void cancelValidation();
+    /// Asks the in-flight service-config parse to stop as soon as it can. A
+    /// queued runnable then exits without doing any work; a running one still
+    /// has to finish, which is exactly why pendingNativeWork() exists.
+    void cancelServiceParse();
     void launchValidated(const QString &configPath, const QString &workDir, const QString &binary);
     void launchProcess(const QString &configPath, const QString &workDir, const QString &binary);
     void finishStop();
@@ -191,6 +213,18 @@ private:
     bool serviceActive_ = false;
     bool serviceStopping_ = false;
     bool serviceParsing_ = false;
+    /// OWNED, not QThreadPool::globalInstance(). A runnable on the global pool
+    /// outlives this object by construction - nothing here can wait for it -
+    /// and if this class was compiled into a loadable module, that is a
+    /// runnable executing code the loader is free to unmap. An owned pool can
+    /// be, and is, waited on in the destructor. Created on first use, because
+    /// only service mode ever submits anything.
+    std::unique_ptr<QThreadPool> parsePool_;
+    /// Shared with the runnable rather than owned outright, so the counter is
+    /// still valid for the decrement even in the window between the runnable's
+    /// last statement and the pool's own bookkeeping.
+    std::shared_ptr<std::atomic<int>> parseWork_;
+    std::shared_ptr<std::atomic<bool>> parseCancelled_;
     bool explicitStop_ = false;
     bool injectedService_ = false;
     quint64 launchGeneration_ = 0;

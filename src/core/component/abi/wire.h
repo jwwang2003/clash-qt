@@ -21,6 +21,11 @@
 //     NUL-terminated, never assumed valid UTF-8 by the reader.
 //   * A list is u32 count followed by count encoded elements. A decoder that
 //     reads past the end of its input fails; it does not clamp and continue.
+//   * A timestamp is an INSTANT PLUS ITS REPRESENTATION: i64 milliseconds since
+//     the epoch (kNoTimestamp for an invalid one), u8 TimeRepresentation, i32
+//     offset-from-UTC seconds, and the IANA zone identifier as a string. See
+//     "TIMESTAMPS CARRY THEIR REPRESENTATION" below for why the instant alone
+//     is not enough.
 //   * Every decode failure is reported to the caller as kInvalidArgument with a
 //     diagnostic naming the command or event - a malformed packet is a bug in
 //     the peer, and silence is how it survives to the next release.
@@ -45,6 +50,17 @@
 //   before it existed. The sequence travels so the host applies the SAME rule,
 //   and kCmdProducedSequence is how the host learns the number to compare
 //   against at registration time.
+//
+// TIMESTAMPS CARRY THEIR REPRESENTATION, NOT JUST THEIR INSTANT
+//   A QDateTime is an instant AND a time representation, and the host renders
+//   the second one: the connections page prints start/end with
+//   toString(Qt::ISODate), so a value that arrives as local time where it left
+//   as UTC is a visible text change even though operator== - which compares
+//   instants - still succeeds. Moving a backend behind this boundary must not
+//   change a single character the user reads, so every timestamp on this wire
+//   carries the epoch milliseconds, a TimeRepresentation, the offset from UTC
+//   in seconds, and the IANA zone identifier when the representation is a named
+//   zone. A decoder rebuilds the same representation or refuses the packet.
 
 #include <cstddef>
 #include <cstdint>
@@ -56,7 +72,11 @@ namespace clashqt::com::abi {
 // which is the entire point of the unknown-code rule.
 //
 // 2: every Notify payload gained the production-sequence envelope above.
-inline constexpr std::uint32_t kWireRevision = 2;
+// 3: every timestamp - in the general encoding AND in the packed connection
+//    snapshot - gained its time representation, so the host-visible rendering
+//    of a QDateTime survives the boundary. The packed record grew with it, so
+//    ConnectionSnapshotHeader::version moved to 2 at the same time.
+inline constexpr std::uint32_t kWireRevision = 3;
 
 // The size of the event envelope, in bytes, before the event's own payload.
 inline constexpr std::size_t kEventEnvelopeBytes = 8;
@@ -150,6 +170,13 @@ enum Command : std::uint32_t {
     // the pre-envelope behaviour, and an honest degradation rather than a
     // silent one.
     kCmdProducedSequence = 0x0601,
+    // How many pieces of NATIVE ASYNCHRONOUS WORK the module has submitted and
+    // not yet seen exit: runnables on a pool the module owns, whose code lives
+    // in the module's image. A session's OutstandingWork() already includes this
+    // number, and Close() drains against it, but a host that wants to ask before
+    // deciding to unload can ask directly. Answered 0 by a module whose backend
+    // submits none, which is the honest pre-r3 answer and not a claim.
+    kCmdPendingNativeWork = 0x0602,
 
     // ---- the privileged-execution reverse seam, host -> module.
     // Privileged execution stays host-owned (module-r1): the module never
@@ -244,6 +271,32 @@ enum CloseFlags : std::uint32_t {
     kCloseStopManagedCore = 1u << 0,
 };
 
+// --------------------------------------------------------------- timestamps
+//
+// How a QDateTime's time representation travels, in BOTH encodings. The numbers
+// are this wire's own and are deliberately not Qt::TimeSpec's: a peer built
+// against a Qt whose enum is renumbered must still decode what this header
+// describes. Mapping to and from Qt happens once, in the codec.
+enum TimeRepresentation : std::uint8_t {
+    kTimeLocal = 0,          // the receiver's own zone, offset is informational
+    kTimeUtc = 1,            // offset is 0
+    kTimeOffsetFromUtc = 2,  // offset is the whole representation
+    kTimeNamedZone = 3,      // the IANA identifier is the representation
+};
+
+// Anything above this is a producer this build does not understand, and a
+// decoder refuses it rather than guessing at LocalTime.
+inline constexpr std::uint8_t kTimeRepresentationMax = kTimeNamedZone;
+
+// Qt rejects a zone offset outside +/- 16 hours, so a decoder validates the
+// same bound instead of handing QDateTime a value it will silently discard.
+inline constexpr std::int32_t kMaxUtcOffsetSeconds = 16 * 3600;
+
+// An invalid QDateTime, distinguishable from the epoch. 64-bit because a 32-bit
+// field silently truncates in 2038, and a truncated `end` reads as a connection
+// that closed before it opened.
+inline constexpr std::int64_t kNoTimestamp = INT64_MIN;
+
 // ---------------------------------------------------- packed connection set
 //
 // D8's second binding constraint: "One buffer per snapshot with fixed-layout
@@ -255,13 +308,20 @@ enum CloseFlags : std::uint32_t {
 // Layout, in one buffer, in this order and with no padding between sections:
 //
 //   [ ConnectionSnapshotHeader ]          fixed, 64 bytes
-//   [ ConnectionRecord * count ]          fixed, 152 bytes each
+//   [ ConnectionRecord * count ]          fixed, 184 bytes each
 //   [ TextRef * chainSlotCount ]          the flattened proxy chains
 //   [ UTF-8 blob ]                        every string, no separators
 //
 // A TextRef is an offset and a length INTO THE BLOB, relative to blobOffset.
 // Nothing in the buffer is a pointer, so the buffer is position independent and
 // a consumer can validate it fully before reading one byte of text.
+//
+// Timestamps keep their representation here too, and they do it WITHOUT giving
+// up the fixed layout: the instant, the TimeRepresentation and the UTC offset
+// are fixed-width fields of the record, and a named zone's IANA identifier is a
+// TextRef into the same interned blob every other string uses. A snapshot whose
+// rows share one zone therefore costs that identifier once, not once per row,
+// and the buffer is still exactly one owned allocation.
 
 // Every offset and length is validated against the blob's bounds before use.
 struct TextRef {
@@ -272,7 +332,9 @@ struct TextRef {
 static_assert(sizeof(TextRef) == 8, "TextRef is two fixed-width fields");
 
 inline constexpr std::uint32_t kConnectionSnapshotMagic = 0x43514E53;  // 'CQNS'
-inline constexpr std::uint16_t kConnectionSnapshotVersion = 1;
+// 2: ConnectionRecord carries each timestamp's representation as well as its
+//    instant, so the host renders what the backend produced.
+inline constexpr std::uint16_t kConnectionSnapshotVersion = 2;
 
 struct ConnectionSnapshotHeader {
     std::uint32_t magic;         // kConnectionSnapshotMagic
@@ -295,13 +357,12 @@ struct ConnectionSnapshotHeader {
 static_assert(sizeof(ConnectionSnapshotHeader) == 64, "header layout is fixed");
 static_assert(alignof(ConnectionSnapshotHeader) == 8, "no implicit padding at the end");
 
-// core::Connection, flattened. The 12 strings are TextRefs; the proxy chain is
-// a run of TextRefs in the chain section. Timestamps are milliseconds since the
-// epoch, with kNoTimestamp for an invalid QDateTime - the field is 64-bit
-// because a 32-bit one silently truncates in 2038 and a truncated `end` reads
-// as a connection that closed before it opened.
-inline constexpr std::int64_t kNoTimestamp = INT64_MIN;
-
+// core::Connection, flattened. The 14 strings are TextRefs - the 12 of the
+// connection plus the two zone identifiers - and the proxy chain is a run of
+// TextRefs in the chain section. Each timestamp is four fields: the instant in
+// milliseconds since the epoch (kNoTimestamp when the QDateTime is invalid),
+// its TimeRepresentation, its offset from UTC in seconds, and, for a named
+// zone, the TextRef naming it.
 struct ConnectionRecord {
     TextRef id;
     TextRef host;
@@ -315,6 +376,10 @@ struct ConnectionRecord {
     TextRef destinationPort;
     TextRef process;
     TextRef processPath;
+    // Empty unless the matching spec is kTimeNamedZone. Interned like every
+    // other string, so one zone shared by 500 rows is stored once.
+    TextRef startZone;
+    TextRef endZone;
     std::uint32_t chainFirst;  // index into the chain section
     std::uint32_t chainCount;
     std::uint64_t upload;
@@ -323,9 +388,18 @@ struct ConnectionRecord {
     double downloadRate;
     std::int64_t startMs;
     std::int64_t endMs;
+    std::int32_t startOffsetSeconds;
+    std::int32_t endOffsetSeconds;
+    std::uint8_t startSpec;  // TimeRepresentation
+    std::uint8_t endSpec;    // TimeRepresentation
+    // Declared rather than left to the compiler: a record whose tail is implicit
+    // padding travels with whatever happened to be on the producer's stack, and
+    // a fixed layout means every byte is accounted for.
+    std::uint8_t reserved[6];
 };
 
-static_assert(sizeof(ConnectionRecord) == 152, "record layout is fixed");
+static_assert(sizeof(ConnectionRecord) == 184, "record layout is fixed");
+static_assert(alignof(ConnectionRecord) == 8, "no implicit padding at the end");
 static_assert(sizeof(double) == 8, "the rate fields are IEEE-754 binary64");
 
 }  // namespace clashqt::com::abi

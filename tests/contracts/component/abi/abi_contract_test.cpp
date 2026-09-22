@@ -269,6 +269,60 @@ class CountingHost final : public abi::IBackendHost {
     std::int32_t references_ = 1;
 };
 
+/// The same minimal host, plus the one thing the release-semantics cases have
+/// to see: WHEN it was destroyed. A session holds a strong reference to its
+/// host for as long as it can produce an event, so "the host is still alive"
+/// is the assertion that a queued cleanup has not yet torn the session down -
+/// and "the host is gone" is the assertion that it has, in that order and no
+/// other.
+class LifetimeHost final : public abi::IBackendHost {
+  public:
+    explicit LifetimeHost(bool *destroyed) noexcept : destroyed_(destroyed) {}
+
+    com::Result QueryInterface(const com::InterfaceId &id, void **out) noexcept override {
+        if (out == nullptr) {
+            return com::kInvalidArgument;
+        }
+        if (id == abi::kIBackendHostId || id == com::kIObjectId) {
+            *out = static_cast<void *>(this);
+            AddRef();
+            return com::kOk;
+        }
+        *out = nullptr;
+        return com::kNoInterface;
+    }
+    std::int32_t AddRef() noexcept override { return ++references_; }
+    std::int32_t Release() noexcept override {
+        const std::int32_t remaining = --references_;
+        if (remaining == 0) {
+            delete this;
+        }
+        return remaining;
+    }
+    com::Result Notify(std::uint32_t, const void *, std::size_t) noexcept override {
+        ++events;
+        return com::kOk;
+    }
+    com::Result Invoke(std::uint32_t, const void *, std::size_t,
+                       com::IBuffer **reply) noexcept override {
+        if (reply != nullptr) {
+            *reply = nullptr;
+        }
+        return com::kInvalidState;
+    }
+
+    int events = 0;
+
+  private:
+    ~LifetimeHost() {
+        if (destroyed_ != nullptr) {
+            *destroyed_ = true;
+        }
+    }
+    bool *destroyed_ = nullptr;
+    std::int32_t references_ = 1;
+};
+
 /// Gives back a mapping a case deliberately left behind, so no case is testing
 /// against an image an earlier one leaked.
 ///
@@ -276,6 +330,29 @@ class CountingHost final : public abi::IBackendHost {
 /// here is simulated, and the fake is as unmappable as the rest of this suite
 /// proves. The loader's own dlopen reference is what is being dropped -
 /// RTLD_NOLOAD adds a second, and two closes clear both.
+/// Opens a module artifact WITHOUT ModuleLoader, and performs the handshake by
+/// hand. Three cases need it: PrepareUnload requires the asking caller to be
+/// the module's sole holder, and a loader necessarily holds a root reference of
+/// its own, so those cases cannot be expressed through the loader at all. The
+/// caller owns the handle and dlcloses it.
+void *openModuleDirectly(const QString &path) {
+    return dlopen(QFileInfo(path).absoluteFilePath().toLocal8Bit().constData(),
+                  RTLD_NOW | RTLD_LOCAL);
+}
+
+bool enterModule(void *handle, const com::ModuleId &expected, com::IComponentModule **out) {
+    auto entry =
+        reinterpret_cast<abi::ModuleEntryFn>(dlsym(handle, CLASHQT_COM_MODULE_ENTRY_NAME));
+    if (entry == nullptr) {
+        return false;
+    }
+    const abi::ModuleHandshakeRequest request =
+        abi::MakeHandshakeRequest(marshal::runtimeTag(), expected);
+    abi::ModuleHandshakeResponse response{};
+    response.structSize = static_cast<std::uint32_t>(sizeof(response));
+    return com::IsSuccess(entry(&request, &response, out)) && *out != nullptr;
+}
+
 void reclaimLeakedMapping(const QString &path) {
     void *leaked = dlopen(QFileInfo(path).absoluteFilePath().toLocal8Bit().constData(),
                           RTLD_NOLOAD | RTLD_LAZY);
@@ -339,6 +416,13 @@ class AbiContractTest : public QObject {
     void aRetainedDiagnosticAndItsMessageBufferEachKeepTheModule();
     void creatingAndPreparingInParallelNeverHandsOutAnObjectAfterPrepare();
     void aPreparedModuleCreatesNothingFurther();
+    void preparingRefusesWithoutLatchingWhileAnotherHolderRemains();
+    void theFinalReleaseFromAnotherThreadKeepsTheModuleCountedUntilCleanupRuns();
+    void aQuiescentSessionIsDestroyedInsideReleaseAndOnlyThenReportsZero();
+    void aQueuedCleanupKeepsItsOwnReferenceUntilItHasActuallyDestroyed();
+    void closingAloneDoesNotConsumeTheCallersReference();
+    void extraAndForeignReleasesNeverDestroyWhileAHolderRemains();
+    void queryingASessionInterfaceTakesExactlyOneReference();
     void theReaderLatchesAnOverrunInsteadOfContinuing();
     void closingIsIdempotentAndAClosedSessionRefusesCommands();
     void outstandingWorkCountsHeldRequestsAndCloseReportsTheTimeout();
@@ -347,6 +431,8 @@ class AbiContractTest : public QObject {
     void sixtyFourBitIdentityAndCountersSurviveTheBoundary();
     void everyQueryOfTheContractCrossesTheBoundary();
     void stagedTelemetryRoundTripsThroughAReleasedRequest();
+    void aTimestampKeepsItsRepresentationAndNotOnlyItsInstant();
+    void aTimestampWithAnUnusableRepresentationIsRefused();
     void aPackedConnectionSnapshotRoundTripsExactly();
     void aMalformedConnectionSnapshotIsRefusedWithAReason();
     void thePrivilegedStatusCarriesCoreRunning();
@@ -362,6 +448,7 @@ class AbiContractTest : public QObject {
 
     // ---- refusals
     void aMalformedArgumentBlockIsRefusedWithADiagnostic();
+    void everyRefusedCommandLeavesItsOwnDiagnostic();
     void anUnknownCommandIsNotImplementedRatherThanIgnored();
     void theShippingModuleDoesNotImplementTheTestControlRange();
 
@@ -721,9 +808,14 @@ void AbiContractTest::aModuleThatRefusesTheUnmapKeepsItsImageMapped() {
 void AbiContractTest::aRetainedRootReferenceKeepsTheImageMapped() {
     // LiveObjectCount deliberately excludes the root, so the count cannot be
     // what protects it. A consumer that kept an IModuleLifetime from
-    // QueryInterface holds a vtable in this image exactly as a session would,
-    // and the loader finds out because its own final Release does not reach
-    // zero.
+    // QueryInterface holds a vtable in this image exactly as a session would.
+    //
+    // THE REFUSAL MUST BE RECOVERABLE, AND THAT IS MOST OF THIS CASE. An
+    // earlier implementation discovered the retained reference only after it
+    // had dropped its own, so it had nothing left to retry with: the module was
+    // latched shut and the image leaked for the life of the process. The loader
+    // now keeps its lifetime reference across the question, restores the root
+    // when the answer is no, and succeeds on a later attempt.
     clashqt::integration::ModuleLoader loader(fakePath_);
     QVERIFY(loader.load(abi::kFakeModuleId));
 
@@ -731,15 +823,34 @@ void AbiContractTest::aRetainedRootReferenceKeepsTheImageMapped() {
     QCOMPARE(loader.module()->QueryInterface(abi::kIModuleLifetimeId, retained.PutVoid()), com::kOk);
     QCOMPARE(retained->LiveObjectCount(), 0);
 
-    QVERIFY(loader.unload());
-    QVERIFY(!loader.isLoaded());
-    QVERIFY2(loader.isMapped(), "a root reference someone else holds must keep the image");
+    QVERIFY2(!loader.unload(), "unload must refuse while someone else holds the root");
+    QCOMPARE(loader.lastErrorCode(), com::kInvalidState);
     QVERIFY(loader.lastError().contains(QStringLiteral("module root")));
+    QVERIFY2(loader.isMapped(), "a root reference someone else holds must keep the image");
+    QVERIFY(loader.isImageStillMappedInProcess());
+
+    // NOTHING WAS LATCHED. The loader is exactly as usable as before it asked,
+    // and so is the module: it still creates objects. A refusal that cost the
+    // module its ability to work would be a worse bug than the leak it avoids.
+    QVERIFY(loader.isLoaded());
+    QVERIFY(loader.module() != nullptr);
+    com::ComPtr<abi::IBackendSession> session;
+    QVERIFY2(loader.createSession(session),
+             "a refused unload must not latch the module shut");
+    QCOMPARE(loader.liveObjectCount(), 1);
+    session.Reset();
+    QCOMPARE(loader.liveObjectCount(), 0);
+
     // The retained interface is still usable, which is the whole reason the
     // image had to stay.
     QCOMPARE(retained->LiveObjectCount(), 0);
+
+    // And the consumer does the one thing the diagnostic asked of it.
     retained.Reset();
-    reclaimLeakedMapping(fakePath_);
+    QVERIFY2(loader.unload(), "the SAME call succeeds once the retained root is released");
+    QCOMPARE(loader.lastErrorCode(), com::kOk);
+    QVERIFY2(!loader.isMapped(), "the image is unmapped on retry, not leaked forever");
+    QVERIFY(!loader.isImageStillMappedInProcess());
 }
 
 void AbiContractTest::aRetainedReplyBufferKeepsTheModuleCountedAndMapped() {
@@ -853,12 +964,20 @@ void AbiContractTest::creatingAndPreparingInParallelNeverHandsOutAnObjectAfterPr
     // between the two would hand out an object into an image the loader is
     // already unmapping. The two must move under one atomic transition, and
     // this case is what makes the difference observable.
+    //
+    // Through a raw entry() for the same reason the case below uses one: the
+    // racing caller has to be the module's SOLE holder, or PrepareUnload
+    // refuses for a reason that has nothing to do with the race and the
+    // quiescent branch below would never be exercised at all.
     for (int attempt = 0; attempt < 24; ++attempt) {
-        clashqt::integration::ModuleLoader loader(fakePath_);
-        QVERIFY(loader.load(abi::kFakeModuleId));
-        com::IComponentModule *root = loader.module();
+        void *handle = openModuleDirectly(fakePath_);
+        QVERIFY(handle != nullptr);
+        com::IComponentModule *root = nullptr;
+        QVERIFY(enterModule(handle, abi::kFakeModuleId, &root));
         com::ComPtr<abi::IModuleLifetime> lifetime;
         QCOMPARE(root->QueryInterface(abi::kIModuleLifetimeId, lifetime.PutVoid()), com::kOk);
+        // Borrowed from here on; `lifetime` is the only reference.
+        QCOMPARE(root->Release(), 1);
 
         std::atomic<bool> go{false};
         std::vector<abi::IBackendSession *> created;
@@ -913,7 +1032,7 @@ void AbiContractTest::creatingAndPreparingInParallelNeverHandsOutAnObjectAfterPr
             created.clear();
         }
         lifetime.Reset();
-        QVERIFY(loader.unload());
+        QCOMPARE(dlclose(handle), 0);
     }
 }
 
@@ -922,25 +1041,313 @@ void AbiContractTest::aPreparedModuleCreatesNothingFurther() {
     // a loader that asked "may I unmap" and then got handed one more object
     // would unmap an image that is in use. The count answers the first half of
     // that question; this refusal answers the second.
-    clashqt::integration::ModuleLoader loader(fakePath_);
-    QVERIFY(loader.load(abi::kFakeModuleId));
+    //
+    // Driven through a raw entry() rather than ModuleLoader, because
+    // PrepareUnload now requires the ASKING CALLER to be the only holder - that
+    // is what makes a refusal mean "somebody else is here" and therefore
+    // recoverable - and this case needs to be that sole holder while still
+    // holding a usable root POINTER. The pointer is borrowed: `lifetime` is
+    // what keeps the object alive once the root reference is given back.
+    void *handle = openModuleDirectly(fakePath_);
+    QVERIFY(handle != nullptr);
+    com::IComponentModule *root = nullptr;
+    QVERIFY(enterModule(handle, abi::kFakeModuleId, &root));
 
     com::ComPtr<abi::IModuleLifetime> lifetime;
-    QCOMPARE(loader.module()->QueryInterface(abi::kIModuleLifetimeId, lifetime.PutVoid()),
-             com::kOk);
+    QCOMPARE(root->QueryInterface(abi::kIModuleLifetimeId, lifetime.PutVoid()), com::kOk);
+    QCOMPARE(root->Release(), 1);  // the caller's lifetime reference is the only one
     QCOMPARE(lifetime->LiveObjectCount(), 0);
     QCOMPARE(lifetime->PrepareUnload(), com::kOk);
     // Idempotent, and still prepared.
     QCOMPARE(lifetime->PrepareUnload(), com::kAlreadyClosed);
 
     void *object = reinterpret_cast<void *>(0x1);
-    QCOMPARE(loader.module()->CreateObject(abi::kBackendSessionClassId, abi::kIBackendSessionId,
-                                           &object),
+    QCOMPARE(root->CreateObject(abi::kBackendSessionClassId, abi::kIBackendSessionId, &object),
              com::kInvalidState);
     QCOMPARE(object, nullptr);
     QCOMPARE(lifetime->LiveObjectCount(), 0);
 
     lifetime.Reset();
+    QCOMPARE(dlclose(handle), 0);
+}
+
+void AbiContractTest::preparingRefusesWithoutLatchingWhileAnotherHolderRemains() {
+    // The other half of the rule above, and the one an audit reproduced as a
+    // permanent leak: a refusal caused by a SECOND holder must change nothing.
+    void *handle = openModuleDirectly(fakePath_);
+    QVERIFY(handle != nullptr);
+    com::IComponentModule *root = nullptr;
+    QVERIFY(enterModule(handle, abi::kFakeModuleId, &root));
+
+    com::ComPtr<abi::IModuleLifetime> lifetime;
+    QCOMPARE(root->QueryInterface(abi::kIModuleLifetimeId, lifetime.PutVoid()), com::kOk);
+    // The root reference is NOT given back this time, so the asker is one of two
+    // holders.
+    QCOMPARE(lifetime->LiveObjectCount(), 0);
+    QCOMPARE(lifetime->PrepareUnload(), com::kInvalidState);
+
+    // Nothing latched: the module still works, and says so by handing out an
+    // object. This is the assertion that fails if the refusal sets the bit.
+    void *object = nullptr;
+    QCOMPARE(root->CreateObject(abi::kBackendSessionClassId, abi::kIBackendSessionId, &object),
+             com::kOk);
+    QVERIFY(object != nullptr);
+    QCOMPARE(lifetime->LiveObjectCount(), 1);
+    static_cast<abi::IBackendSession *>(object)->Release();
+    QCOMPARE(lifetime->LiveObjectCount(), 0);
+
+    // And the refusal is repeatable rather than one-shot.
+    QCOMPARE(lifetime->PrepareUnload(), com::kInvalidState);
+
+    // Give the root back and the SAME call succeeds.
+    QCOMPARE(root->Release(), 1);
+    QCOMPARE(lifetime->PrepareUnload(), com::kOk);
+    lifetime.Reset();
+    QCOMPARE(dlclose(handle), 0);
+}
+
+void AbiContractTest::theFinalReleaseFromAnotherThreadKeepsTheModuleCountedUntilCleanupRuns() {
+    // component-r1 permits AddRef/Release from ANY thread, and this suite does
+    // not let the module narrow that quietly. What the module must NOT do is
+    // destroy its Qt collaborators on the releasing thread; what it must do
+    // instead is stay COUNTED until the deferred teardown has run, so a loader
+    // asking in between is told the truth rather than "safe to unmap".
+    //
+    // AND THE RETURN VALUE IS PART OF THAT TRUTH. object.h: "Only a returned 0
+    // is reliable, and it means the object was destroyed." A module that
+    // answered 0 here and then queued its own teardown would be reporting a
+    // destruction that has not happened, while its vtable, its members and its
+    // image are all still live. The number asserted below is therefore NOT
+    // zero: it is the cleanup's own reference, and the same count that keeps
+    // the unmap refused.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    com::ComPtr<abi::IBackendSession> session;
+    QVERIFY(loader.createSession(session));
+    auto *host = new CountingHost();
+    QCOMPARE(session->SetHost(host), com::kOk);
+    QCOMPARE(loader.liveObjectCount(), 1);
+
+    abi::IBackendSession *raw = session.Detach();
+    std::atomic<std::int32_t> remaining{-1};
+    std::thread other([&] { remaining.store(raw->Release()); });
+    other.join();
+
+    // The caller's reference is gone; a holder it cannot see - the pending
+    // cleanup - is not. Anything but a positive count here is a claim that the
+    // object was destroyed on the releasing thread.
+    QVERIFY2(remaining.load() > 0,
+             "a deferred final Release must report the cleanup's reference, never 0");
+    // The OBJECT is not gone, and the module says so.
+    QCOMPARE(loader.liveObjectCount(), 1);
+    QVERIFY2(!loader.unload(), "unload must refuse while a queued teardown is outstanding");
+    QVERIFY(loader.isImageStillMappedInProcess());
+    QVERIFY(loader.isLoaded());
+
+    // The owner thread runs its queue, which is where the teardown belongs.
+    QTRY_COMPARE_WITH_TIMEOUT(loader.liveObjectCount(), 0, 5000);
+    QVERIFY(loader.unload());
+    QVERIFY(!loader.isMapped());
+    QVERIFY(!loader.isImageStillMappedInProcess());
+    host->Release();
+}
+
+void AbiContractTest::aQuiescentSessionIsDestroyedInsideReleaseAndOnlyThenReportsZero() {
+    // The other half of the rule, and the reason the fix is not "never return
+    // zero": an object that CAN be destroyed where it is released is, and its
+    // zero is earned. Two of them - one that never had a host and owns nothing
+    // with an affinity, and one that has a live wrapped backend but is being
+    // released on that backend's own thread.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    com::ComPtr<abi::IBackendSession> inert;
+    QVERIFY(loader.createSession(inert));
+    QCOMPARE(loader.liveObjectCount(), 1);
+    abi::IBackendSession *rawInert = inert.Detach();
+    QCOMPARE(rawInert->Release(), 0);
+    // No pumping, no deadline: the destructor ran inside the call above, so the
+    // module's count has ALREADY dropped. A QTRY here would hide the difference
+    // between "destroyed" and "queued".
+    QCOMPARE(loader.liveObjectCount(), 0);
+
+    com::ComPtr<abi::IBackendSession> activated;
+    QVERIFY(loader.createSession(activated));
+    auto *host = new CountingHost();
+    QCOMPARE(activated->SetHost(host), com::kOk);
+    QCOMPARE(loader.liveObjectCount(), 1);
+    abi::IBackendSession *rawActivated = activated.Detach();
+    QCOMPARE(rawActivated->Release(), 0);
+    QCOMPARE(loader.liveObjectCount(), 0);
+
+    QVERIFY(loader.unload());
+    QVERIFY(!loader.isImageStillMappedInProcess());
+    host->Release();
+}
+
+void AbiContractTest::aQueuedCleanupKeepsItsOwnReferenceUntilItHasActuallyDestroyed() {
+    // What the nonzero count MEANS, asserted rather than assumed: a real holder
+    // exists, the session has not been torn down, and the host it would call
+    // back into is still alive. A cleanup that had already disposed of the
+    // session while reporting a reference - or that had returned zero and left
+    // the object standing - fails one of the three.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    com::ComPtr<abi::IBackendSession> session;
+    QVERIFY(loader.createSession(session));
+    bool hostDestroyed = false;
+    auto *host = new LifetimeHost(&hostDestroyed);
+    QCOMPARE(session->SetHost(host), com::kOk);
+    // The caller gives up its OWN host reference straight away. What remains
+    // are the session's and its privileged adapter's - module-r1's "host and
+    // callbacks outlive pending work" - so the host's survival below is
+    // evidence about the session, not about this test holding it up.
+    QVERIFY(host->Release() > 0);
+    QVERIFY(!hostDestroyed);
+
+    abi::IBackendSession *raw = session.Detach();
+    std::atomic<std::int32_t> remaining{-1};
+    std::thread other([&] { remaining.store(raw->Release()); });
+    other.join();
+
+    QVERIFY(remaining.load() > 0);
+    QCOMPARE(loader.liveObjectCount(), 1);
+    QVERIFY2(!hostDestroyed,
+             "the session still holds its host reference: a callback arriving now has a live host");
+
+    QTRY_COMPARE_WITH_TIMEOUT(loader.liveObjectCount(), 0, 5000);
+    // Destroying the session closed it, which released the host - in that
+    // order. A host destroyed BEFORE the count reached zero would mean the
+    // session had been disposed of behind a reference that claimed otherwise.
+    QVERIFY2(hostDestroyed, "the cleanup that dropped the last reference also released the host");
+    QVERIFY(loader.unload());
+    QVERIFY(!loader.isImageStillMappedInProcess());
+}
+
+void AbiContractTest::closingAloneDoesNotConsumeTheCallersReference() {
+    // Close is an operation, not a release. It detaches the observer, stops
+    // what it was told to stop and gives the host reference back - and it
+    // leaves the CALLER's reference exactly where it was, so the object is
+    // still there to be asked questions and still counted by the module.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    com::ComPtr<abi::IBackendSession> session;
+    QVERIFY(loader.createSession(session));
+    bool hostDestroyed = false;
+    auto *host = new LifetimeHost(&hostDestroyed);
+    QCOMPARE(session->SetHost(host), com::kOk);
+    QVERIFY(host->Release() > 0);
+
+    QCOMPARE(session->Close(abi::kCloseDefault, 0), com::kOk);
+    QVERIFY2(hostDestroyed, "Close releases the HOST reference once nothing can call back");
+    // The session itself is untouched by that: still counted, still answering.
+    QCOMPARE(loader.liveObjectCount(), 1);
+    QCOMPARE(session->Close(abi::kCloseDefault, 0), com::kAlreadyClosed);
+    QCOMPARE(session->OutstandingWork(), 0);
+
+    // And the count is still the caller's to move, one step at a time.
+    QCOMPARE(session->AddRef(), 2);
+    QCOMPARE(session->Release(), 1);
+    QCOMPARE(loader.liveObjectCount(), 1);
+
+    abi::IBackendSession *raw = session.Detach();
+    QCOMPARE(raw->Release(), 0);
+    QCOMPARE(loader.liveObjectCount(), 0);
+    QVERIFY(loader.unload());
+}
+
+void AbiContractTest::extraAndForeignReleasesNeverDestroyWhileAHolderRemains() {
+    // References taken and given back from several threads at once, which
+    // component-r1 allows without qualification. Every intermediate release
+    // must report a positive count and destroy nothing; only the last one may
+    // do anything at all, and on an activated session that last one - taken
+    // here from a foreign thread - is the deferring kind.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    com::ComPtr<abi::IBackendSession> session;
+    QVERIFY(loader.createSession(session));
+    auto *host = new CountingHost();
+    QCOMPARE(session->SetHost(host), com::kOk);
+
+    abi::IBackendSession *raw = session.Detach();
+    constexpr int kExtra = 4;
+    std::vector<std::thread> takers;
+    for (int index = 0; index < kExtra; ++index) {
+        takers.emplace_back([raw] { QVERIFY(raw->AddRef() > 0); });
+    }
+    for (auto &taker : takers) {
+        taker.join();
+    }
+
+    std::atomic<int> destroyedEarly{0};
+    std::vector<std::thread> givers;
+    for (int index = 0; index < kExtra; ++index) {
+        givers.emplace_back([raw, &destroyedEarly] {
+            if (raw->Release() <= 0) {
+                ++destroyedEarly;
+            }
+        });
+    }
+    for (auto &giver : givers) {
+        giver.join();
+    }
+    QCOMPARE(destroyedEarly.load(), 0);
+    QCOMPARE(loader.liveObjectCount(), 1);
+
+    // One caller reference left, released from yet another thread: deferred,
+    // reported as the cleanup's reference, and destroyed on the owner thread.
+    std::atomic<std::int32_t> remaining{-1};
+    std::thread last([&] { remaining.store(raw->Release()); });
+    last.join();
+    QVERIFY(remaining.load() > 0);
+    QCOMPARE(loader.liveObjectCount(), 1);
+
+    QTRY_COMPARE_WITH_TIMEOUT(loader.liveObjectCount(), 0, 5000);
+    QVERIFY(loader.unload());
+    host->Release();
+}
+
+void AbiContractTest::queryingASessionInterfaceTakesExactlyOneReference() {
+    // component-r1's QueryInterface rule, on the object whose counting has just
+    // been changed: one new reference per successful query, none on a refusal,
+    // and the same identity pointer from either face.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    com::ComPtr<abi::IBackendSession> session;
+    QVERIFY(loader.createSession(session));
+
+    com::IObject *identity = nullptr;
+    QCOMPARE(session->QueryInterface(com::kIObjectId, reinterpret_cast<void **>(&identity)),
+             com::kOk);
+    QVERIFY(identity != nullptr);
+    // Exactly one: the release below hands back that one reference and leaves
+    // the caller's original.
+    QCOMPARE(identity->Release(), 1);
+    QCOMPARE(loader.liveObjectCount(), 1);
+
+    void *again = nullptr;
+    QCOMPARE(session->QueryInterface(abi::kIBackendSessionId, &again), com::kOk);
+    com::IObject *identityAgain = nullptr;
+    QCOMPARE(static_cast<abi::IBackendSession *>(again)->QueryInterface(
+                 com::kIObjectId, reinterpret_cast<void **>(&identityAgain)),
+             com::kOk);
+    QCOMPARE(identityAgain, identity);
+    QCOMPARE(identityAgain->Release(), 2);
+    QCOMPARE(static_cast<abi::IBackendSession *>(again)->Release(), 1);
+
+    void *refused = reinterpret_cast<void *>(0x1);
+    QCOMPARE(session->QueryInterface(abi::kIModuleLifetimeId, &refused), com::kNoInterface);
+    QCOMPARE(refused, static_cast<void *>(nullptr));
+    QCOMPARE(loader.liveObjectCount(), 1);
+
+    abi::IBackendSession *raw = session.Detach();
+    QCOMPARE(raw->Release(), 0);
+    QCOMPARE(loader.liveObjectCount(), 0);
     QVERIFY(loader.unload());
 }
 
@@ -1163,6 +1570,144 @@ void AbiContractTest::stagedTelemetryRoundTripsThroughAReleasedRequest() {
 
     QCOMPARE(observer.sawReentrantDelivery, false);
     fixture.contractBackend()->removeObserver(&observer);
+}
+
+void AbiContractTest::aTimestampKeepsItsRepresentationAndNotOnlyItsInstant() {
+    // QDateTime::operator== compares INSTANTS, so a codec that dropped the zone
+    // would pass every equality assertion in this suite and still change the
+    // text the connections page prints with toString(Qt::ISODate). Every row
+    // below therefore asserts the rendering, the spec, the offset and the zone
+    // identifier as well as the instant.
+    const QDateTime utc(QDate(2026, 9, 22), QTime(10, 30, 0), QTimeZone::UTC);
+    struct Row {
+        const char *label;
+        QDateTime value;
+    };
+    const Row rows[] = {
+        {"UTC", utc},
+        {"fixed offset +05:45", utc.toOffsetFromUtc(5 * 3600 + 45 * 60)},
+        {"fixed offset -09:30", utc.toOffsetFromUtc(-(9 * 3600 + 30 * 60))},
+        {"named zone Asia/Tokyo", utc.toTimeZone(QTimeZone("Asia/Tokyo"))},
+        {"named zone America/St_Johns", utc.toTimeZone(QTimeZone("America/St_Johns"))},
+        {"local", utc.toLocalTime()},
+        {"invalid", QDateTime()},
+    };
+
+    for (const Row &row : rows) {
+        marshal::ByteWriter out;
+        marshal::writeDateTime(out, row.value);
+        marshal::ByteReader in(out.data().data(), out.size());
+        const QDateTime decoded = marshal::readDateTime(in);
+        QVERIFY2(in.finished(), row.label);
+        QCOMPARE(decoded, row.value);
+        QCOMPARE(decoded.isValid(), row.value.isValid());
+        QCOMPARE(decoded.toString(Qt::ISODate), row.value.toString(Qt::ISODate));
+        QCOMPARE(static_cast<int>(decoded.timeSpec()), static_cast<int>(row.value.timeSpec()));
+        if (row.value.isValid()) {
+            QCOMPARE(decoded.offsetFromUtc(), row.value.offsetFromUtc());
+            if (row.value.timeSpec() == Qt::TimeZone) {
+                QCOMPARE(decoded.timeRepresentation().id(), row.value.timeRepresentation().id());
+            }
+        }
+    }
+
+    // And through the PACKED snapshot, which has its own fixed-layout fields
+    // for the same information and could drift from the general codec.
+    QVector<cb::Connection> connections;
+    for (const Row &row : rows) {
+        cb::Connection connection = makeConnection(QStringLiteral("c-%1").arg(row.label), {});
+        connection.start = row.value;
+        connection.end = row.value.isValid() ? row.value.addSecs(90) : QDateTime();
+        connections.append(connection);
+    }
+    const std::vector<std::uint8_t> packed = marshal::packConnectionSnapshot(
+        cb::Generation{9}, cb::Span<cb::Connection>(connections.data(), connections.size()), 1, 2);
+    marshal::ConnectionSnapshot snapshot;
+    QString reason;
+    QVERIFY2(marshal::unpackConnectionSnapshot(packed.data(), packed.size(), &snapshot, &reason),
+             qPrintable(reason));
+    QCOMPARE(snapshot.connections.size(), connections.size());
+    for (qsizetype index = 0; index < connections.size(); ++index) {
+        const cb::Connection &expected = connections[index];
+        const cb::Connection &actual = snapshot.connections[index];
+        QCOMPARE(actual.start.toString(Qt::ISODate), expected.start.toString(Qt::ISODate));
+        QCOMPARE(actual.end.toString(Qt::ISODate), expected.end.toString(Qt::ISODate));
+        QCOMPARE(static_cast<int>(actual.start.timeSpec()),
+                 static_cast<int>(expected.start.timeSpec()));
+        QCOMPARE(actual.start.offsetFromUtc(), expected.start.offsetFromUtc());
+    }
+
+    // One zone shared by many rows is interned like any other string, so
+    // carrying the representation does not cost an identifier per row.
+    QVector<cb::Connection> sameZone;
+    for (int index = 0; index < 64; ++index) {
+        cb::Connection connection = makeConnection(QStringLiteral("z%1").arg(index), {});
+        connection.start = utc.toTimeZone(QTimeZone("Asia/Tokyo"));
+        connection.end = connection.start.addSecs(1);
+        sameZone.append(connection);
+    }
+    const std::vector<std::uint8_t> interned = marshal::packConnectionSnapshot(
+        cb::Generation{1}, cb::Span<cb::Connection>(sameZone.data(), sameZone.size()), 0, 0);
+    const auto *header = reinterpret_cast<const abi::ConnectionSnapshotHeader *>(interned.data());
+    QVERIFY2(header->blobSize < 64u * 11u,
+             "the shared zone identifier must be stored once, not once per row");
+}
+
+void AbiContractTest::aTimestampWithAnUnusableRepresentationIsRefused() {
+    // A representation this build cannot rebuild is a malformed packet, not an
+    // excuse to fall back to local time - falling back is precisely the silent
+    // change the representation was added to prevent.
+    const auto refused = [](std::uint8_t spec, std::int32_t offset, const QString &zone) {
+        marshal::ByteWriter out;
+        out.i64(1'758'535'800'000LL);
+        out.u8(spec);
+        out.i32(offset);
+        out.text(zone);
+        marshal::ByteReader in(out.data().data(), out.size());
+        marshal::readDateTime(in);
+        return !in.ok();
+    };
+    QVERIFY2(refused(abi::kTimeRepresentationMax + 1, 0, {}), "an unknown spec");
+    QVERIFY2(refused(abi::kTimeOffsetFromUtc, 17 * 3600, {}), "an offset past +16h");
+    QVERIFY2(refused(abi::kTimeOffsetFromUtc, -(17 * 3600), {}), "an offset past -16h");
+    QVERIFY2(refused(abi::kTimeNamedZone, 0, {}), "a named zone with no identifier");
+    QVERIFY2(refused(abi::kTimeNamedZone, 0, QStringLiteral("Mars/Olympus_Mons")),
+             "a zone identifier this build cannot resolve");
+    // The valid neighbours of each bound still decode, so the check is a bound
+    // and not a blanket refusal.
+    QVERIFY(!refused(abi::kTimeOffsetFromUtc, 16 * 3600, {}));
+    QVERIFY(!refused(abi::kTimeNamedZone, 0, QStringLiteral("Asia/Tokyo")));
+
+    // The same bounds, inside the packed snapshot's own validator.
+    QVector<cb::Connection> connections{makeConnection(QStringLiteral("c1"), {})};
+    connections[0].start = QDateTime(QDate(2026, 9, 22), QTime(10, 30, 0), QTimeZone::UTC);
+    connections[0].end = connections[0].start;
+    std::vector<std::uint8_t> packed = marshal::packConnectionSnapshot(
+        cb::Generation{1}, cb::Span<cb::Connection>(connections.data(), connections.size()), 0, 0);
+    const auto recordOffset =
+        reinterpret_cast<const abi::ConnectionSnapshotHeader *>(packed.data())->recordOffset;
+    const auto corrupt = [&](auto mutate) {
+        std::vector<std::uint8_t> broken = packed;
+        auto *record = reinterpret_cast<abi::ConnectionRecord *>(broken.data() + recordOffset);
+        mutate(record);
+        marshal::ConnectionSnapshot out;
+        QString reason;
+        const bool accepted =
+            marshal::unpackConnectionSnapshot(broken.data(), broken.size(), &out, &reason);
+        return !accepted && !reason.isEmpty();
+    };
+    QVERIFY2(corrupt([](abi::ConnectionRecord *record) {
+                 record->startSpec = abi::kTimeRepresentationMax + 1;
+             }),
+             "packed: an unknown spec is refused by name");
+    QVERIFY2(corrupt([](abi::ConnectionRecord *record) {
+                 record->endOffsetSeconds = 20 * 3600;
+             }),
+             "packed: an out-of-range offset is refused by name");
+    QVERIFY2(corrupt([](abi::ConnectionRecord *record) {
+                 record->startSpec = abi::kTimeNamedZone;  // with an empty zone TextRef
+             }),
+             "packed: a named zone with no payload is refused by name");
 }
 
 void AbiContractTest::aPackedConnectionSnapshotRoundTripsExactly() {
@@ -1571,6 +2116,98 @@ void AbiContractTest::aMalformedArgumentBlockIsRefusedWithADiagnostic() {
     overlong.text(QStringLiteral("rule"));
     overlong.u32(0xDEADBEEF);
     QCOMPARE(fixture.control(abi::kCmdSetMode, overlong), com::kInvalidArgument);
+}
+
+void AbiContractTest::everyRefusedCommandLeavesItsOwnDiagnostic() {
+    // The case above asserts only the Result, so it survived a module that
+    // returned a failure and left LastError() answering kNotFound - or, worse,
+    // still answering an EARLIER call's diagnostic. Both were real: a decode
+    // failure detected inside dispatch returned without setting anything.
+    //
+    // Each row uses a FRESH session, so nothing carried over can be what is
+    // being read, and the message has to name the command that just failed.
+    clashqt::integration::ModuleLoader loader(fakePath_);
+    QVERIFY(loader.load(abi::kFakeModuleId));
+
+    marshal::ByteWriter truncated;
+    truncated.u8(1);
+    truncated.u8(2);
+    truncated.u8(3);
+    marshal::ByteWriter empty;
+    const struct Row {
+        const char *label;
+        std::uint32_t command;
+        const marshal::ByteWriter &args;
+        com::Result expected;
+    } rows[] = {
+        {"kCmdSetMode", abi::kCmdSetMode, truncated, com::kInvalidArgument},
+        {"kCmdSelectNode", abi::kCmdSelectNode, empty, com::kInvalidArgument},
+        {"kCmdQueryDns", abi::kCmdQueryDns, empty, com::kInvalidArgument},
+        {"kCmdUpdateProvider", abi::kCmdUpdateProvider, empty, com::kInvalidArgument},
+        {"unknown code", 0x0BAD, empty, com::kNotImplemented},
+    };
+
+    for (const Row &row : rows) {
+        com::ComPtr<abi::IBackendSession> session;
+        QVERIFY2(loader.createSession(session), row.label);
+        auto *host = new CountingHost();
+        QCOMPARE(session->SetHost(host), com::kOk);
+
+        com::IErrorInfo *before = nullptr;
+        QCOMPARE(session->LastError(&before), com::kNotFound);
+        QCOMPARE(before, nullptr);
+
+        com::IBuffer *reply = reinterpret_cast<com::IBuffer *>(0x1);
+        QCOMPARE(session->Invoke(row.command, row.args.data().data(), row.args.size(), &reply),
+                 row.expected);
+        QVERIFY2(reply == nullptr, row.label);
+
+        com::IErrorInfo *error = nullptr;
+        QCOMPARE(session->LastError(&error), com::kOk);
+        QVERIFY2(error != nullptr, row.label);
+        com::Result code = com::kOk;
+        QCOMPARE(error->GetCode(&code), com::kOk);
+        QCOMPARE(code, row.expected);
+        const QString message = marshal::ErrorMessageOf(error);
+        QVERIFY2(!message.isEmpty(), row.label);
+        QVERIFY2(message.contains(QString::number(row.command, 16)),
+                 qPrintable(QStringLiteral("%1: '%2' does not name the command")
+                                .arg(QString::fromLatin1(row.label), message)));
+        error->Release();
+
+        // A SECOND failure, of a DIFFERENT command, on the SAME session. This
+        // is what a guard that only fills in a missing diagnostic gets wrong:
+        // the first failure left one, so the second is reported with the first
+        // one's message and names the wrong command. Invoke therefore clears on
+        // entry, and this row is what says so.
+        const std::uint32_t other =
+            row.command == abi::kCmdSelectNode ? abi::kCmdSetMode : abi::kCmdSelectNode;
+        QCOMPARE(session->Invoke(other, nullptr, 0, nullptr), com::kInvalidArgument);
+        com::IErrorInfo *second = nullptr;
+        QCOMPARE(session->LastError(&second), com::kOk);
+        QVERIFY(second != nullptr);
+        const QString secondMessage = marshal::ErrorMessageOf(second);
+        second->Release();
+        QVERIFY2(secondMessage.contains(QString::number(other, 16)),
+                 qPrintable(QStringLiteral("%1: '%2' names the PREVIOUS command, not 0x%3")
+                                .arg(QString::fromLatin1(row.label), secondMessage,
+                                     QString::number(other, 16))));
+
+        // A later SUCCESS clears it, so a diagnostic never outlives its failure.
+        com::IBuffer *identity = nullptr;
+        QCOMPARE(session->Invoke(abi::kCmdIdentity, nullptr, 0, &identity), com::kOk);
+        if (identity != nullptr) {
+            identity->Release();
+        }
+        com::IErrorInfo *stale = nullptr;
+        QCOMPARE(session->LastError(&stale), com::kNotFound);
+        QCOMPARE(stale, nullptr);
+
+        session->Close(abi::kCloseDefault, 500);
+        session.Reset();
+        host->Release();
+    }
+    QVERIFY(loader.unload());
 }
 
 void AbiContractTest::anUnknownCommandIsNotImplementedRatherThanIgnored() {

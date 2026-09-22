@@ -39,9 +39,31 @@ inline cb::Generation readGeneration(ByteReader &in) {
     return static_cast<cb::Generation>(in.u64());
 }
 
-/// An invalid QDateTime is a distinguished value, not the epoch.
+/// A timestamp travels as its INSTANT PLUS ITS REPRESENTATION - epoch
+/// milliseconds, wire.h's TimeRepresentation, the offset from UTC in seconds
+/// and, for a named zone, its IANA identifier. An invalid QDateTime is a
+/// distinguished value, not the epoch, and stays invalid.
+///
+/// WHY THE REPRESENTATION AND NOT JUST THE INSTANT. QDateTime::operator==
+/// compares instants, so a codec that dropped the zone would pass every
+/// equality test and still change what the connections page prints with
+/// toString(Qt::ISODate). A malformed representation - an unknown spec, an
+/// out-of-range offset, a zone identifier this build does not know - fails the
+/// reader, so the command carrying it is refused rather than silently retimed.
 void writeDateTime(ByteWriter &out, const QDateTime &value);
 QDateTime readDateTime(ByteReader &in);
+
+/// The three representation pieces, shared with the packed connection snapshot
+/// so the two encodings cannot drift in what they preserve.
+std::uint8_t timeRepresentationOf(const QDateTime &value) noexcept;
+/// Empty unless the value's representation is a NAMED zone.
+QString timeZoneIdOf(const QDateTime &value);
+/// Rebuilds a QDateTime from the parts, validating the enum, the offset bound
+/// and the zone identifier. `ok` is false when the parts are not decodable;
+/// `kNoTimestamp` yields an invalid QDateTime with `ok` true, because an
+/// invalid timestamp is a value and not a malformed packet.
+QDateTime dateTimeFromParts(std::int64_t ms, std::uint8_t representation,
+                            std::int32_t offsetSeconds, const QString &zoneId, bool *ok);
 
 // ------------------------------------------------------------ value types
 
@@ -122,11 +144,17 @@ QVector<T> readVector(ByteReader &in, ReadOne readOne, std::size_t minimumBytesE
 
 /// The smallest possible encoding of each record, for the count guard above.
 /// A string costs at least its 4-byte length, so these are counts of fields.
+///
+/// A timestamp costs its i64 instant PLUS its representation: the u8 spec, the
+/// i32 offset and at least the 4-byte length of an empty zone identifier.
+inline constexpr std::size_t kTimestampRepresentationBytes = 1 + 4 + 4;
 inline constexpr std::size_t kMinProxyGroupBytes = 4 * 5;
 inline constexpr std::size_t kMinProxyNodeBytes = 4 * 2 + 4;
 inline constexpr std::size_t kMinRuleBytes = 4 * 3;
-inline constexpr std::size_t kMinProviderBytes = 4 * 4 + 4 + 8 + 8 + 8 + 8;
+inline constexpr std::size_t kMinProviderBytes =
+    4 * 4 + 4 + 8 + 8 + 8 + 8 + 2 * kTimestampRepresentationBytes;
 inline constexpr std::size_t kMinTextBytes = 4;
-inline constexpr std::size_t kMinConnectionBytes = 4 * 13 + 8 * 6;
+inline constexpr std::size_t kMinConnectionBytes =
+    4 * 13 + 8 * 6 + 2 * kTimestampRepresentationBytes;
 
 }  // namespace clashqt::integration::marshal

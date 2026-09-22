@@ -1,14 +1,18 @@
 #include "integrations/component/marshal/backend_marshal.h"
 
+#include <QTimeZone>
+
 #include "core/component/abi/wire.h"
 
 namespace clashqt::integration::marshal {
 namespace {
 
+namespace abi = ::clashqt::com::abi;
+
 // A QDateTime that is not valid is written as this, and read back as an
 // invalid QDateTime rather than as a moment in time. Shared with the packed
 // connection snapshot, which has the same problem for the same field.
-constexpr std::int64_t kNoTimestamp = ::clashqt::com::abi::kNoTimestamp;
+constexpr std::int64_t kNoTimestamp = abi::kNoTimestamp;
 
 template <typename Enum>
 Enum readEnum8(ByteReader &in) {
@@ -17,16 +21,103 @@ Enum readEnum8(ByteReader &in) {
 
 }  // namespace
 
+std::uint8_t timeRepresentationOf(const QDateTime &value) noexcept {
+    switch (value.timeSpec()) {
+        case Qt::UTC:
+            return abi::kTimeUtc;
+        case Qt::OffsetFromUTC:
+            return abi::kTimeOffsetFromUtc;
+        case Qt::TimeZone:
+            return abi::kTimeNamedZone;
+        case Qt::LocalTime:
+        default:
+            return abi::kTimeLocal;
+    }
+}
+
+QString timeZoneIdOf(const QDateTime &value) {
+    // Only a NAMED zone needs its identifier; asking a local-time value for its
+    // zone would answer the machine's current one and silently turn "local"
+    // into "Europe/Berlin" on the far side, which is the opposite of preserving
+    // the representation.
+    if (value.timeSpec() != Qt::TimeZone) {
+        return {};
+    }
+    return QString::fromUtf8(value.timeRepresentation().id());
+}
+
+QDateTime dateTimeFromParts(std::int64_t ms, std::uint8_t representation,
+                            std::int32_t offsetSeconds, const QString &zoneId, bool *ok) {
+    const auto refuse = [&]() -> QDateTime {
+        if (ok != nullptr) {
+            *ok = false;
+        }
+        return {};
+    };
+    if (ok != nullptr) {
+        *ok = true;
+    }
+    if (ms == kNoTimestamp) {
+        return {};  // invalid stays invalid, and that is not a decode failure
+    }
+    if (representation > abi::kTimeRepresentationMax) {
+        return refuse();
+    }
+    switch (representation) {
+        case abi::kTimeUtc:
+            return QDateTime::fromMSecsSinceEpoch(ms, QTimeZone::UTC);
+        case abi::kTimeOffsetFromUtc: {
+            if (offsetSeconds < -abi::kMaxUtcOffsetSeconds ||
+                offsetSeconds > abi::kMaxUtcOffsetSeconds) {
+                return refuse();
+            }
+            return QDateTime::fromMSecsSinceEpoch(
+                ms, QTimeZone::fromSecondsAheadOfUtc(offsetSeconds));
+        }
+        case abi::kTimeNamedZone: {
+            if (zoneId.isEmpty()) {
+                return refuse();
+            }
+            const QTimeZone zone(zoneId.toUtf8());
+            if (!zone.isValid()) {
+                // A zone this build's database does not know is refused rather
+                // than degraded to local time: degrading is exactly the silent
+                // representation change this encoding exists to stop.
+                return refuse();
+            }
+            return QDateTime::fromMSecsSinceEpoch(ms, zone);
+        }
+        case abi::kTimeLocal:
+        default:
+            return QDateTime::fromMSecsSinceEpoch(ms, QTimeZone::LocalTime);
+    }
+}
+
 void writeDateTime(ByteWriter &out, const QDateTime &value) {
     out.i64(value.isValid() ? value.toMSecsSinceEpoch() : kNoTimestamp);
+    out.u8(timeRepresentationOf(value));
+    out.i32(value.isValid() ? value.offsetFromUtc() : 0);
+    out.text(timeZoneIdOf(value));
 }
 
 QDateTime readDateTime(ByteReader &in) {
     const std::int64_t ms = in.i64();
-    if (ms == kNoTimestamp) {
+    const std::uint8_t representation = in.u8();
+    const std::int32_t offsetSeconds = in.i32();
+    const QString zoneId = in.text();
+    if (!in.ok()) {
         return {};
     }
-    return QDateTime::fromMSecsSinceEpoch(ms);
+    bool decoded = false;
+    const QDateTime value = dateTimeFromParts(ms, representation, offsetSeconds, zoneId, &decoded);
+    if (!decoded) {
+        // Latched on the reader, so the command that contains this field is
+        // refused with kInvalidArgument rather than delivering a timestamp the
+        // producer did not send.
+        in.fail();
+        return {};
+    }
+    return value;
 }
 
 void writeEndpoint(ByteWriter &out, const cb::Endpoint &endpoint) {
