@@ -1516,3 +1516,15 @@ The package script now explicitly ad-hoc signs the module dylib and helper first
 then the bundle, then verifies deep/strict. The package gate remains OPEN until a
 new clone's install completes without deployment ERROR lines and deep verification
 passes. No certificate, trust store or engine re-signing is used.
+
+### Controlled developer signing sequence verified
+
+Explicit Qt additional-module registration still left Qt's automatic signing with
+an unsigned nested dylib. A disposable artifact probe deep-signed the deployed
+bundle *without* its engine, restored the exact built engine, signed the outer
+bundle without --deep, and passed deep/strict verification with engine SHA unchanged
+(6f53b2e18687b26c9948a804ab9e7b1b4421e8d0d3a391c11e8468dd1685b544).
+Packaging now runs Qt deployment with -no-codesign, signs the nested bundle before
+installing the engine, then seals/verifies the completed app. Repeat staging removes
+only the prior generated engine copy before deployment. No signing credentials,
+network timestamp or trust-store operation is used. New clean qualification pending.

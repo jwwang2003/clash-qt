@@ -8,6 +8,7 @@ add_dependencies(clash-qt clash_qt_backend_module)
 set_property(TARGET clash-qt APPEND PROPERTY LINK_DEPENDS
     "$<TARGET_FILE:clash_qt_backend_module>")
 if(APPLE)
+    find_program(clash_qt_codesign NAMES codesign REQUIRED)
     # Copy before Qt deployment so the module's runtime dependencies are also
     # resolved inside the bundle. The loader uses this installed location.
     add_custom_command(TARGET clash-qt POST_BUILD
@@ -58,6 +59,7 @@ if(APPLE OR WIN32)
         get_filename_component(qt_library_dir "${Qt6_DIR}/../.." ABSOLUTE)
         list(APPEND deploy_options DEPLOY_TOOL_OPTIONS
             "-libpath=${qt_library_dir}"
+            "-no-codesign"
             "-executable=$<TARGET_BUNDLE_DIR:clash-qt>/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>")
     endif()
     qt_generate_deploy_qml_app_script(TARGET clash-qt OUTPUT_SCRIPT deploy_script
@@ -76,15 +78,23 @@ include(\"${PROJECT_SOURCE_DIR}/cmake/ResolveQmlLinks.cmake\")
 resolve_qml_links(\"$<TARGET_BUNDLE_DIR:clash-qt>\" \"${qt_qml_dir}\")
 ")
         add_custom_command(TARGET clash-qt POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -P "${development_qml_script}" VERBATIM)
+            COMMAND ${CMAKE_COMMAND} -P "${development_qml_script}"
+            COMMAND "${clash_qt_codesign}" --force --deep --sign -
+                "$<TARGET_BUNDLE_DIR:clash-qt>"
+            VERBATIM)
         qt6_generate_deploy_script(TARGET clash-qt OUTPUT_SCRIPT deploy_script CONTENT "
+# Remove an older staged engine before deployment/signing. The pinned build
+# output is installed afterwards and must never be rewritten by Qt or codesign.
+file(REMOVE \"\${QT_DEPLOY_PREFIX}/clash-qt.app/Contents/MacOS/mihomo\")
 qt_deploy_qml_imports(TARGET clash-qt PLUGINS_FOUND qml_plugins)
 include(\"${PROJECT_SOURCE_DIR}/cmake/ResolveQmlLinks.cmake\")
 resolve_qml_links(\"\${QT_DEPLOY_PREFIX}/clash-qt.app\" \"${qt_qml_dir}\")
 qt_deploy_runtime_dependencies(EXECUTABLE \"clash-qt.app\"
     ADDITIONAL_MODULES \${qml_plugins}
         \"clash-qt.app/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>\"
-    DEPLOY_TOOL_OPTIONS \"-libpath=${qt_library_dir}\")
+    DEPLOY_TOOL_OPTIONS \"-libpath=${qt_library_dir}\" \"-no-codesign\")
+execute_process(COMMAND \"${clash_qt_codesign}\" --force --deep --sign -
+    \"\${QT_DEPLOY_PREFIX}/clash-qt.app\" COMMAND_ERROR_IS_FATAL ANY)
 ")
     endif()
     install(SCRIPT ${deploy_script})
@@ -113,15 +123,8 @@ if(APPLE)
     # developer bundle afterwards without re-signing the pinned engine itself.
     # Ad-hoc signing needs no certificate or trust-store change. Unlike a tool
     # that only logs an error, verification failure must fail `make package`.
-    find_program(clash_qt_codesign NAMES codesign REQUIRED)
     install(CODE "
 set(_bundle \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/clash-qt.app\")
-execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
-    \"\${_bundle}/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>\"
-    COMMAND_ERROR_IS_FATAL ANY)
-execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
-    \"\${_bundle}/Contents/Helpers/clash-qt-service-helper\"
-    COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
     \"\${_bundle}\"
     COMMAND_ERROR_IS_FATAL ANY)
