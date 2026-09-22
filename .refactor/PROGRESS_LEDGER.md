@@ -1789,3 +1789,50 @@ or `tests/`.
 and does not belong inside a documentation wave. It should come before P5: until
 it is fixed, a green workflow lane is not evidence, and P5 will be verified
 against it.
+
+## Build tree cleared, and what clearing it exposed
+
+All build output removed at the user's request: `build/` (939 MB, holding three
+`clash-qt.app` bundles that Spotlight was offering as three separate apps) and
+about 120 MB of `/tmp/clash-qt-*` debris from earlier sessions. Spotlight indexes
+no `clash-qt.app` afterwards. One 419 MB copy remains in the user's Trash from a
+cleanup on 2026-09-20; it is theirs to empty, alongside unrelated items.
+
+Rebuilding from nothing exposed two things.
+
+**`make run` named an engine that `make build` never produced.** `clash-qt-core`
+is a custom target deliberately outside the default build, because compiling Go
+on every build would be paid by everyone who never runs the app. But `run:`
+depended only on `build` while launching with `CLASH_QT_CORE_BINARY` pointed at
+`$(BUILD_DIR)/core/mihomo`. On a fresh clone the first `make run` therefore
+launched against a path that had never been written. `run:` now depends on
+`core`. Same class as everything else here: a consumer naming a producer that
+nothing triggers.
+
+**A measurement error of mine, again.** I reported "61/61 green" from bare
+`ctest`. Bare `ctest` runs every registered test including the `real-core` lane,
+which `make test` deliberately excludes and which only `make test-integration`
+builds the engine for. My green runs were green because I had manually built the
+engine earlier in the session; on a clean tree that invocation fails. The
+supported lanes are `make test` (56/56 green) and `make test-integration`. Bare
+`ctest` is not a lane and should not be quoted as one.
+
+**`backend-real-contract` is intermittent against the real engine.** Failed 1 run
+in 3 run alone, at 13.46 s against 13.47 s for passing runs -- identical timing,
+so not a load effect and not a timeout:
+
+    FAIL!  : aRetiredStreamDropCannotDisconnectTheNewSession()
+             'observer.connections.size() == transitions' returned FALSE
+             (the death of the retired session's socket reported the healthy
+             replacement as disconnected)
+    tests/core/mihomo/backend_real_contract_test.cpp:643
+
+A worker independently hit a different case in the same suite and the same area,
+`sharedReplacementAtTheSameAddressOpensANewSession`. Two cases about the same
+thing: whether a retired session's socket dying is correctly distinguished from
+the replacement's. This is a product race, not a harness one, and it is exactly
+what the real-core lane exists to find.
+
+Three separate intermittents are now open: this one, `routing-controls-journey`,
+and the held-port false green. None is fixed. The refactor should not proceed to
+P5 on the assumption that a green lane means a correct system.

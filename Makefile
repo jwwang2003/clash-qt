@@ -76,7 +76,12 @@ module: $(BUILD_DIR)/CMakeCache.txt
 build: $(BUILD_DIR)/CMakeCache.txt
 	@$(CMAKE) --build $(BUILD_DIR) -j $(JOBS)
 
-run: build
+# Depends on core, not just build: this recipe names the staged engine in the
+# environment it launches with, and the engine is not part of the default build
+# because compiling Go on every build would be paid by everyone who never runs
+# the app. Without this dependency a fresh clone's first `make run` launches
+# pointed at a path that was never produced.
+run: build core
 	@$(CMAKE) -E env CLASH_QT_CORE_BINARY=$(CURDIR)/$(BUILD_DIR)/core/mihomo $(BUILD_DIR)/clash-qt
 
 test: build
