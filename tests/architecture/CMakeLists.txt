@@ -142,3 +142,6 @@ set_tests_properties(arch-graph arch-public-headers arch-selftest
 # The probe test shells out to the build system; it must not run concurrently
 # with another job that is writing the same build tree.
 set_tests_properties(arch-public-headers PROPERTIES RUN_SERIAL TRUE)
+foreach(name arch-graph arch-public-headers arch-selftest)
+    clash_qt_isolate_test(${name})
+endforeach()

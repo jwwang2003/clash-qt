@@ -1457,3 +1457,12 @@ compilation used build/dev and the original working-tree build/dev was untouched
 The facade now uses --test-dir with explicit output/no-tests options, equivalent
 to the presets without their fixed binary directory. A new clean clone will
 rerun all three Make gates; the first partial result is retained, not overwritten.
+
+### Coverage index and explicit checker isolation
+
+The configured registry contains 59 entries: routine 54, integration 20, native/
+privileged 0. tests/README.md is reconciled to that actual registration, including
+shared/backend/module lanes and W02 split functions. Architecture checks already
+inherited the qualification runner's isolated data directory; they now also get
+explicit per-entry CLASH_QT_DATA_DIR for direct CTest use, just like every other
+entry. This final registration change will be included in the final clean clone.
