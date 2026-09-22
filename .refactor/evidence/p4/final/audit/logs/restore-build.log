@@ -1,0 +1,20 @@
+[1/22] Automatic MOC and UIC for target clash_mihomo_impl
+[2/21] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_module.cpp.o
+[3/21] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/module_export.cpp.o
+[4/21] Building CXX object CMakeFiles/clash_module_host.dir/src/integrations/component/module_loader.cpp.o
+[5/21] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_session.cpp.o
+[6/21] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/mihomo_module_entry.cpp.o
+[7/21] Linking CXX shared library modules/libclash_qt_backend_module.dylib
+[8/21] Linking CXX static library libclash_module_host.a
+[9/21] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/mihomo_client.cpp.o
+[10/21] Linking CXX static library src/core/libclash_mihomo_impl.a
+[11/21] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/backend_module.cpp.o
+[12/21] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/module_export.cpp.o
+[13/21] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/backend_session.cpp.o
+[14/21] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/support/component/fake_module_entry.cpp.o
+[15/21] Linking CXX shared library modules/libclash_qt_fake_backend_module.dylib
+[16/21] Automatic MOC and UIC for target abi-contract-tests
+[17/20] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/__/__/support/backend/common_contract_driver.cpp.o
+[18/20] Linking CXX executable tests/core/mihomo/backend-real-contract-tests
+[19/20] Building CXX object tests/contracts/component/abi/CMakeFiles/abi-contract-tests.dir/abi_contract_test.cpp.o
+[20/20] Linking CXX executable tests/contracts/component/abi/abi-contract-tests

@@ -1,0 +1,127 @@
+[
+  {
+    "label": "benchmark-debug",
+    "cmd": [
+      "ctest",
+      "--test-dir",
+      "/tmp/clash-qt-p4.w0Y8Uo/fresh-2/build/p4",
+      "-V",
+      "-R",
+      "^connection-snapshot-marshal$"
+    ],
+    "cwd": "/Users/junweiwang/Documents/workspace/app/clash-qt",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 5.433808088302612,
+    "exit": 0
+  },
+  {
+    "label": "benchmark-release-final",
+    "cmd": [
+      "ctest",
+      "--test-dir",
+      "/tmp/clash-qt-p4.w0Y8Uo/benchmark-headless",
+      "-V",
+      "-R",
+      "^connection-snapshot-marshal$"
+    ],
+    "cwd": "/Users/junweiwang/Documents/workspace/app/clash-qt",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 3.484808921813965,
+    "exit": 0
+  },
+  {
+    "label": "fresh-test",
+    "cmd": [
+      "make",
+      "test",
+      "BUILD_DIR=build/p4",
+      "JOBS=8",
+      "CMAKE_PREFIX_PATH=/opt/homebrew"
+    ],
+    "cwd": "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 256.3057882785797,
+    "exit": 0
+  },
+  {
+    "label": "fresh-test-integration",
+    "cmd": [
+      "make",
+      "test-integration",
+      "BUILD_DIR=build/p4",
+      "JOBS=8",
+      "CMAKE_PREFIX_PATH=/opt/homebrew"
+    ],
+    "cwd": "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 121.23947310447693,
+    "exit": 0
+  },
+  {
+    "label": "fresh-package",
+    "cmd": [
+      "make",
+      "package",
+      "BUILD_DIR=build/p4",
+      "JOBS=8",
+      "CMAKE_PREFIX_PATH=/opt/homebrew"
+    ],
+    "cwd": "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 228.34443068504333,
+    "exit": 0
+  },
+  {
+    "label": "final-artifact-inspection",
+    "cmd": [
+      "python3",
+      "/tmp/clash-qt-p4.w0Y8Uo/collect_artifacts.py",
+      "fresh-6"
+    ],
+    "cwd": "/Users/junweiwang/Documents/workspace/app/clash-qt",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 2.9929490089416504,
+    "exit": 0
+  },
+  {
+    "label": "final-packaged-launch",
+    "cmd": [
+      "python3",
+      "/tmp/clash-qt-p4.w0Y8Uo/package_launch.py",
+      "/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/stage/clash-qt.app/Contents/MacOS/clash-qt",
+      "cocoa"
+    ],
+    "cwd": "/Users/junweiwang/Documents/workspace/app/clash-qt",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 3.6327569484710693,
+    "exit": 0
+  },
+  {
+    "label": "qualified-installed-sdk-consumer",
+    "cmd": [
+      "/tmp/clash-qt-p4.w0Y8Uo/sdk-consumer-p4/component_consumer",
+      "--module",
+      "/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/modules/libclash_qt_backend_module.dylib",
+      "--engine",
+      "/tmp/clash-qt-p4.w0Y8Uo/consumer-p4-run/mihomo",
+      "--config",
+      "/tmp/clash-qt-p4.w0Y8Uo/consumer-p4-run/config.yaml",
+      "--work-dir",
+      "/tmp/clash-qt-p4.w0Y8Uo/consumer-p4-run",
+      "--timeout-ms",
+      "30000"
+    ],
+    "cwd": "/Users/junweiwang/Documents/workspace/app/clash-qt",
+    "before": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "after": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+    "seconds": 0.8397922515869141,
+    "exit": 0
+  }
+]

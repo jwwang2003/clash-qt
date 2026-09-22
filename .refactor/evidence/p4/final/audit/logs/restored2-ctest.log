@@ -1,0 +1,19 @@
+Test project /tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/build
+    Start 36: config-composer
+1/4 Test #36: config-composer ..................   Passed    0.08 sec
+    Start 37: preset-document
+2/4 Test #37: preset-document ..................   Passed    0.03 sec
+    Start 39: preset-store
+3/4 Test #39: preset-store .....................   Passed    0.26 sec
+    Start 40: effective-config-preview
+4/4 Test #40: effective-config-preview .........   Passed    5.10 sec
+
+100% tests passed out of 4
+
+Label Time Summary:
+config         =   5.48 sec*proc (4 tests)
+core           =   5.48 sec*proc (4 tests)
+integration    =   5.37 sec*proc (2 tests)
+unit           =   0.11 sec*proc (2 tests)
+
+Total Test time (real) =   5.49 sec

@@ -1,0 +1,84 @@
+Test project /tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/build
+    Start 36: config-composer
+1/4 Test #36: config-composer ..................Subprocess aborted***Exception:   0.21 sec
+********* Start testing of ConfigComposerTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : ConfigComposerTest::initTestCase()
+FAIL!  : ConfigComposerTest::everyLayerOverridesTheOneBelowIt() Caught unhandled exception
+   Loc: [/private/tmp/qtbase-20260516-16964-onrh03/qtbase-everywhere-src-6.11.1/src/testlib/qtestcase.cpp(2002)]
+Totals: 1 passed, 1 failed, 0 skipped, 0 blacklisted, 4ms
+********* Finished testing of ConfigComposerTest *********
+libc++abi: terminating due to uncaught exception of type YAML::InvalidNode: invalid node; first invalid key: "only-profile"
+
+    Start 37: preset-document
+2/4 Test #37: preset-document ..................   Passed    0.05 sec
+    Start 39: preset-store
+3/4 Test #39: preset-store .....................***Failed    0.22 sec
+********* Start testing of PresetStoreTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : PresetStoreTest::initTestCase()
+PASS   : PresetStoreTest::afreshStoreHasAnEmptyVersionOneDocumentAndNoFile()
+PASS   : PresetStoreTest::savingPersistsAtomicallyAndSurvivesAReopen()
+PASS   : PresetStoreTest::whatIsStoredIsNormalisedSoSavingItAgainChangesNothing()
+PASS   : PresetStoreTest::arejectedDocumentChangesNothingAtAll()
+PASS   : PresetStoreTest::amalformedFileIsRecoveredFromTheLastGoodCopyWithADiagnostic()
+PASS   : PresetStoreTest::astructurallyInvalidFileIsRecoveredToo()
+PASS   : PresetStoreTest::amissingPrimaryFileIsRecoveredFromTheLastGoodCopy()
+PASS   : PresetStoreTest::apresetFileThatWillNotOpenIsRecoveredNotTreatedAsAFirstRun()
+PASS   : PresetStoreTest::adirectoryLeftAtThePresetPathIsAnUnusableDocument()
+PASS   : PresetStoreTest::therecoveredDocumentIsWhatTheNextSaveBuildsOn()
+PASS   : PresetStoreTest::presetsAlreadyLoadedAreKeptWhenNeitherCopyCanBeRead()
+PASS   : PresetStoreTest::amalformedPrimaryWithNoRecoveryCopyIsReportedNotAssumedEmpty()
+PASS   : PresetStoreTest::withNoUsableCopyAnywhereTheStoreStartsEmptyAndSaysSo()
+FAIL!  : PresetStoreTest::presetsAreAppliedToTheGeneratedRuntimeConfiguration() Compared values are not the same
+   Actual   (config["mode"].as<std::string>()): "rule"
+   Expected (std::string("global"))           : "global"
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/profiles/preset_store_test.cpp(412)]
+PASS   : PresetStoreTest::ahostilePresetCannotMoveTheControllerSecretOrDashboardOfARealGeneration()
+PASS   : PresetStoreTest::apresetTooDeepToComposeFailsGenerationAndKeepsThePreviousRuntime()
+PASS   : PresetStoreTest::amixedPortRuntimeOverrideStillReachesTheGeneratedRuntime()
+PASS   : PresetStoreTest::anImpossiblePortInTheOverridesFileCannotReachTheEngine()
+PASS   : PresetStoreTest::apresetForAnotherProfileDoesNotAffectThisOne()
+PASS   : PresetStoreTest::changingThePresetsCancelsAGenerationAlreadyRunning()
+PASS   : PresetStoreTest::maintenanceModeRefusesPresetWritesLikeEveryOtherMutation()
+PASS   : PresetStoreTest::cleanupTestCase()
+Totals: 22 passed, 1 failed, 0 skipped, 0 blacklisted, 169ms
+********* Finished testing of PresetStoreTest *********
+
+    Start 40: effective-config-preview
+4/4 Test #40: effective-config-preview .........Subprocess aborted***Exception:   2.27 sec
+********* Start testing of EffectiveConfigPreviewTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : EffectiveConfigPreviewTest::initTestCase()
+FAIL!  : EffectiveConfigPreviewTest::thePreviewIsTheSameCompositionTheRuntimeWouldGet() Compared values are not the same
+   Actual   (previewed["mode"].as<std::string>()): "rule"
+   Expected (std::string("global"))              : "global"
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/profiles/effective_config_preview_test.cpp(106)]
+PASS   : EffectiveConfigPreviewTest::thePreviewCarriesProvenanceAndTheEnhancementLog()
+PASS   : EffectiveConfigPreviewTest::thePreviewShowsThePortTheUserChoseAndCreditsTheOverride()
+PASS   : EffectiveConfigPreviewTest::apreviewOfAmergeTooDeepToApplyFailsWithTheReason()
+PASS   : EffectiveConfigPreviewTest::anExplicitUidPreviewsThatProfileNotTheSelectedOne()
+PASS   : EffectiveConfigPreviewTest::apreviewWritesNothingAnywhereInTheDataDirectory()
+PASS   : EffectiveConfigPreviewTest::apreviewDoesNotDisturbRuntimeGeneration()
+FAIL!  : EffectiveConfigPreviewTest::onlyTheNewestRequestIsAnswered() Caught unhandled exception
+   Loc: [/private/tmp/qtbase-20260516-16964-onrh03/qtbase-everywhere-src-6.11.1/src/testlib/qtestcase.cpp(2002)]
+Totals: 7 passed, 2 failed, 0 skipped, 0 blacklisted, 2036ms
+********* Finished testing of EffectiveConfigPreviewTest *********
+libc++abi: terminating due to uncaught exception of type YAML::TypedBadConversion<int>: bad conversion
+
+
+25% tests passed, 3 tests failed out of 4
+
+Label Time Summary:
+config         =   2.75 sec*proc (4 tests)
+core           =   2.75 sec*proc (4 tests)
+integration    =   2.49 sec*proc (2 tests)
+unit           =   0.26 sec*proc (2 tests)
+
+Total Test time (real) =   2.76 sec
+
+The following tests FAILED:
+	 36 - config-composer (Subprocess aborted)              config core unit
+	 39 - preset-store (Failed)                             config core integration
+	 40 - effective-config-preview (Subprocess aborted)     config core integration
+Errors while running CTest

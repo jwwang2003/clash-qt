@@ -1,0 +1,17 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+objc[55979]: Class QT_ROOT_LEVEL_POOL__THESE_OBJECTS_WILL_BE_RELEASED_WHEN_QAPP_GOES_OUT_OF_SCOPE is implemented in both /opt/homebrew/Cellar/qtbase/6.11.1/lib/QtCore.framework/Versions/A/QtCore (0x1033bc6b0) and /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/stage/clash-qt.app/Contents/Frameworks/QtCore.framework/Versions/A/QtCore (0x10527c6b0). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[55979]: Class KeyValueObserver is implemented in both /opt/homebrew/Cellar/qtbase/6.11.1/lib/QtCore.framework/Versions/A/QtCore (0x1033bc6d8) and /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/stage/clash-qt.app/Contents/Frameworks/QtCore.framework/Versions/A/QtCore (0x10527c6d8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[55979]: Class RunLoopModeTracker is implemented in both /opt/homebrew/Cellar/qtbase/6.11.1/lib/QtCore.framework/Versions/A/QtCore (0x1033bc728) and /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/stage/clash-qt.app/Contents/Frameworks/QtCore.framework/Versions/A/QtCore (0x10527c728). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[55979]: Class QDarwinPermissionHandler is implemented in both /opt/homebrew/Cellar/qtbase/6.11.1/lib/QtCore.framework/Versions/A/QtCore (0x1033bc7a0) and /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/stage/clash-qt.app/Contents/Frameworks/QtCore.framework/Versions/A/QtCore (0x10527c7a0). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+qt.core.qobject.connect: QObject::connect(QObject, Unknown): invalid nullptr parameter
+qt.core.qobject.connect: QObject::connect(QObject, Unknown): invalid nullptr parameter
+QCoreApplication::applicationDirPath: Please instantiate the QApplication object first
+QBasicTimer::start: current thread's event dispatcher has already been destroyed
+the core did not become ready within 30000 ms
+loaded: clash-qt mihomo backend module (module-r1, backend-r4) (module abi 1)
+start submitted as request 1
+live objects before unload: 0
+unmappable: yes
+image unmapped: yes
+teardown complete
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

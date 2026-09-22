@@ -1,0 +1,29 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+{
+  "source_revision": "be851f5edf34a25d216df62fcd3d35ab52a08e9b",
+  "source_root": "/tmp/clash-qt-p4.w0Y8Uo/fresh-6",
+  "engine": {
+    "source_path": "3rdparty/mihomo",
+    "source_commit": "ab405bad5beeeac8b003bb01f60f134f6df54471",
+    "source_describe": "v1.19.31",
+    "source_state": "clean",
+    "go_toolchain": "go version go1.26.5 darwin/arm64",
+    "build_tags": "with_gvisor",
+    "build_env": [
+      "CGO_ENABLED=0"
+    ],
+    "artifact": "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/core/mihomo",
+    "artifact_bytes": 56406850,
+    "artifact_sha256": "6f53b2e18687b26c9948a804ab9e7b1b4421e8d0d3a391c11e8468dd1685b544"
+  },
+  "engine_sha256": "6f53b2e18687b26c9948a804ab9e7b1b4421e8d0d3a391c11e8468dd1685b544",
+  "staged_engine_sha256": "6f53b2e18687b26c9948a804ab9e7b1b4421e8d0d3a391c11e8468dd1685b544",
+  "module_sha256": "c98c32cb2bd8c950a1fbe87bac071376f0f9d4d22d17d7ffe0e7b44347ab455b",
+  "staged_module_sha256": "5061ab32cb719279bdd9a4170d725a5a411100c791bf4b2bf9d27db10b6e9de0",
+  "module_exports": "000000000001b734 T _clashqt_component_module_entry",
+  "app_private_implementation_symbols": [],
+  "bundle_deep_strict_signature": "pass",
+  "registered_tests": 59,
+  "tests_missing_data_dir": []
+}
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

@@ -1,0 +1,7 @@
+[1/9] Automatic MOC and UIC for target clash_mihomo_impl
+[2/8] Automatic MOC and UIC for target clash_qt_backend_module
+[3/7] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/mihomo_client.cpp.o
+[4/7] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_client.cpp.o
+[5/7] Linking CXX static library src/core/libclash_mihomo_impl.a
+[6/7] Linking CXX shared library modules/libclash_qt_backend_module.dylib
+[7/7] Linking CXX executable tests/core/mihomo/backend-real-contract-tests

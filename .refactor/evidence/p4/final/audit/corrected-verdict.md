@@ -1,0 +1,11 @@
+**Attribution corrected. Prior GO stands.**
+
+**Withdrawn.** The claim that my harness's `QSettings("clash-qt","clash-qt")` lookup provoked a `cfprefsd` flush and that *I* caused the first geometry transition was a mechanism hypothesis reported as a finding. The captured log (`preference-change-process.json`, 110 events, **all** pid 57802) contains no preference-*write* event by any process; its single CFPreferences event is a *read* at 16:28:47.994, and no `cfprefsd` events were captured.
+
+**Confirmed instead.** A separate user-driven GUI clash-qt, pid **57802**, image `…/fresh-6/build/p4/clash-qt.app/…` — distinct from the coordinator's staged smoke (pid 51881, `…/stage/…`, ended 16:23:23) and from my own staged launches (16:36:05, 16:37:45) — was in use 16:28:47–16:29:21 and took a Dock quit at **16:29:20.934**, twelve seconds before my first ctest logged. The user confirms: *"Yes, I used a separate clash-qt window."* That build has a UI and can author `window.geometry`; my `CLASH_QT_BUILD_APP=OFF` build cannot. Its authorship is best-fitting but **not directly observed**; the second transition (on-disk mtime **16:35:57**, 51 s after my last suite, 6½ min after pid 57802 exited) is **unattributed** — `cfprefsd` defers flushes, so mtime identifies no writer. The guard measures concurrent hash change, not causality.
+
+**Current plist, read now:** `204612a89e48…428ffc`, 133 bytes, one key `window.geometry` (66 B, tail `…0451`), mtime 16:35:57 — unchanged by me. Historical `681784…371c` → `82a0d1e4…f04` → current preserved; no key ever added, removed or corrupted. No write, no restoration, no launch, no helper/network/OS operation; repo clean at `be851f5` (the modified `.refactor/*` files are the coordinator's, not mine).
+
+**Preserved:** my helper non-connection claim is scoped to *my* audit — early coordinator smoke reaching installed-helper status stays documented (`P4_QUALIFICATION.md:96`); runtime-build-tag vs. same physical Qt image; sample's default source-tree include (`examples/component_consumer/CMakeLists.txt:9`); redundant host-queue mutant (`module_backend.cpp:436-446`).
+
+Evidence: `/tmp/clash-qt-p4.w0Y8Uo/preference-recheck/01-preference-attribution-correction.md`; §8 amended in `final-audit/notes/02-runtime-evidence-and-mutations.md`.

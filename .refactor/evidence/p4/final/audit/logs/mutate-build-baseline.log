@@ -1,0 +1,88 @@
+[1/88] Automatic UIC for target clash_backend_fake
+[2/88] Automatic MOC and UIC for target clash_preferences
+[3/88] Automatic MOC and UIC for target clash_yaml
+[4/88] Building CXX object src/core/CMakeFiles/clash_preferences.dir/clash_preferences_autogen/mocs_compilation.cpp.o
+[5/88] Building CXX object src/core/CMakeFiles/clashqt_com.dir/component/component.cpp.o
+[6/88] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/com_objects.cpp.o
+[7/88] Building CXX object tests/CMakeFiles/clash-qt-fake-core.dir/fixtures/fake_core_main.cpp.o
+[8/88] Linking CXX executable tests/clash-qt-fake-core
+[9/88] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/codec.cpp.o
+[10/88] Building CXX object src/core/CMakeFiles/clash_yaml.dir/clash_yaml_autogen/mocs_compilation.cpp.o
+[11/88] Linking CXX static library src/core/libclashqt_com.a
+[12/88] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/backend_marshal.cpp.o
+[13/88] Building CXX object src/core/CMakeFiles/clash_preferences.dir/preferences/preferences.cpp.o
+[14/88] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/connection_snapshot.cpp.o
+[15/88] Linking CXX static library src/core/libclash_preferences.a
+[16/88] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/runtime_tag.cpp.o
+[17/88] Linking CXX static library libclash_component_marshal.a
+[18/88] Automatic MOC and UIC for target clash_module_host
+[19/88] Building CXX object CMakeFiles/clash_module_host.dir/clash_module_host_autogen/mocs_compilation.cpp.o
+[20/88] Automatic MOC and UIC for target clash_test_support
+[21/88] Automatic MOC and UIC for target clash_platform
+[22/88] Running AUTOMOC file extraction for target clash_test_support
+[23/88] Running moc --collect-json for target clash_test_support
+[24/88] Building CXX object src/core/CMakeFiles/clash_yaml.dir/config/yaml_util.cpp.o
+[25/88] Linking CXX static library src/core/libclash_yaml.a
+[26/88] Building CXX object tests/CMakeFiles/clash_backend_fake.dir/support/backend/recording_observer.cpp.o
+[27/88] Building CXX object tests/CMakeFiles/clash_backend_fake.dir/support/backend/fake_backend.cpp.o
+[28/88] Linking CXX static library tests/libclash_backend_fake.a
+[29/88] Automatic MOC and UIC for target clash_qt_fake_backend_module
+[30/88] Automatic MOC and UIC for target clash_qt_backend_module
+[31/88] Building CXX object tests/CMakeFiles/clash_test_support.dir/clash_test_support_autogen/mocs_compilation.cpp.o
+[32/88] Building CXX object CMakeFiles/clash_module_host.dir/src/integrations/component/module_loader.cpp.o
+[33/88] Automatic MOC and UIC for target clash_mihomo_impl
+[34/88] Building CXX object CMakeFiles/clash_module_host.dir/src/integrations/component/module_backend.cpp.o
+[35/88] Building CXX object tests/CMakeFiles/clash_test_support.dir/support/scoped_environment.cpp.o
+[36/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/host_privileged_service.cpp.o
+[37/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_module.cpp.o
+[38/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_session.cpp.o
+[39/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/clash_qt_backend_module_autogen/mocs_compilation.cpp.o
+[40/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/module_export.cpp.o
+[41/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/mihomo_module_entry.cpp.o
+[42/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/controller_discovery.cpp.o
+[43/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/provider_client.cpp.o
+[44/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_client.cpp.o
+[45/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_backend.cpp.o
+[46/88] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/process/core_process.cpp.o
+[47/88] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/controller_discovery.cpp.o
+[48/88] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/clash_mihomo_impl_autogen/mocs_compilation.cpp.o
+[49/88] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/mihomo_client.cpp.o
+[50/88] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/clash_qt_fake_backend_module_autogen/mocs_compilation.cpp.o
+[51/88] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/provider_client.cpp.o
+[52/88] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/mihomo_backend.cpp.o
+[53/88] Building CXX object tests/CMakeFiles/clash_test_support.dir/support/fake_core.cpp.o
+[54/88] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/process/core_process.cpp.o
+[55/88] Building CXX object tests/CMakeFiles/clash_test_support.dir/support/loopback_server.cpp.o
+[56/88] Linking CXX shared library modules/libclash_qt_backend_module.dylib
+[57/88] Linking CXX static library libclash_module_host.a
+[58/88] Linking CXX static library src/core/libclash_mihomo_impl.a
+[59/88] Linking CXX static library tests/libclash_test_support.a
+[60/88] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/backend_module.cpp.o
+[61/88] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/backend_session.cpp.o
+[62/88] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/support/component/fake_module_entry.cpp.o
+[63/88] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/host_privileged_service.cpp.o
+[64/88] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/module_export.cpp.o
+[65/88] Linking CXX shared library modules/libclash_qt_fake_backend_module.dylib
+[66/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/clash_platform_autogen/mocs_compilation.cpp.o
+[67/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/proxy/system_proxy_service.cpp.o
+[68/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/proxy/system_proxy.cpp.o
+[69/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/browser/browser_launcher.cpp.o
+[70/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/service/privileged_service_client.cpp.o
+[71/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/service/privileged_service_installer.cpp.o
+[72/88] Automatic MOC and UIC for target backend-real-contract-tests
+[73/88] Automatic MOC and UIC for target abi-contract-tests
+[74/88] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/backend-real-contract-tests_autogen/mocs_compilation.cpp.o
+[75/88] Automatic MOC and UIC for target connection-snapshot-marshal-tests
+[76/88] Building CXX object tests/contracts/component/abi/CMakeFiles/abi-contract-tests.dir/abi-contract-tests_autogen/mocs_compilation.cpp.o
+[77/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/system/autostart.cpp.o
+[78/88] Building CXX object tests/contracts/component/abi/CMakeFiles/connection-snapshot-marshal-tests.dir/connection-snapshot-marshal-tests_autogen/mocs_compilation.cpp.o
+[79/88] Building CXX object src/platform/CMakeFiles/clash_platform.dir/system/hotkeys.cpp.o
+[80/88] Linking CXX static library src/platform/libclash_platform.a
+[81/88] Building CXX object tests/contracts/component/abi/CMakeFiles/connection-snapshot-marshal-tests.dir/__/__/__/benchmarks/connection_snapshot_marshal_test.cpp.o
+[82/88] Linking CXX executable tests/contracts/component/abi/connection-snapshot-marshal-tests
+[83/88] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/__/__/contracts/backend/common/backend_common_cases.cpp.o
+[84/88] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/__/__/support/backend/common_contract_driver.cpp.o
+[85/88] Building CXX object tests/contracts/component/abi/CMakeFiles/abi-contract-tests.dir/abi_contract_test.cpp.o
+[86/88] Linking CXX executable tests/contracts/component/abi/abi-contract-tests
+[87/88] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/backend_real_contract_test.cpp.o
+[88/88] Linking CXX executable tests/core/mihomo/backend-real-contract-tests

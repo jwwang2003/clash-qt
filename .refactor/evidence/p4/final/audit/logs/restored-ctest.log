@@ -1,0 +1,22 @@
+Test project /tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/build
+    Start 25: backend-real-contract
+1/4 Test #25: backend-real-contract ............   Passed   12.98 sec
+    Start 41: abi-contract
+2/4 Test #41: abi-contract .....................   Passed    0.12 sec
+    Start 42: connection-snapshot-codec
+3/4 Test #42: connection-snapshot-codec ........   Passed    0.11 sec
+    Start 43: connection-snapshot-marshal
+4/4 Test #43: connection-snapshot-marshal ......   Passed    5.31 sec
+
+100% tests passed out of 4
+
+Label Time Summary:
+benchmark      =   5.31 sec*proc (1 test)
+component      =   5.54 sec*proc (3 tests)
+contract       =  13.10 sec*proc (2 tests)
+core           =  12.98 sec*proc (1 test)
+integration    =  13.10 sec*proc (2 tests)
+mihomo         =  12.98 sec*proc (1 test)
+unit           =   0.11 sec*proc (1 test)
+
+Total Test time (real) =  18.53 sec

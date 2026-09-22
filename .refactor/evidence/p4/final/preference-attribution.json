@@ -1,0 +1,14 @@
+{
+  "original_sha256": "681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c",
+  "current_sha256": "204612a89e487d9f3307438f3f2ca97e60056c66919bcebe113a89f863428ffc",
+  "keys": [
+    "window.geometry"
+  ],
+  "user_confirmation": "Yes, I used a separate clash-qt window",
+  "concurrent_process_pid": 57802,
+  "concurrent_process_path": "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/MacOS/clash-qt",
+  "dock_quit_time": "2026-09-22 16:29:20.933696+0800",
+  "qualification_smoke_pid": 51881,
+  "qualification_smoke_path": "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/stage/clash-qt.app/Contents/MacOS/clash-qt",
+  "qualification_smoke_end": "2026-09-22 16:23:23+0800"
+}

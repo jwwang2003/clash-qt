@@ -1,0 +1,17 @@
+[1/17] Automatic MOC and UIC for target clash_yaml
+[2/17] Building CXX object src/core/CMakeFiles/clash_yaml.dir/clash_yaml_autogen/mocs_compilation.cpp.o
+[3/17] Building CXX object src/core/CMakeFiles/clash_yaml.dir/config/yaml_util.cpp.o
+[4/17] Linking CXX static library src/core/libclash_yaml.a
+[5/17] Automatic MOC and UIC for target clash_qt_backend_module
+[6/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/host_privileged_service.cpp.o
+[7/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/module_export.cpp.o
+[8/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_module.cpp.o
+[9/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/mihomo_module_entry.cpp.o
+[10/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_session.cpp.o
+[11/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/controller_discovery.cpp.o
+[12/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/clash_qt_backend_module_autogen/mocs_compilation.cpp.o
+[13/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/provider_client.cpp.o
+[14/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/process/core_process.cpp.o
+[15/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_backend.cpp.o
+[16/17] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_client.cpp.o
+[17/17] Linking CXX shared library modules/libclash_qt_backend_module.dylib

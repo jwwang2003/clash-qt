@@ -1,0 +1,12 @@
+********* Start testing of BackendRealContractTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : BackendRealContractTest::initTestCase()
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(direct-fake)
+FAIL!  : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(direct-real) 'driver->prepare()' returned FALSE. (Fake-core fixture binary not found at 'mutate/build/tests/support/clash-qt-fake-core'. Register the test with ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>".)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/mihomo/backend_real_contract_test.cpp(1784)]
+FAIL!  : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(module-real) 'driver->prepare()' returned FALSE. (Fake-core fixture binary not found at 'mutate/build/tests/support/clash-qt-fake-core'. Register the test with ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>".)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/mihomo/backend_real_contract_test.cpp(1784)]
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(module-fake)
+PASS   : BackendRealContractTest::cleanupTestCase()
+Totals: 4 passed, 2 failed, 0 skipped, 0 blacklisted, 3009ms
+********* Finished testing of BackendRealContractTest *********

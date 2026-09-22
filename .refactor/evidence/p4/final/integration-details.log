@@ -1,0 +1,747 @@
+Start testing: Sep 22 16:14 CST
+----------------------------------------------------------
+1/59 Testing: controller
+1/59 Test: controller
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/controller-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"controller" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of ControllerTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : ControllerTest::initTestCase()
+PASS   : ControllerTest::ipv6Endpoint()
+PASS   : ControllerTest::endpointRefreshAndStaleReplyIsolation()
+PASS   : ControllerTest::aFreshClientIsAttachedToNothing()
+PASS   : ControllerTest::reattachingToAReplacedEngineRetiresItsInFlightWork()
+PASS   : ControllerTest::aReplacedEngineCancelsAnOutstandingTunChangeExactlyOnce()
+PASS   : ControllerTest::anOwnerDrivenRetirementDoesNotAnnounceASecondInvalidation()
+PASS   : ControllerTest::anOwnerDrivenRetirementCancelsAnOutstandingTunChange()
+PASS   : ControllerTest::nestedGroupsRemainNodes()
+PASS   : ControllerTest::groupOrderFollowsGlobalMembership()
+PASS   : ControllerTest::automaticGroupSelectionCanBePinnedAndReleased()
+PASS   : ControllerTest::configFailureRollsBackAndDisconnectClearsState()
+PASS   : ControllerTest::dnsDiagnosticsUseControllerEndpoints()
+PASS   : ControllerTest::geoUpdatesAreAuthenticatedDeduplicatedAndReportFailures()
+PASS   : ControllerTest::tunChangeConfirmsStateAndDeduplicates()
+PASS   : ControllerTest::tunChangePreservesExistingConfigurationAndDisables()
+PASS   : ControllerTest::tunChangeRejectsAcceptedButInactiveListener()
+PASS   : ControllerTest::tunChangeFailureAndMalformedConfirmation()
+PASS   : ControllerTest::tunChangeRejectsDisconnectedController()
+PASS   : ControllerTest::confirmedTunStateCannotBeOverwrittenByOldConfigPoll()
+PASS   : ControllerTest::tunChangeCancellationReleasesPendingAndIgnoresOldReply()
+PASS   : ControllerTest::invalidVersionDoesNotConnect()
+PASS   : ControllerTest::cleanupTestCase()
+Totals: 23 passed, 0 failed, 0 skipped, 0 blacklisted, 5024ms
+********* Finished testing of ControllerTest *********
+<end of output>
+Test time =   5.07 sec
+----------------------------------------------------------
+Test Passed.
+"controller" end time: Sep 22 16:14 CST
+"controller" time elapsed: 00:00:05
+----------------------------------------------------------
+
+2/59 Testing: provider
+2/59 Test: provider
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/provider-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"provider" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of ProviderTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : ProviderTest::initTestCase()
+PASS   : ProviderTest::listsCountsAndSubscription()
+PASS   : ProviderTest::mutationEncodingAndFailures()
+PASS   : ProviderTest::aReplacementAtTheSameAddressRetiresProviderWork()
+PASS   : ProviderTest::staleResponseIsIgnoredWhenReturningToSameEndpoint()
+PASS   : ProviderTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 1170ms
+********* Finished testing of ProviderTest *********
+<end of output>
+Test time =   1.21 sec
+----------------------------------------------------------
+Test Passed.
+"provider" end time: Sep 22 16:14 CST
+"provider" time elapsed: 00:00:01
+----------------------------------------------------------
+
+3/59 Testing: backup
+3/59 Test: backup
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/backup-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"backup" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of BackupTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : BackupTest::initTestCase()
+PASS   : BackupTest::snapshotAndRestore()
+PASS   : BackupTest::rejectsTraversalTamperingAndMissingFilesBeforeStoppingCore()
+PASS   : BackupTest::rejectsOversizedArchiveAndSymlinkTarget()
+PASS   : BackupTest::rejectsCaseUnicodeAndWindowsPathAliases()
+PASS   : BackupTest::failedInstallRollsBackAlreadyReplacedFiles()
+PASS   : BackupTest::presetsRoundTripThroughBackupAndRestore()
+PASS   : BackupTest::archiveWithoutPresetsRestoresTheEmptyDocument()
+PASS   : BackupTest::rejectsUnloadablePresetDocumentsBeforeTouchingAnyFile()
+PASS   : BackupTest::snapshotSubstitutesForAnUnusablePresetFile()
+PASS   : BackupTest::webDavRoundTripAndRedirectRejection()
+PASS   : BackupTest::asyncRestoreKeepsEventLoopResponsiveAndWaitsForCore()
+PASS   : BackupTest::cancellingPreparedRestoreLeavesCurrentFilesUntouched()
+PASS   : BackupTest::preparationGateWaitsForOtherFileWriters()
+PASS   : BackupTest::cleanupTestCase()
+Totals: 15 passed, 0 failed, 0 skipped, 0 blacklisted, 737ms
+********* Finished testing of BackupTest *********
+<end of output>
+Test time =   0.79 sec
+----------------------------------------------------------
+Test Passed.
+"backup" end time: Sep 22 16:14 CST
+"backup" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/59 Testing: privileged-service
+5/59 Test: privileged-service
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/privileged-service-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"privileged-service" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of PrivilegedServiceClientTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : PrivilegedServiceClientTest::initTestCase()
+PASS   : PrivilegedServiceClientTest::configStartFragmentedRepliesAndLeaseClose()
+PASS   : PrivilegedServiceClientTest::statusDeduplicatesAndStopDropsQueuedStart()
+PASS   : PrivilegedServiceClientTest::malformedLengthDisconnectsAndFailsPending()
+PASS   : PrivilegedServiceClientTest::mismatchedResponseIdAndInvalidEndpointRejected()
+PASS   : PrivilegedServiceClientTest::rejectionAndDisconnectNeverClaimStarted()
+PASS   : PrivilegedServiceClientTest::protocolMismatchClosesConnection()
+PASS   : PrivilegedServiceClientTest::invalidLogArrayIsRejected()
+PASS   : PrivilegedServiceClientTest::stalledReplyTimesOutAndEndsLease()
+PASS   : PrivilegedServiceClientTest::oversizedRequestNeverConnects()
+PASS   : PrivilegedServiceClientTest::cleanupTestCase()
+Totals: 11 passed, 0 failed, 0 skipped, 0 blacklisted, 967ms
+********* Finished testing of PrivilegedServiceClientTest *********
+<end of output>
+Test time =   1.03 sec
+----------------------------------------------------------
+Test Passed.
+"privileged-service" end time: Sep 22 16:14 CST
+"privileged-service" time elapsed: 00:00:01
+----------------------------------------------------------
+
+21/59 Testing: config-generation
+21/59 Test: config-generation
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/config-generation-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"config-generation" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of ConfigGenerationTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : ConfigGenerationTest::initTestCase()
+PASS   : ConfigGenerationTest::runtimeAppliesEnhancementsAndProtectsController()
+PASS   : ConfigGenerationTest::runtimeTunDefaultsAreDisabledAndRoutable()
+PASS   : ConfigGenerationTest::runtimeTunPreservesProfileAndOverrideChoices()
+PASS   : ConfigGenerationTest::malformedTunDoesNotReplaceRuntime()
+PASS   : ConfigGenerationTest::failedScriptPreservesConfigAndContinues()
+PASS   : ConfigGenerationTest::cyclicYamlIsRejectedWithoutRecursingForever()
+PASS   : ConfigGenerationTest::explicitStringTagsSurviveScripts()
+PASS   : ConfigGenerationTest::runtimeSeedsGeoDataFromTheDirectoryTheCallerSupplies()
+PASS   : ConfigGenerationTest::runtimeSeedsNothingWhenNoSeedDirectoryWasSupplied()
+PASS   : ConfigGenerationTest::requestedRuntimeGenerationSeedsGeoDataToo()
+PASS   : ConfigGenerationTest::runtimeGenerationKeepsEventLoopResponsiveAndDropsStaleResults()
+PASS   : ConfigGenerationTest::cleanupTestCase()
+Totals: 13 passed, 0 failed, 0 skipped, 0 blacklisted, 303ms
+********* Finished testing of ConfigGenerationTest *********
+<end of output>
+Test time =   0.35 sec
+----------------------------------------------------------
+Test Passed.
+"config-generation" end time: Sep 22 16:14 CST
+"config-generation" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/59 Testing: profile-store
+22/59 Test: profile-store
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/profile-store-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"profile-store" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of ProfileStoreTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : ProfileStoreTest::initTestCase()
+PASS   : ProfileStoreTest::invalidEditAndRuntimePreserveFiles()
+PASS   : ProfileStoreTest::rejectsNonHttpSubscriptions()
+PASS   : ProfileStoreTest::subscriptionUrlEditPreservesCacheAndRejectsOldRefresh()
+PASS   : ProfileStoreTest::reloadCancelsInFlightImport()
+PASS   : ProfileStoreTest::asyncProfileAndEnhancementWritesValidateAndDrainOnShutdown()
+PASS   : ProfileStoreTest::cleanupTestCase()
+Totals: 7 passed, 0 failed, 0 skipped, 0 blacklisted, 653ms
+********* Finished testing of ProfileStoreTest *********
+<end of output>
+Test time =   0.69 sec
+----------------------------------------------------------
+Test Passed.
+"profile-store" end time: Sep 22 16:14 CST
+"profile-store" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/59 Testing: core-process
+23/59 Test: core-process
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core-process-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"core-process" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of CoreProcessTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : CoreProcessTest::initTestCase()
+PASS   : CoreProcessTest::restartWaitsForOldExitWithoutBlockingGui()
+PASS   : CoreProcessTest::aChildRefusingToTerminateKeepsItsWholePublishedGraceBeforeTheKill()
+PASS   : CoreProcessTest::anUninjectedProcessHasNoPrivilegedServiceAndSaysSo()
+PASS   : CoreProcessTest::anInjectedAdapterMakesServiceModeAvailableWhereThePlatformSupportsIt()
+PASS   : CoreProcessTest::privilegedServiceLifecycleUsesLeaseAndWaitsForStopAck()
+PASS   : CoreProcessTest::validationIsResponsiveAndCancelable()
+PASS   : CoreProcessTest::hangingProbeCanStopAndRestart()
+PASS   : CoreProcessTest::cleanupTestCase()
+Totals: 9 passed, 0 failed, 0 skipped, 0 blacklisted, 11134ms
+********* Finished testing of CoreProcessTest *********
+<end of output>
+Test time =  11.18 sec
+----------------------------------------------------------
+Test Passed.
+"core-process" end time: Sep 22 16:14 CST
+"core-process" time elapsed: 00:00:11
+----------------------------------------------------------
+
+24/59 Testing: runtime-maintenance
+24/59 Test: runtime-maintenance
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/runtime-maintenance-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests
+"runtime-maintenance" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of RuntimeMaintenanceTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : RuntimeMaintenanceTest::initTestCase()
+PASS   : RuntimeMaintenanceTest::maintenanceCancelsFileWritesBeforeRestoreCanProceed()
+PASS   : RuntimeMaintenanceTest::maintenanceBlocksMutationsAndCancelsRuntimeWork()
+PASS   : RuntimeMaintenanceTest::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 142ms
+********* Finished testing of RuntimeMaintenanceTest *********
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"runtime-maintenance" end time: Sep 22 16:14 CST
+"runtime-maintenance" time elapsed: 00:00:00
+----------------------------------------------------------
+
+39/59 Testing: backend-real-contract
+39/59 Test: backend-real-contract
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/mihomo/backend-real-contract-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/mihomo
+"backend-real-contract" start time: Sep 22 16:14 CST
+Output:
+----------------------------------------------------------
+********* Start testing of BackendRealContractTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : BackendRealContractTest::initTestCase()
+PASS   : BackendRealContractTest::publishedShapesAreAbiReady()
+PASS   : BackendRealContractTest::detachLeavesTheAttachedControllerRunning()
+PASS   : BackendRealContractTest::anAbortedCompletionIsMarkedSupersededAndCarriesItsSubmitGeneration()
+PASS   : BackendRealContractTest::aReplacementAtTheSameAddressCannotClearTheNewSession()
+PASS   : BackendRealContractTest::aRetiredSessionsStreamIsReplacedRatherThanInherited()
+PASS   : BackendRealContractTest::aRetiredStreamDropCannotDisconnectTheNewSession()
+PASS   : BackendRealContractTest::aCompletionSubmittedBeforeAManagedStartComparesOlder()
+PASS   : BackendRealContractTest::aNonEndpointGenerationBumpReIssuesTheSnapshotSet()
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200 + string version)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(500)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(404)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200, no version field)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200, version is a number)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200, body is not an object)
+PASS   : BackendRealContractTest::logOutputRefreshesTheIdleDeadlineButNotTheHardCap()
+PASS   : BackendRealContractTest::theReadinessHardCapIsNotRefreshedByLogOutput()
+PASS   : BackendRealContractTest::stopTerminatesOnlyTheManagedCoreAndLeavesAnExternalControllerAlive()
+PASS   : BackendRealContractTest::aCancelledReadinessProbeDisconnectsBeforeItAborts()
+PASS   : BackendRealContractTest::aTunChangeCancelledByAnEndpointChangeIsSupersededNotAProtocolError()
+PASS   : BackendRealContractTest::aValidationFailureLeavesTheRunningConfigurationIntact()
+PASS   : BackendRealContractTest::aPendingLaunchIsConsumedOnlyAfterThePriorExitIsObserved()
+PASS   : BackendRealContractTest::aCancelledValidationKeepsItsConfigurationPathActiveUntilItExits()
+QINFO  : BackendRealContractTest::anUnconfirmedStopIsReportedAsUnconfirmed() stopGen= 3  coreFailedGen= 3  lastObserved= 3
+PASS   : BackendRealContractTest::anUnconfirmedStopIsReportedAsUnconfirmed()
+PASS   : BackendRealContractTest::aConfirmedStopIsReportedAsConfirmed()
+PASS   : BackendRealContractTest::noObserverIsInvokedFromInsideAMutatingCall()
+PASS   : BackendRealContractTest::aMutationFromInsideACallbackIsAlsoDeliveredLater()
+PASS   : BackendRealContractTest::removingAnObserverDuringDeliveryIsSafe()
+PASS   : BackendRealContractTest::anObserverAddedDuringDeliverySeesOnlyLaterEvents()
+PASS   : BackendRealContractTest::theTunChangeReportsAReadBackNotAnEcho()
+PASS   : BackendRealContractTest::anIdenticalProviderRequestIsCoalescedOntoTheOutstandingOne()
+PASS   : BackendRealContractTest::executionModeIsRefusedWhileTheCoreIsLive()
+PASS   : BackendRealContractTest::capabilitiesAreQueriedFromTheInstance()
+PASS   : BackendRealContractTest::aPrivilegedServiceStatusQueryIsAnsweredWithoutASecondConnection()
+PASS   : BackendRealContractTest::theHelpersRunningCoreReportReachesThePublishedStatus()
+PASS   : BackendRealContractTest::aMissingManagedEngineFailsWithAnActionableMessage()
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(direct-fake)
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(direct-real)
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(module-real)
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(module-fake)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(direct-fake)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(direct-real)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(module-real)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(module-fake)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(direct-fake)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(direct-real)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(module-real)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(module-fake)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(direct-fake)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(direct-real)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(module-real)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(module-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(direct-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(direct-real)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(module-real)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(module-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(direct-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(direct-real)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(module-real)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(module-fake)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(direct-fake)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(direct-real)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(module-real)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(module-fake)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(direct-fake)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(direct-real)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(module-real)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(module-fake)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(direct-fake)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(direct-real)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(module-real)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(module-fake)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(direct-fake)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(direct-real)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(module-real)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(module-fake)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(direct-fake)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(direct-real)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(module-real)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(module-fake)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(direct-fake)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(direct-real)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(module-real)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(module-fake)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(direct-fake)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(direct-real)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(module-real)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(module-fake)
+PASS   : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(direct-fake)
+PASS   : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(direct-real)
+PASS   : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(module-real)
+PASS   : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(module-fake)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(direct-fake)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(direct-real)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(module-real)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(module-fake)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(direct-fake)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(direct-real)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(module-real)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(module-fake)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(direct-fake)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(direct-real)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(module-real)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(module-fake)
+PASS   : BackendRealContractTest::cleanupTestCase()
+Totals: 105 passed, 0 failed, 0 skipped, 0 blacklisted, 12860ms
+********* Finished testing of BackendRealContractTest *********
+<end of output>
+Test time =  12.91 sec
+----------------------------------------------------------
+Test Passed.
+"backend-real-contract" end time: Sep 22 16:15 CST
+"backend-real-contract" time elapsed: 00:00:12
+----------------------------------------------------------
+
+41/59 Testing: backend-real-core
+41/59 Test: backend-real-core
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/mihomo/backend-real-core-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/mihomo
+"backend-real-core" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of BackendRealCoreTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : BackendRealCoreTest::initTestCase()
+QINFO  : BackendRealCoreTest::theRealEngineIsSupervisedThroughThePublishedContract() real engine version: v1.19.31  rules: 1
+PASS   : BackendRealCoreTest::theRealEngineIsSupervisedThroughThePublishedContract()
+PASS   : BackendRealCoreTest::detachAndStopReachOnlyWhatThisComponentStarted()
+PASS   : BackendRealCoreTest::aCompletionAbortedByAnEndpointChangeIsMarkedSuperseded()
+PASS   : BackendRealCoreTest::aValidationFailureLeavesTheRealEngineRunning()
+PASS   : BackendRealCoreTest::deliveryIsNeverReEntrantAndObserverRemovalIsSafe()
+PASS   : BackendRealCoreTest::cleanupTestCase()
+Totals: 7 passed, 0 failed, 0 skipped, 0 blacklisted, 3462ms
+********* Finished testing of BackendRealCoreTest *********
+<end of output>
+Test time =   3.55 sec
+----------------------------------------------------------
+Test Passed.
+"backend-real-core" end time: Sep 22 16:15 CST
+"backend-real-core" time elapsed: 00:00:03
+----------------------------------------------------------
+
+42/59 Testing: w01-first-launch
+42/59 Test: w01-first-launch
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/w01-first-launch-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"w01-first-launch" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of W01FirstLaunchTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : W01FirstLaunchTest::initTestCase()
+PASS   : W01FirstLaunchTest::theHarnessStillMirrorsTheCompositionRoot()
+PASS   : W01FirstLaunchTest::firstLaunchImportsStartsInspectsStopsQuitsAndReopens()
+PASS   : W01FirstLaunchTest::aControllerThatNeverAnswersFailsTheLaunchAndLeavesNoChild()
+PASS   : W01FirstLaunchTest::cleanupTestCase()
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 10977ms
+********* Finished testing of W01FirstLaunchTest *********
+<end of output>
+Test time =  11.04 sec
+----------------------------------------------------------
+Test Passed.
+"w01-first-launch" end time: Sep 22 16:15 CST
+"w01-first-launch" time elapsed: 00:00:11
+----------------------------------------------------------
+
+43/59 Testing: w02-subscription-update
+43/59 Test: w02-subscription-update
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/w02-subscription-update-tests" "theHarnessStillMirrorsTheCompositionRoot" "aSubscriptionIsComposedThroughPresetsStartedRefreshedAndReopened" "aRejectedRefreshPreservesTheCachedSubscriptionAndTheLiveCore" "aHeldRefreshLosesToAUrlEditAndTheLatestUrlWins"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"w02-subscription-update" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of W02SubscriptionUpdateTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : W02SubscriptionUpdateTest::initTestCase()
+PASS   : W02SubscriptionUpdateTest::theHarnessStillMirrorsTheCompositionRoot()
+PASS   : W02SubscriptionUpdateTest::aSubscriptionIsComposedThroughPresetsStartedRefreshedAndReopened()
+PASS   : W02SubscriptionUpdateTest::aRejectedRefreshPreservesTheCachedSubscriptionAndTheLiveCore()
+PASS   : W02SubscriptionUpdateTest::aHeldRefreshLosesToAUrlEditAndTheLatestUrlWins()
+PASS   : W02SubscriptionUpdateTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 4908ms
+********* Finished testing of W02SubscriptionUpdateTest *********
+<end of output>
+Test time =   4.97 sec
+----------------------------------------------------------
+Test Passed.
+"w02-subscription-update" end time: Sep 22 16:15 CST
+"w02-subscription-update" time elapsed: 00:00:04
+----------------------------------------------------------
+
+44/59 Testing: w04-restore
+44/59 Test: w04-restore
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/w04-restore-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"w04-restore" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of W04RestoreTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : W04RestoreTest::initTestCase()
+PASS   : W04RestoreTest::theHarnessStillMirrorsTheCompositionRoot()
+PASS   : W04RestoreTest::backupChangeRestoreWhileRunningThenReopen()
+PASS   : W04RestoreTest::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 415ms
+********* Finished testing of W04RestoreTest *********
+<end of output>
+Test time =   0.47 sec
+----------------------------------------------------------
+Test Passed.
+"w04-restore" end time: Sep 22 16:15 CST
+"w04-restore" time elapsed: 00:00:00
+----------------------------------------------------------
+
+45/59 Testing: w05-recovery
+45/59 Test: w05-recovery
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/w05-recovery-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"w05-recovery" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of W05RecoveryTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : W05RecoveryTest::initTestCase()
+PASS   : W05RecoveryTest::theHarnessStillMirrorsTheCompositionRoot()
+PASS   : W05RecoveryTest::aCrashedChildIsReportedTheRestartSucceedsAndTheLatestProfileWins()
+PASS   : W05RecoveryTest::aDroppedControllerIsReportedWithoutTearingDownTheRunningCore()
+PASS   : W05RecoveryTest::aCoreThatRefusesToTerminateIsKilledAndTheQuitStillCompletes()
+PASS   : W05RecoveryTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 7595ms
+********* Finished testing of W05RecoveryTest *********
+<end of output>
+Test time =   7.66 sec
+----------------------------------------------------------
+Test Passed.
+"w05-recovery" end time: Sep 22 16:15 CST
+"w05-recovery" time elapsed: 00:00:07
+----------------------------------------------------------
+
+46/59 Testing: w03-routing-controls
+46/59 Test: w03-routing-controls
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/w03-routing-controls-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"w03-routing-controls" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of W03RoutingControlsTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : W03RoutingControlsTest::initTestCase()
+PASS   : W03RoutingControlsTest::theHarnessStillMirrorsTheCompositionRoot()
+QWARN  : W03RoutingControlsTest::everySurfaceAgreesWithConfirmedStateThroughAManagedSession() qt.qpa.fonts: Populating font family aliases took 138 ms. Replace uses of missing font family "Sans Serif" with one that exists to avoid this cost. 
+PASS   : W03RoutingControlsTest::everySurfaceAgreesWithConfirmedStateThroughAManagedSession()
+PASS   : W03RoutingControlsTest::aTunReadBackThatDisagreesWithTheRequestIsNeverAppliedToASurface()
+PASS   : W03RoutingControlsTest::aColdStartCanEnableTheSystemProxyFromTheSettingsSurface()
+PASS   : W03RoutingControlsTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 1454ms
+********* Finished testing of W03RoutingControlsTest *********
+<end of output>
+Test time =   1.61 sec
+----------------------------------------------------------
+Test Passed.
+"w03-routing-controls" end time: Sep 22 16:15 CST
+"w03-routing-controls" time elapsed: 00:00:01
+----------------------------------------------------------
+
+47/59 Testing: app-smoke
+47/59 Test: app-smoke
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/app-smoke-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"app-smoke" start time: Sep 22 16:15 CST
+Output:
+----------------------------------------------------------
+********* Start testing of AppSmokeTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : AppSmokeTest::initTestCase()
+PASS   : AppSmokeTest::theApplicationLaunchesIntoItsDataDirectoryAndExitsOnRequest()
+PASS   : AppSmokeTest::theApplicationReportsTheStagedEngineComponentItLoaded()
+PASS   : AppSmokeTest::aMissingEngineComponentFailsTheLaunchLoudly()
+PASS   : AppSmokeTest::aSecondInstanceDefersToTheFirstOnlyWhenTheyShareADataDirectory()
+PASS   : AppSmokeTest::theRunningInstanceAnswersItsSingleInstanceChannel()
+PASS   : AppSmokeTest::theCompositionRootAttachesToADiscoveredControllerAndKeepsPollingIt()
+PASS   : AppSmokeTest::theIsolatedLaunchAttachesToNoControllerItWasNotGiven()
+PASS   : AppSmokeTest::everyChildEnvironmentIsExplicitlyIsolated()
+PASS   : AppSmokeTest::theHarnessStillMirrorsTheCompositionRoot()
+PASS   : AppSmokeTest::theStartupServiceStatusGoesToTheSocketTheHostSelected()
+PASS   : AppSmokeTest::theCompositionRootSelectsServiceModeWhenTheUserSavedIt(managed mode launches the engine)
+PASS   : AppSmokeTest::theCompositionRootSelectsServiceModeWhenTheUserSavedIt(service mode launches no managed child)
+PASS   : AppSmokeTest::cleanupTestCase()
+Totals: 14 passed, 0 failed, 0 skipped, 0 blacklisted, 39546ms
+********* Finished testing of AppSmokeTest *********
+<end of output>
+Test time =  39.60 sec
+----------------------------------------------------------
+Test Passed.
+"app-smoke" end time: Sep 22 16:16 CST
+"app-smoke" time elapsed: 00:00:39
+----------------------------------------------------------
+
+48/59 Testing: w02-real-core
+48/59 Test: w02-real-core
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows/w02-subscription-update-tests" "theRealSourceBuiltCoreRefreshesAndRejectsAnInvalidUpdate"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/workflows
+"w02-real-core" start time: Sep 22 16:16 CST
+Output:
+----------------------------------------------------------
+********* Start testing of W02SubscriptionUpdateTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : W02SubscriptionUpdateTest::initTestCase()
+PASS   : W02SubscriptionUpdateTest::theRealSourceBuiltCoreRefreshesAndRejectsAnInvalidUpdate()
+PASS   : W02SubscriptionUpdateTest::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 3030ms
+********* Finished testing of W02SubscriptionUpdateTest *********
+<end of output>
+Test time =   3.09 sec
+----------------------------------------------------------
+Test Passed.
+"w02-real-core" end time: Sep 22 16:16 CST
+"w02-real-core" time elapsed: 00:00:03
+----------------------------------------------------------
+
+55/59 Testing: preset-store
+55/59 Test: preset-store
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/profiles/preset-store-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/profiles
+"preset-store" start time: Sep 22 16:16 CST
+Output:
+----------------------------------------------------------
+********* Start testing of PresetStoreTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : PresetStoreTest::initTestCase()
+PASS   : PresetStoreTest::afreshStoreHasAnEmptyVersionOneDocumentAndNoFile()
+PASS   : PresetStoreTest::savingPersistsAtomicallyAndSurvivesAReopen()
+PASS   : PresetStoreTest::whatIsStoredIsNormalisedSoSavingItAgainChangesNothing()
+PASS   : PresetStoreTest::arejectedDocumentChangesNothingAtAll()
+PASS   : PresetStoreTest::amalformedFileIsRecoveredFromTheLastGoodCopyWithADiagnostic()
+PASS   : PresetStoreTest::astructurallyInvalidFileIsRecoveredToo()
+PASS   : PresetStoreTest::amissingPrimaryFileIsRecoveredFromTheLastGoodCopy()
+PASS   : PresetStoreTest::apresetFileThatWillNotOpenIsRecoveredNotTreatedAsAFirstRun()
+PASS   : PresetStoreTest::adirectoryLeftAtThePresetPathIsAnUnusableDocument()
+PASS   : PresetStoreTest::therecoveredDocumentIsWhatTheNextSaveBuildsOn()
+PASS   : PresetStoreTest::presetsAlreadyLoadedAreKeptWhenNeitherCopyCanBeRead()
+PASS   : PresetStoreTest::amalformedPrimaryWithNoRecoveryCopyIsReportedNotAssumedEmpty()
+PASS   : PresetStoreTest::withNoUsableCopyAnywhereTheStoreStartsEmptyAndSaysSo()
+PASS   : PresetStoreTest::presetsAreAppliedToTheGeneratedRuntimeConfiguration()
+PASS   : PresetStoreTest::ahostilePresetCannotMoveTheControllerSecretOrDashboardOfARealGeneration()
+PASS   : PresetStoreTest::apresetTooDeepToComposeFailsGenerationAndKeepsThePreviousRuntime()
+PASS   : PresetStoreTest::amixedPortRuntimeOverrideStillReachesTheGeneratedRuntime()
+PASS   : PresetStoreTest::anImpossiblePortInTheOverridesFileCannotReachTheEngine()
+PASS   : PresetStoreTest::apresetForAnotherProfileDoesNotAffectThisOne()
+PASS   : PresetStoreTest::changingThePresetsCancelsAGenerationAlreadyRunning()
+PASS   : PresetStoreTest::maintenanceModeRefusesPresetWritesLikeEveryOtherMutation()
+PASS   : PresetStoreTest::cleanupTestCase()
+Totals: 23 passed, 0 failed, 0 skipped, 0 blacklisted, 143ms
+********* Finished testing of PresetStoreTest *********
+<end of output>
+Test time =   0.18 sec
+----------------------------------------------------------
+Test Passed.
+"preset-store" end time: Sep 22 16:16 CST
+"preset-store" time elapsed: 00:00:00
+----------------------------------------------------------
+
+56/59 Testing: effective-config-preview
+56/59 Test: effective-config-preview
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/profiles/effective-config-preview-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/core/profiles
+"effective-config-preview" start time: Sep 22 16:16 CST
+Output:
+----------------------------------------------------------
+********* Start testing of EffectiveConfigPreviewTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : EffectiveConfigPreviewTest::initTestCase()
+PASS   : EffectiveConfigPreviewTest::thePreviewIsTheSameCompositionTheRuntimeWouldGet()
+PASS   : EffectiveConfigPreviewTest::thePreviewCarriesProvenanceAndTheEnhancementLog()
+PASS   : EffectiveConfigPreviewTest::thePreviewShowsThePortTheUserChoseAndCreditsTheOverride()
+PASS   : EffectiveConfigPreviewTest::apreviewOfAmergeTooDeepToApplyFailsWithTheReason()
+PASS   : EffectiveConfigPreviewTest::anExplicitUidPreviewsThatProfileNotTheSelectedOne()
+PASS   : EffectiveConfigPreviewTest::apreviewWritesNothingAnywhereInTheDataDirectory()
+PASS   : EffectiveConfigPreviewTest::apreviewDoesNotDisturbRuntimeGeneration()
+PASS   : EffectiveConfigPreviewTest::onlyTheNewestRequestIsAnswered()
+PASS   : EffectiveConfigPreviewTest::aneditDuringAPreviewSupersedesItRatherThanLeakingIntoIt()
+PASS   : EffectiveConfigPreviewTest::thePreviewDoesNotBlockTheCaller()
+PASS   : EffectiveConfigPreviewTest::afailedCompositionIsReportedAsAResultNotAsSilence()
+PASS   : EffectiveConfigPreviewTest::previewingWithNoProfileAnswersInsteadOfHanging()
+PASS   : EffectiveConfigPreviewTest::previewingAnUnknownUidAnswersInsteadOfFallingBackToTheCurrentProfile()
+PASS   : EffectiveConfigPreviewTest::abeforeFirstLaunchPreviewSaysTheSecretIsNotAssignedYet()
+PASS   : EffectiveConfigPreviewTest::maintenanceModeAnswersWithAPausedDiagnosticRatherThanReadingFiles()
+PASS   : EffectiveConfigPreviewTest::shutdownStopsAnsweringAltogether()
+PASS   : EffectiveConfigPreviewTest::cleanupTestCase()
+Totals: 18 passed, 0 failed, 0 skipped, 0 blacklisted, 4881ms
+********* Finished testing of EffectiveConfigPreviewTest *********
+<end of output>
+Test time =   4.92 sec
+----------------------------------------------------------
+Test Passed.
+"effective-config-preview" end time: Sep 22 16:16 CST
+"effective-config-preview" time elapsed: 00:00:04
+----------------------------------------------------------
+
+57/59 Testing: abi-contract
+57/59 Test: abi-contract
+Command: "/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/contracts/component/abi/abi-contract-tests"
+Directory: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/tests/contracts/component/abi
+"abi-contract" start time: Sep 22 16:16 CST
+Output:
+----------------------------------------------------------
+********* Start testing of AbiContractTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : AbiContractTest::initTestCase()
+PASS   : AbiContractTest::theHandshakeAcceptsAHostBuiltFromTheSameHeaders()
+PASS   : AbiContractTest::theHandshakeRefusesAnIncompatibleModuleAbiVersion()
+PASS   : AbiContractTest::theHandshakeRefusesAForeignTargetAbi()
+PASS   : AbiContractTest::theHandshakeRefusesAMismatchedRuntime()
+PASS   : AbiContractTest::theHandshakeRefusesAStructSizeItDoesNotKnow()
+PASS   : AbiContractTest::theLoaderRefusesAModuleThatIsNotTheOneItAskedFor()
+PASS   : AbiContractTest::theLoaderRefusesAnArtifactItCannotSeeWithoutSearching()
+PASS   : AbiContractTest::theModuleRootAnswersItsIdentityAndRefusesAnUnknownClass()
+PASS   : AbiContractTest::aLiveObjectKeepsTheLibraryMapped()
+PASS   : AbiContractTest::anActivatedShippingModuleIsActuallyUnmapped()
+PASS   : AbiContractTest::aModuleThatRefusesTheUnmapKeepsItsImageMapped()
+PASS   : AbiContractTest::aRetainedRootReferenceKeepsTheImageMapped()
+PASS   : AbiContractTest::aRetainedReplyBufferKeepsTheModuleCountedAndMapped()
+PASS   : AbiContractTest::aRetainedDiagnosticAndItsMessageBufferEachKeepTheModule()
+PASS   : AbiContractTest::creatingAndPreparingInParallelNeverHandsOutAnObjectAfterPrepare()
+PASS   : AbiContractTest::aPreparedModuleCreatesNothingFurther()
+PASS   : AbiContractTest::preparingRefusesWithoutLatchingWhileAnotherHolderRemains()
+PASS   : AbiContractTest::theFinalReleaseFromAnotherThreadKeepsTheModuleCountedUntilCleanupRuns()
+PASS   : AbiContractTest::aQuiescentSessionIsDestroyedInsideReleaseAndOnlyThenReportsZero()
+PASS   : AbiContractTest::aQueuedCleanupKeepsItsOwnReferenceUntilItHasActuallyDestroyed()
+PASS   : AbiContractTest::closingAloneDoesNotConsumeTheCallersReference()
+PASS   : AbiContractTest::extraAndForeignReleasesNeverDestroyWhileAHolderRemains()
+PASS   : AbiContractTest::queryingASessionInterfaceTakesExactlyOneReference()
+PASS   : AbiContractTest::theReaderLatchesAnOverrunInsteadOfContinuing()
+PASS   : AbiContractTest::closingIsIdempotentAndAClosedSessionRefusesCommands()
+PASS   : AbiContractTest::outstandingWorkCountsHeldRequestsAndCloseReportsTheTimeout()
+PASS   : AbiContractTest::sixtyFourBitIdentityAndCountersSurviveTheBoundary()
+PASS   : AbiContractTest::everyQueryOfTheContractCrossesTheBoundary()
+PASS   : AbiContractTest::stagedTelemetryRoundTripsThroughAReleasedRequest()
+PASS   : AbiContractTest::aTimestampKeepsItsRepresentationAndNotOnlyItsInstant()
+PASS   : AbiContractTest::aTimestampWithAnUnusableRepresentationIsRefused()
+PASS   : AbiContractTest::aPackedConnectionSnapshotRoundTripsExactly()
+PASS   : AbiContractTest::aMalformedConnectionSnapshotIsRefusedWithAReason()
+PASS   : AbiContractTest::thePrivilegedStatusCarriesCoreRunning()
+PASS   : AbiContractTest::noObserverIsInvokedFromInsideACommand()
+PASS   : AbiContractTest::removingAnObserverDuringDeliveryStopsFurtherCallbacks()
+PASS   : AbiContractTest::anObserverAddedAfterProductionIsRefusedTheSameEventsAsDirect()
+PASS   : AbiContractTest::anObserverAddedDuringDeliveryIsAdmittedTheSameAsDirect()
+PASS   : AbiContractTest::thePrivilegedSeamReachesTheHostsServiceAndAllowsOneListener()
+PASS   : AbiContractTest::aMalformedArgumentBlockIsRefusedWithADiagnostic()
+PASS   : AbiContractTest::everyRefusedCommandLeavesItsOwnDiagnostic()
+PASS   : AbiContractTest::anUnknownCommandIsNotImplementedRatherThanIgnored()
+PASS   : AbiContractTest::theShippingModuleDoesNotImplementTheTestControlRange()
+PASS   : AbiContractTest::cleanupTestCase()
+Totals: 45 passed, 0 failed, 0 skipped, 0 blacklisted, 91ms
+********* Finished testing of AbiContractTest *********
+<end of output>
+Test time =   0.12 sec
+----------------------------------------------------------
+Test Passed.
+"abi-contract" end time: Sep 22 16:16 CST
+"abi-contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Sep 22 16:16 CST
+
+app =  68.43 sec*proc
+
+backups =   0.79 sec*proc
+
+component =   0.12 sec*proc
+
+config =  13.51 sec*proc
+
+contract =  13.03 sec*proc
+
+core =  41.04 sec*proc
+
+integration = 110.61 sec*proc
+
+mihomo =  33.92 sec*proc
+
+packaging =  39.60 sec*proc
+
+platform =   1.03 sec*proc
+
+profiles =   0.88 sec*proc
+
+real-core =   6.64 sec*proc
+
+service =   1.03 sec*proc
+
+ui =   1.61 sec*proc
+
+workflow =  68.43 sec*proc
+

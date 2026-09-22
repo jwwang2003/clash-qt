@@ -1,0 +1,3408 @@
+[{
+  "timezoneName" : "",
+  "eventType" : "activityCreateEvent",
+  "formatString" : "",
+  "userID" : 501,
+  "activityIdentifier" : 51068268,
+  "subsystem" : "",
+  "category" : "",
+  "threadID" : 18436631,
+  "senderImageUUID" : "9B672762-7B1F-30BC-96DE-F176B372D66D",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 457648,
+        "imageUUID" : "9B672762-7B1F-30BC-96DE-F176B372D66D"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/CoreFoundation.framework\/Versions\/A\/CoreFoundation",
+  "timestamp" : "2026-09-22 16:28:47.993960+0800",
+  "creatorActivityID" : 0,
+  "machTimestamp" : 13010188801731,
+  "eventMessage" : "Loading Preferences From User CFPrefsD",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 40406429550772482,
+  "processID" : 57802,
+  "senderProgramCounter" : 457648,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s ",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1627708,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:28:50.239580+0800",
+  "machTimestamp" : 13010242696616,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417798063353233412,
+  "processID" : 57802,
+  "senderProgramCounter" : 1627708,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finishing enqueued operations",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1629416,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:28:50.241609+0800",
+  "machTimestamp" : 13010242745328,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges] finishing enqueued operations",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974096882827268,
+  "processID" : 57802,
+  "senderProgramCounter" : 1629416,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s asyncing to main queue",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436649,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11825640,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:28:50.241649+0800",
+  "machTimestamp" : 13010242746270,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]_block_invoke asyncing to main queue",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974272976486404,
+  "processID" : 57802,
+  "senderProgramCounter" : 11825640,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s writing records",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436870,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11826088,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:28:50.462215+0800",
+  "machTimestamp" : 13010248039865,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]_block_invoke writing records",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974419005374468,
+  "processID" : 57802,
+  "senderProgramCounter" : 11826088,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "eventType" : "activityCreateEvent",
+  "formatString" : "",
+  "userID" : 501,
+  "activityIdentifier" : 51068269,
+  "subsystem" : "",
+  "category" : "",
+  "threadID" : 18436631,
+  "senderImageUUID" : "A160698F-BE34-323D-B5BE-56D7371B1230",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 4716,
+        "imageUUID" : "A160698F-BE34-323D-B5BE-56D7371B1230"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/TCC.framework\/Versions\/A\/TCC",
+  "timestamp" : "2026-09-22 16:28:51.791226+0800",
+  "creatorActivityID" : 0,
+  "machTimestamp" : 13010279936138,
+  "eventMessage" : "TCCAccessRequest() IPC",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 490577602705359106,
+  "processID" : 57802,
+  "senderProgramCounter" : 4716,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 51068269,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:28:51.791242+0800",
+  "machTimestamp" : 13010279936500,
+  "eventMessage" : "[0xa18de4500] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338982404,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated after the last release of the connection object",
+  "userID" : 501,
+  "activityIdentifier" : 51068269,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 62696,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:28:51.807934+0800",
+  "machTimestamp" : 13010280337119,
+  "eventMessage" : "[0xa18de4500] invalidated after the last release of the connection object",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9490451828899844,
+  "processID" : 57802,
+  "senderProgramCounter" : 62696,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "NSApplication._react(to:) dock",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Screen",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 5590952,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:28:57.338815+0800",
+  "machTimestamp" : 13010413078258,
+  "eventMessage" : "NSApplication._react(to:) dock",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417753945449168900,
+  "processID" : 57802,
+  "senderProgramCounter" : 5590952,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "NSApplication._react(to:) reactions=%lx",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Screen",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 5591816,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:28:57.338816+0800",
+  "machTimestamp" : 13010413078277,
+  "eventMessage" : "NSApplication._react(to:) reactions=83",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417753533132308484,
+  "processID" : 57802,
+  "senderProgramCounter" : 5591816,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "eventType" : "activityCreateEvent",
+  "formatString" : "",
+  "userID" : 501,
+  "activityIdentifier" : 51068271,
+  "subsystem" : "",
+  "category" : "",
+  "threadID" : 18436631,
+  "senderImageUUID" : "A160698F-BE34-323D-B5BE-56D7371B1230",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 4716,
+        "imageUUID" : "A160698F-BE34-323D-B5BE-56D7371B1230"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/TCC.framework\/Versions\/A\/TCC",
+  "timestamp" : "2026-09-22 16:29:06.720832+0800",
+  "creatorActivityID" : 0,
+  "machTimestamp" : 13010638246675,
+  "eventMessage" : "TCCAccessRequest() IPC",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 490577602705359106,
+  "processID" : 57802,
+  "senderProgramCounter" : 4716,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 51068271,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:06.720844+0800",
+  "machTimestamp" : 13010638246969,
+  "eventMessage" : "[0xa18de4000] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338982404,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated after the last release of the connection object",
+  "userID" : 501,
+  "activityIdentifier" : 51068271,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 62696,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:06.742143+0800",
+  "machTimestamp" : 13010638758133,
+  "eventMessage" : "[0xa18de4000] invalidated after the last release of the connection object",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9490451828899844,
+  "processID" : 57802,
+  "senderProgramCounter" : 62696,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436653,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:15.444578+0800",
+  "machTimestamp" : 13010847616567,
+  "eventMessage" : "[0xa18de4000] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated after the last release of the connection object",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436644,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 62696,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:15.446860+0800",
+  "machTimestamp" : 13010847671333,
+  "eventMessage" : "[0xa18de4000] invalidated after the last release of the connection object",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9490451828834308,
+  "processID" : 57802,
+  "senderProgramCounter" : 62696,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:15.456568+0800",
+  "machTimestamp" : 13010847904343,
+  "eventMessage" : "[0xa18de43c0] activating connection: mach=false listener=false peer=false name=(anonymous)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:15.456614+0800",
+  "machTimestamp" : 13010847905443,
+  "eventMessage" : "[0xa18de4000] activating connection: mach=false listener=false peer=false name=(anonymous)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%s: Create CursorUIViewService: %{public}@",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.TextInputUI",
+  "category" : "CursorUI",
+  "threadID" : 18436631,
+  "senderImageUUID" : "08A6C779-932E-39BB-BCE4-64AFB7454297",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 18540,
+        "imageUUID" : "08A6C779-932E-39BB-BCE4-64AFB7454297"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/TextInputUIMacHelper.framework\/Versions\/A\/TextInputUIMacHelper",
+  "timestamp" : "2026-09-22 16:29:15.493940+0800",
+  "machTimestamp" : 13010848801257,
+  "eventMessage" : "-[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 8320741319121305604,
+  "processID" : 57802,
+  "senderProgramCounter" : 18540,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:15.494226+0800",
+  "machTimestamp" : 13010848808128,
+  "eventMessage" : "[0xa18de4140] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:15.494234+0800",
+  "machTimestamp" : 13010848808312,
+  "eventMessage" : "[0xa18de4280] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%s: chose %@",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.inputmethodkitClient",
+  "category" : "Client",
+  "threadID" : 18436631,
+  "senderImageUUID" : "38408482-CE3B-359E-9465-7FEB4BB79B54",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1587836,
+        "imageUUID" : "38408482-CE3B-359E-9465-7FEB4BB79B54"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/Carbon.framework\/Versions\/A\/Frameworks\/HIToolbox.framework\/Versions\/A\/HIToolbox",
+  "timestamp" : "2026-09-22 16:29:20.842222+0800",
+  "machTimestamp" : 13010977160035,
+  "eventMessage" : "+[IMKInputSession subclass]: chose IMKInputSession_Modern",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 962801903950102532,
+  "processID" : 57802,
+  "senderProgramCounter" : 1587836,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.847731+0800",
+  "machTimestamp" : 13010977292250,
+  "eventMessage" : "[0xa18de4280] activating connection: mach=true listener=false peer=false name=com.apple.inputmethodkit.getxpcendpoint",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18440006,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.848177+0800",
+  "machTimestamp" : 13010977302947,
+  "eventMessage" : "[0xa18de4140] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated after the last release of the connection object",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18440006,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 62696,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.848659+0800",
+  "machTimestamp" : 13010977314513,
+  "eventMessage" : "[0xa18de4140] invalidated after the last release of the connection object",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9490451828834308,
+  "processID" : 57802,
+  "senderProgramCounter" : 62696,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.923631+0800",
+  "machTimestamp" : 13010979113837,
+  "eventMessage" : "[0xa18de4780] activating connection: mach=false listener=false peer=false name=(anonymous)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.923674+0800",
+  "machTimestamp" : 13010979114882,
+  "eventMessage" : "[0xa18de4140] activating connection: mach=false listener=false peer=false name=(anonymous)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.924282+0800",
+  "machTimestamp" : 13010979129462,
+  "eventMessage" : "[0xa18de48c0] activating connection: mach=false listener=false peer=false name=(anonymous)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Info",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}sRECEIVED:(%{public}s,%{public}s) %{public}s...",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.appleevents",
+  "category" : "receive",
+  "threadID" : 18436631,
+  "senderImageUUID" : "435D6243-695B-3543-A722-10106F5696BD",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 35316,
+        "imageUUID" : "435D6243-695B-3543-A722-10106F5696BD"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/CoreServices.framework\/Versions\/A\/Frameworks\/AE.framework\/Versions\/A\/AE",
+  "timestamp" : "2026-09-22 16:29:20.933696+0800",
+  "machTimestamp" : 13010979355415,
+  "eventMessage" : "RECEIVED:(aevt,quit) {aevt,quit target=Dock  returnID=-32224}...",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 614029415390904580,
+  "processID" : 57802,
+  "senderProgramCounter" : 35316,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Handling Quit AppleEvent",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 3532856,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.934222+0800",
+  "machTimestamp" : 13010979368029,
+  "eventMessage" : "Handling Quit AppleEvent",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417826659245490180,
+  "processID" : 57802,
+  "senderProgramCounter" : 3532856,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "-[NSApplication _setShouldRestoreStateOnNextLaunch:] shouldRestore=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2335288,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.934266+0800",
+  "machTimestamp" : 13010979369081,
+  "eventMessage" : "-[NSApplication _setShouldRestoreStateOnNextLaunch:] shouldRestore=1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417810265355321348,
+  "processID" : 57802,
+  "senderProgramCounter" : 2335288,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s sPersistentStateTerminateStackHeight -> %u",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2337528,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.934292+0800",
+  "machTimestamp" : 13010979369708,
+  "eventMessage" : "-[NSApplication _pushPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417807971842785284,
+  "processID" : 57802,
+  "senderProgramCounter" : 2337528,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s shouldClose=%d waitingUntilDone=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2337944,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.934313+0800",
+  "machTimestamp" : 13010979370223,
+  "eventMessage" : "-[NSPersistentUIManager flushPersistentStateAndClose:waitingUntilDone:] shouldClose=1 waitingUntilDone=1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976849956864004,
+  "processID" : 57802,
+  "senderProgramCounter" : 2337944,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s ",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1627708,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.934317+0800",
+  "machTimestamp" : 13010979370306,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417798063353233412,
+  "processID" : 57802,
+  "senderProgramCounter" : 1627708,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finishing enqueued operations",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1629416,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943783+0800",
+  "machTimestamp" : 13010979597490,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges] finishing enqueued operations",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974096882827268,
+  "processID" : 57802,
+  "senderProgramCounter" : 1629416,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finishing pending changes",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828432,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943792+0800",
+  "machTimestamp" : 13010979597708,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] finishing pending changes",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974994530992132,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828432,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _encodingQueue=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11827440,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943793+0800",
+  "machTimestamp" : 13010979597729,
+  "eventMessage" : "-[NSPersistentUIManager _finishEncodingImmediatelyWithCompletionHandler:] _encodingQueue=0xa1b4ad470",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974534969491460,
+  "processID" : 57802,
+  "senderProgramCounter" : 11827440,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s asyncing to main queue",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436644,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11825640,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943808+0800",
+  "machTimestamp" : 13010979598095,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]_block_invoke asyncing to main queue",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974272976486404,
+  "processID" : 57802,
+  "senderProgramCounter" : 11825640,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s asyncing to main runloop",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436644,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830068,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943817+0800",
+  "machTimestamp" : 13010979598317,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke asyncing to main runloop",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975153444782084,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830068,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s observer=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828736,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943818+0800",
+  "machTimestamp" : 13010979598339,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] observer=0xa186f50e0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975660250923012,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828736,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.libsystem.libdispatch",
+  "category" : "",
+  "threadID" : 18436631,
+  "senderImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 0,
+        "imageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "timestamp" : "2026-09-22 16:29:20.943857+0800",
+  "machTimestamp" : 13010979599262,
+  "eventMessage" : "DEPRECATED USE in libdispatch client: Setting timer interval to 0 requests a 1ns timer, did you mean FOREVER (a one-shot timer)?; set a breakpoint on _dispatch_bug_deprecated to debug",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 0,
+  "processID" : 57802,
+  "senderProgramCounter" : 0,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s spinning the runloop",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829096,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943876+0800",
+  "machTimestamp" : 13010979599734,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] spinning the runloop",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976287316148228,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829096,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s observer=%p activity=%lu depth=%lu finished=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830628,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943883+0800",
+  "machTimestamp" : 13010979599904,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f50e0 activity=1 depth=0 finished=0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975411142819844,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830628,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finished=YES",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830376,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.943888+0800",
+  "machTimestamp" : 13010979600018,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke finished=YES",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975308063604740,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830376,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s observer=%p activity=%lu depth=%lu finished=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830628,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944006+0800",
+  "machTimestamp" : 13010979602856,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f50e0 activity=128 depth=1 finished=1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975411142819844,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830628,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s completed spinning the runloop",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829232,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944007+0800",
+  "machTimestamp" : 13010979602874,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] completed spinning the runloop",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976424755101700,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829232,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finished waiting",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829332,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944007+0800",
+  "machTimestamp" : 13010979602879,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] finished waiting",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976605143728132,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829332,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s workQueue=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11827660,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944020+0800",
+  "machTimestamp" : 13010979603194,
+  "eventMessage" : "-[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously] workQueue=0xa1c28aa00",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974659523543044,
+  "processID" : 57802,
+  "senderProgramCounter" : 11827660,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s writing records",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436644,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11826088,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944111+0800",
+  "machTimestamp" : 13010979605367,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]_block_invoke writing records",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974419005374468,
+  "processID" : 57802,
+  "senderProgramCounter" : 11826088,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _windowSnapshotter=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828060,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944204+0800",
+  "machTimestamp" : 13010979607588,
+  "eventMessage" : "-[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _windowSnapshotter=0xa19820690",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974762602758148,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828060,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _workQueue=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 17485060,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944206+0800",
+  "machTimestamp" : 13010979607640,
+  "eventMessage" : "-[NSPersistentUIWindowSnapshotter flushPendingSnapshotsSynchronously] _workQueue=0xa1c28aa80",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 418229385443934212,
+  "processID" : 57802,
+  "senderProgramCounter" : 17485060,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _store=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828180,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.944209+0800",
+  "machTimestamp" : 13010979607727,
+  "eventMessage" : "-[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _store=0xa1aeae3a0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974904336678916,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828180,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finished flushing",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829620,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.946101+0800",
+  "machTimestamp" : 13010979653123,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] finished flushing",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976725402812420,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Checking whether app should terminate",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2393104,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.946171+0800",
+  "machTimestamp" : 13010979654797,
+  "eventMessage" : "Checking whether app should terminate",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417803264558628868,
+  "processID" : 57802,
+  "senderProgramCounter" : 2393104,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Asking app delegate whether applicationShouldTerminate:",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2398064,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.946224+0800",
+  "machTimestamp" : 13010979656071,
+  "eventMessage" : "Asking app delegate whether applicationShouldTerminate:",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417805162934173700,
+  "processID" : 57802,
+  "senderProgramCounter" : 2398064,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "applicationShouldTerminate: NSTerminateCancel",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2398248,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.950081+0800",
+  "machTimestamp" : 13010979748647,
+  "eventMessage" : "applicationShouldTerminate: NSTerminateCancel",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417805781409464324,
+  "processID" : 57802,
+  "senderProgramCounter" : 2398248,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "replyToApplicationShouldTerminate:NO",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2398960,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.950085+0800",
+  "machTimestamp" : 13010979748747,
+  "eventMessage" : "replyToApplicationShouldTerminate:NO",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417806597453250564,
+  "processID" : 57802,
+  "senderProgramCounter" : 2398960,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "App termination canceled",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2394500,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.950105+0800",
+  "machTimestamp" : 13010979749232,
+  "eventMessage" : "App termination canceled",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417804733437444100,
+  "processID" : 57802,
+  "senderProgramCounter" : 2394500,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "-[NSApplication _unsetShouldRestoreStateOnNextLaunch]",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 3533520,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.950107+0800",
+  "machTimestamp" : 13010979749272,
+  "eventMessage" : "-[NSApplication _unsetShouldRestoreStateOnNextLaunch]",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417810566003032068,
+  "processID" : 57802,
+  "senderProgramCounter" : 3533520,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s sPersistentStateTerminateStackHeight -> %u",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 8502596,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:20.950110+0800",
+  "machTimestamp" : 13010979749331,
+  "eventMessage" : "-[NSApplication _popPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417807971842785284,
+  "processID" : 57802,
+  "senderProgramCounter" : 8502596,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%s: Create CursorUIViewService: %{public}@",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.TextInputUI",
+  "category" : "CursorUI",
+  "threadID" : 18436631,
+  "senderImageUUID" : "08A6C779-932E-39BB-BCE4-64AFB7454297",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 18540,
+        "imageUUID" : "08A6C779-932E-39BB-BCE4-64AFB7454297"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/TextInputUIMacHelper.framework\/Versions\/A\/TextInputUIMacHelper",
+  "timestamp" : "2026-09-22 16:29:20.998336+0800",
+  "machTimestamp" : 13010980906764,
+  "eventMessage" : "-[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 8320741319121305604,
+  "processID" : 57802,
+  "senderProgramCounter" : 18540,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.998640+0800",
+  "machTimestamp" : 13010980914061,
+  "eventMessage" : "[0xa18de4000] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:20.998642+0800",
+  "machTimestamp" : 13010980914101,
+  "eventMessage" : "[0xa18de43c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "terminate:",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2335512,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173306+0800",
+  "machTimestamp" : 13010985106043,
+  "eventMessage" : "terminate:",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417809406361862148,
+  "processID" : 57802,
+  "senderProgramCounter" : 2335512,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s %@",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "AutomaticTermination",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 8486964,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173310+0800",
+  "machTimestamp" : 13010985106150,
+  "eventMessage" : "void _NSDisableAutomaticTerminationAndLog(NSString *) Terminating",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417799940253941764,
+  "processID" : 57802,
+  "senderProgramCounter" : 8486964,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s sPersistentStateTerminateStackHeight -> %u",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2337528,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173342+0800",
+  "machTimestamp" : 13010985106908,
+  "eventMessage" : "-[NSApplication _pushPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417807971842785284,
+  "processID" : 57802,
+  "senderProgramCounter" : 2337528,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s shouldClose=%d waitingUntilDone=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2337944,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173361+0800",
+  "machTimestamp" : 13010985107370,
+  "eventMessage" : "-[NSPersistentUIManager flushPersistentStateAndClose:waitingUntilDone:] shouldClose=1 waitingUntilDone=1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976849956864004,
+  "processID" : 57802,
+  "senderProgramCounter" : 2337944,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s ",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1627708,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173373+0800",
+  "machTimestamp" : 13010985107662,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417798063353233412,
+  "processID" : 57802,
+  "senderProgramCounter" : 1627708,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finishing enqueued operations",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 1629416,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173420+0800",
+  "machTimestamp" : 13010985108783,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges] finishing enqueued operations",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974096882827268,
+  "processID" : 57802,
+  "senderProgramCounter" : 1629416,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finishing pending changes",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828432,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173432+0800",
+  "machTimestamp" : 13010985109059,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] finishing pending changes",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974994530992132,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828432,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _encodingQueue=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11827440,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173432+0800",
+  "machTimestamp" : 13010985109077,
+  "eventMessage" : "-[NSPersistentUIManager _finishEncodingImmediatelyWithCompletionHandler:] _encodingQueue=0xa1b4ad470",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974534969491460,
+  "processID" : 57802,
+  "senderProgramCounter" : 11827440,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s asyncing to main queue",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18441427,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11825640,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173439+0800",
+  "machTimestamp" : 13010985109245,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]_block_invoke asyncing to main queue",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974272976486404,
+  "processID" : 57802,
+  "senderProgramCounter" : 11825640,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s observer=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828736,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173441+0800",
+  "machTimestamp" : 13010985109277,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] observer=0xa186f4be0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975660250923012,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828736,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s asyncing to main runloop",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18441427,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830068,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173445+0800",
+  "machTimestamp" : 13010985109372,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke asyncing to main runloop",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975153444782084,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830068,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s spinning the runloop",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829096,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173454+0800",
+  "machTimestamp" : 13010985109609,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] spinning the runloop",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976287316148228,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829096,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s observer=%p activity=%lu depth=%lu finished=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830628,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173456+0800",
+  "machTimestamp" : 13010985109642,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f4be0 activity=1 depth=0 finished=0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975411142819844,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830628,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finished=YES",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830376,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173460+0800",
+  "machTimestamp" : 13010985109750,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke finished=YES",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975308063604740,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830376,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s observer=%p activity=%lu depth=%lu finished=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11830628,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173467+0800",
+  "machTimestamp" : 13010985109906,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f4be0 activity=128 depth=1 finished=1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417975411142819844,
+  "processID" : 57802,
+  "senderProgramCounter" : 11830628,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s completed spinning the runloop",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829232,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173467+0800",
+  "machTimestamp" : 13010985109915,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] completed spinning the runloop",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976424755101700,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829232,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finished waiting",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829332,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173467+0800",
+  "machTimestamp" : 13010985109919,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] finished waiting",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976605143728132,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829332,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s workQueue=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11827660,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173481+0800",
+  "machTimestamp" : 13010985110250,
+  "eventMessage" : "-[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously] workQueue=0xa1c28aa00",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974659523543044,
+  "processID" : 57802,
+  "senderProgramCounter" : 11827660,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s writing records",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436644,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11826088,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173497+0800",
+  "machTimestamp" : 13010985110640,
+  "eventMessage" : "-[NSPersistentUIManager flushAllChanges]_block_invoke writing records",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974419005374468,
+  "processID" : 57802,
+  "senderProgramCounter" : 11826088,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _windowSnapshotter=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828060,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173583+0800",
+  "machTimestamp" : 13010985112695,
+  "eventMessage" : "-[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _windowSnapshotter=0xa19820690",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974762602758148,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828060,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _workQueue=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 17485060,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173584+0800",
+  "machTimestamp" : 13010985112722,
+  "eventMessage" : "-[NSPersistentUIWindowSnapshotter flushPendingSnapshotsSynchronously] _workQueue=0xa1c28aa80",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 418229385443934212,
+  "processID" : 57802,
+  "senderProgramCounter" : 17485060,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s _store=%p",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11828180,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173587+0800",
+  "machTimestamp" : 13010985112785,
+  "eventMessage" : "-[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _store=0xa1aeae3a0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417974904336678916,
+  "processID" : 57802,
+  "senderProgramCounter" : 11828180,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s finished flushing",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 11829620,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173854+0800",
+  "machTimestamp" : 13010985119209,
+  "eventMessage" : "-[NSPersistentUIManager _waitForPendingChangesToFinish] finished flushing",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417976725402812420,
+  "processID" : 57802,
+  "senderProgramCounter" : 11829620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Attempting sudden termination (1st attempt)",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2336048,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173944+0800",
+  "machTimestamp" : 13010985121360,
+  "eventMessage" : "Attempting sudden termination (1st attempt)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417809453606502404,
+  "processID" : 57802,
+  "senderProgramCounter" : 2336048,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Checking whether app should terminate",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2393104,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173950+0800",
+  "machTimestamp" : 13010985121503,
+  "eventMessage" : "Checking whether app should terminate",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417803264558628868,
+  "processID" : 57802,
+  "senderProgramCounter" : 2393104,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Asking app delegate whether applicationShouldTerminate:",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2398064,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.173972+0800",
+  "machTimestamp" : 13010985122022,
+  "eventMessage" : "Asking app delegate whether applicationShouldTerminate:",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417805162934173700,
+  "processID" : 57802,
+  "senderProgramCounter" : 2398064,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s sPersistentStateTerminateStackHeight -> %u",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2337528,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.198338+0800",
+  "machTimestamp" : 13010985706805,
+  "eventMessage" : "-[NSApplication _pushPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 2",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417807971842785284,
+  "processID" : 57802,
+  "senderProgramCounter" : 2337528,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436644,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:21.198789+0800",
+  "machTimestamp" : 13010985717637,
+  "eventMessage" : "[0xa1a817700] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] Session canceled.",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "session",
+  "threadID" : 18436644,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 193340,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:21.198793+0800",
+  "machTimestamp" : 13010985717726,
+  "eventMessage" : "[0xa19ddcf50] Session canceled.",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9508911598272516,
+  "processID" : 57802,
+  "senderProgramCounter" : 193340,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "agent connection cancelled (details: %{public}s)",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.UIIntelligenceSupport",
+  "category" : "xpc",
+  "threadID" : 18436644,
+  "senderImageUUID" : "E4480FEE-65A7-39DF-ACA1-09E7AC6054E9",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 478428,
+        "imageUUID" : "E4480FEE-65A7-39DF-ACA1-09E7AC6054E9"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/UIIntelligenceSupport.framework\/Versions\/A\/UIIntelligenceSupport",
+  "timestamp" : "2026-09-22 16:29:21.198871+0800",
+  "machTimestamp" : 13010985719607,
+  "eventMessage" : "agent connection cancelled (details: Session manually canceled)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 8607924870009061380,
+  "processID" : 57802,
+  "senderProgramCounter" : 478428,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] Disposing of session",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "session",
+  "threadID" : 18436644,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 185800,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:21.198877+0800",
+  "machTimestamp" : 13010985719753,
+  "eventMessage" : "[0xa19ddcf50] Disposing of session",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9505101962280964,
+  "processID" : 57802,
+  "senderProgramCounter" : 185800,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "applicationShouldTerminate: NSTerminateCancel",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2398248,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.200429+0800",
+  "machTimestamp" : 13010985757007,
+  "eventMessage" : "applicationShouldTerminate: NSTerminateCancel",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417805781409464324,
+  "processID" : 57802,
+  "senderProgramCounter" : 2398248,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "replyToApplicationShouldTerminate:NO",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2398960,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.200431+0800",
+  "machTimestamp" : 13010985757035,
+  "eventMessage" : "replyToApplicationShouldTerminate:NO",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417806597453250564,
+  "processID" : 57802,
+  "senderProgramCounter" : 2398960,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "App termination canceled",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2394500,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.200448+0800",
+  "machTimestamp" : 13010985757463,
+  "eventMessage" : "App termination canceled",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417804733437444100,
+  "processID" : 57802,
+  "senderProgramCounter" : 2394500,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s sPersistentStateTerminateStackHeight -> %u",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 8502596,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.200451+0800",
+  "machTimestamp" : 13010985757531,
+  "eventMessage" : "-[NSApplication _popPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 1",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417807971842785284,
+  "processID" : 57802,
+  "senderProgramCounter" : 8502596,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s %@",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "AutomaticTermination",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 8487160,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.200453+0800",
+  "machTimestamp" : 13010985757576,
+  "eventMessage" : "void _NSEnableAutomaticTerminationAndLog(NSString *) Terminating",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417799940253941764,
+  "processID" : 57802,
+  "senderProgramCounter" : 8487160,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Termination aborted",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "Application",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 2336240,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.200457+0800",
+  "machTimestamp" : 13010985757664,
+  "eventMessage" : "Termination aborted",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417809642585063428,
+  "processID" : 57802,
+  "senderProgramCounter" : 2336240,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s sPersistentStateTerminateStackHeight -> %u",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.AppKit",
+  "category" : "StateRestoration",
+  "threadID" : 18436631,
+  "senderImageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 8502596,
+        "imageUUID" : "B6B4BDAD-6428-3E64-8747-275700109B46"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/AppKit.framework\/Versions\/C\/AppKit",
+  "timestamp" : "2026-09-22 16:29:21.201275+0800",
+  "machTimestamp" : 13010985777292,
+  "eventMessage" : "-[NSApplication _popPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 417807971842785284,
+  "processID" : 57802,
+  "senderProgramCounter" : 8502596,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Error",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "No scene exists for identity: %{public}@",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.FrontBoard",
+  "category" : "SceneClient",
+  "threadID" : 18441427,
+  "senderImageUUID" : "DD0CA5A1-7BD8-3895-9290-3580A783C069",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 562712,
+        "imageUUID" : "DD0CA5A1-7BD8-3895-9290-3580A783C069"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/FrontBoardServices.framework\/Versions\/A\/FrontBoardServices",
+  "timestamp" : "2026-09-22 16:29:21.210298+0800",
+  "machTimestamp" : 13010985993843,
+  "eventMessage" : "No scene exists for identity: com.apple.controlcenter:2F703D9F-FF76-41C0-AE6C-D194AA9D050B-Aux[1]-NSStatusItemView",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 1925581916418084868,
+  "processID" : 57802,
+  "senderProgramCounter" : 562712,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18436631,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:21.262327+0800",
+  "machTimestamp" : 13010987242554,
+  "eventMessage" : "[0xa18de48c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "%{public}s%{public}s(%{public}s,%{public}s handler=%p isSys=%{public}s) err=%d\/%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.appleevents",
+  "category" : "main",
+  "threadID" : 18436631,
+  "senderImageUUID" : "435D6243-695B-3543-A722-10106F5696BD",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 135304,
+        "imageUUID" : "435D6243-695B-3543-A722-10106F5696BD"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/Frameworks\/CoreServices.framework\/Versions\/A\/Frameworks\/AE.framework\/Versions\/A\/AE",
+  "timestamp" : "2026-09-22 16:29:21.267167+0800",
+  "machTimestamp" : 13010987358716,
+  "eventMessage" : "OSErr AERemoveEventHandler(AEEventClass, AEEventID, AEEventHandlerUPP, Boolean)(GURL,GURL handler=0x183a9fd74 isSys=NO) err=0\/noErr",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 613990198044524548,
+  "processID" : 57802,
+  "senderProgramCounter" : 135304,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] %{public}s connection: mach=%{bool}d listener=%{bool}d peer=%{bool}d name=%{public}s",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18441427,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 45092,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:21.267970+0800",
+  "machTimestamp" : 13010987377994,
+  "eventMessage" : "[0xa18de4640] activating connection: mach=true listener=false peer=false name=com.apple.powerlog.plxpclogger.xpc",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9498977338916868,
+  "processID" : 57802,
+  "senderProgramCounter" : 45092,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Entering exit handler.",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.CoreAnalytics",
+  "category" : "client",
+  "threadID" : 18436631,
+  "senderImageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 122636,
+        "imageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/CoreAnalytics.framework\/Versions\/A\/CoreAnalytics",
+  "timestamp" : "2026-09-22 16:29:21.270104+0800",
+  "machTimestamp" : 13010987429188,
+  "eventMessage" : "Entering exit handler.",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 724006382332018692,
+  "processID" : 57802,
+  "senderProgramCounter" : 122636,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Queueing exit procedure onto XPC queue. Any further messages sent will be discarded. activeSendTransactions=%d",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.CoreAnalytics",
+  "category" : "client",
+  "threadID" : 18436631,
+  "senderImageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 134276,
+        "imageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/CoreAnalytics.framework\/Versions\/A\/CoreAnalytics",
+  "timestamp" : "2026-09-22 16:29:21.270106+0800",
+  "machTimestamp" : 13010987429236,
+  "eventMessage" : "Queueing exit procedure onto XPC queue. Any further messages sent will be discarded. activeSendTransactions=0",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 724007030872080388,
+  "processID" : 57802,
+  "senderProgramCounter" : 134276,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Cancelling XPC connection. Any further reply handler invocations will not retry messages",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.CoreAnalytics",
+  "category" : "client",
+  "threadID" : 18441604,
+  "senderImageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 128236,
+        "imageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/CoreAnalytics.framework\/Versions\/A\/CoreAnalytics",
+  "timestamp" : "2026-09-22 16:29:21.270129+0800",
+  "machTimestamp" : 13010987429802,
+  "eventMessage" : "Cancelling XPC connection. Any further reply handler invocations will not retry messages",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 724003822531510276,
+  "processID" : 57802,
+  "senderProgramCounter" : 128236,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "[%p] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.xpc",
+  "category" : "connection",
+  "threadID" : 18441604,
+  "senderImageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 79620,
+        "imageUUID" : "33E44C2D-D65E-37A6-B85F-1A4CF524A050"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/usr\/lib\/system\/libxpc.dylib",
+  "timestamp" : "2026-09-22 16:29:21.270131+0800",
+  "machTimestamp" : 13010987429840,
+  "eventMessage" : "[0xa1a814640] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 9491688779415556,
+  "processID" : 57802,
+  "senderProgramCounter" : 79620,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "Exiting exit handler.",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.CoreAnalytics",
+  "category" : "client",
+  "threadID" : 18436631,
+  "senderImageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 122708,
+        "imageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/CoreAnalytics.framework\/Versions\/A\/CoreAnalytics",
+  "timestamp" : "2026-09-22 16:29:21.270143+0800",
+  "machTimestamp" : 13010987430134,
+  "eventMessage" : "Exiting exit handler.",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 724006481116266500,
+  "processID" : 57802,
+  "senderProgramCounter" : 122708,
+  "parentActivityIdentifier" : 0
+},{
+  "timezoneName" : "",
+  "messageType" : "Default",
+  "eventType" : "logEvent",
+  "source" : null,
+  "formatString" : "XPC connection invalidated (daemon unloaded\/disabled)",
+  "userID" : 501,
+  "activityIdentifier" : 0,
+  "subsystem" : "com.apple.CoreAnalytics",
+  "category" : "client",
+  "threadID" : 18441427,
+  "senderImageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8",
+  "backtrace" : {
+    "frames" : [
+      {
+        "imageOffset" : 133108,
+        "imageUUID" : "FAE24228-7E19-3F30-9872-3B25749ADAF8"
+      }
+    ]
+  },
+  "bootUUID" : "EC1A1DDE-D5B0-4B4F-AE5C-693219FAED5C",
+  "processImagePath" : "\/private\/tmp\/clash-qt-p4.w0Y8Uo\/fresh-6\/build\/p4\/clash-qt.app\/Contents\/MacOS\/clash-qt",
+  "senderImagePath" : "\/System\/Library\/PrivateFrameworks\/CoreAnalytics.framework\/Versions\/A\/CoreAnalytics",
+  "timestamp" : "2026-09-22 16:29:21.270160+0800",
+  "machTimestamp" : 13010987430552,
+  "eventMessage" : "XPC connection invalidated (daemon unloaded\/disabled)",
+  "processImageUUID" : "328AB4CA-9E14-3686-9346-7205EBE3E304",
+  "traceID" : 724006575605547012,
+  "processID" : 57802,
+  "senderProgramCounter" : 133108,
+  "parentActivityIdentifier" : 0
+}]

@@ -1,0 +1,24 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+loaded: clash-qt mihomo backend module (module-r1, backend-r4) (module abi 1)
+start submitted as request 1
+  core: engine /tmp/clash-qt-p4.w0Y8Uo/final-audit/engine/mihomo [Engine you selected] no recorded provenance
+  state=1 (generation 1)
+  core: time="2026-09-22T16:28:05.771702000+08:00" level=info msg="Start initial configuration in progress"
+  core: time="2026-09-22T16:28:05.771751000+08:00" level=info msg="Geodata Loader mode: memconservative"
+  core: time="2026-09-22T16:28:05.771764000+08:00" level=info msg="Geosite Matcher implementation: succinct"
+  core: time="2026-09-22T16:28:05.771889000+08:00" level=info msg="Initial configuration complete, total time: 0ms"
+  core: time="2026-09-22T16:28:05.772299000+08:00" level=info msg="Sniffer is closed"
+  core: time="2026-09-22T16:28:05.773048000+08:00" level=info msg="Mixed(http+socks) proxy listening at: 127.0.0.1:55178"
+  core: time="2026-09-22T16:28:05.773515000+08:00" level=info msg="RESTful API listening at: 127.0.0.1:55177"
+  core: time="2026-09-22T16:28:05.774535000+08:00" level=info msg="Start initial compatible provider default"
+  core: time="2026-09-22T16:28:05.783435000+08:00" level=info msg="UI already exists, skip downloading"
+  state=2 (generation 1)
+  core ready at 127.0.0.1:55177
+  state=3 (generation 2)
+  state=0 (generation 2)
+  stop completed, confirmed=yes
+live objects before unload: 0
+unmappable: yes
+image unmapped: yes
+teardown complete
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

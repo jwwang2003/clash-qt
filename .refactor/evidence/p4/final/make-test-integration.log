@@ -1,0 +1,153 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+[1/203] Automatic MOC and UIC for target clash_test_support
+[2/197] Automatic MOC and UIC for target controller-tests
+[3/195] Automatic MOC and UIC for target clash_qt_backend_module
+[4/193] Automatic MOC and UIC for target routing-controls-tests
+[5/191] Running AUTOMOC file extraction for target clash_test_support
+[6/190] Automatic MOC and UIC for target provider-tests
+[7/188] Automatic MOC and UIC for target traffic-history-tests
+[8/186] Automatic MOC and UIC for target service-settings-tests
+[9/184] Running qmlimportscanner for traffic-graph-frames-tests
+[10/184] Running qmlimportscanner for traffic-graph-tests
+[11/184] Running qmlimportscanner for home-page-tests
+[12/184] Running qmlimportscanner for traffic-frame-pacing-tests
+[13/184] Automatic MOC and UIC for target proxies-page-tests
+[14/182] Automatic MOC and UIC for target clash-qt
+[15/181] Automatic MOC and UIC for target connections-page-tests
+[16/179] Automatic MOC and UIC for target w03-routing-controls-tests
+[17/178] Automatic MOC and UIC for target traffic-graph-frames-tests
+[18/177] Automatic MOC and UIC for target traffic-graph-tests
+[19/176] Automatic MOC and UIC for target traffic-frame-pacing-tests
+[20/175] Automatic MOC and UIC for target providers-page-tests
+[21/173] Automatic MOC and UIC for target home-page-tests
+[22/172] Running AUTOMOC file extraction for target traffic-graph-frames-tests
+[23/169] Running AUTOMOC file extraction for target clash-qt
+[24/163] Running AUTOMOC file extraction for target w03-routing-controls-tests
+[25/157] Running AUTOMOC file extraction for target traffic-graph-tests
+[26/154] Running AUTOMOC file extraction for target traffic-frame-pacing-tests
+[27/151] Running AUTOMOC file extraction for target home-page-tests
+[28/148] Automatic MOC and UIC for target rules-page-tests
+[29/146] Automatic MOC and UIC for target backup-tests
+[30/144] Automatic MOC and UIC for target privileged-service-tests
+[31/142] Automatic MOC and UIC for target system-proxy-async-tests
+[32/140] Automatic MOC and UIC for target logs-page-tests
+[33/138] Automatic MOC and UIC for target proxy-tests
+[34/136] Automatic MOC and UIC for target tray-tests
+[35/134] Automatic MOC and UIC for target preset-editor-tests
+[36/132] Automatic MOC and UIC for target dashboard-async-tests
+[37/130] Automatic MOC and UIC for target loopback-server-tests
+[38/128] Automatic MOC and UIC for target scoped-environment-tests
+[39/126] Automatic MOC and UIC for target fake-core-tests
+[40/124] Automatic MOC and UIC for target preferences-tests
+[41/122] Automatic MOC and UIC for target backend-contract-tests
+[42/120] Automatic MOC and UIC for target backend-bridge-tests
+[43/118] Automatic MOC and UIC for target component-contract-tests
+[44/116] Automatic MOC and UIC for target config-generation-tests
+[45/114] Automatic MOC and UIC for target core-process-tests
+[46/112] Automatic MOC and UIC for target profile-store-tests
+[47/110] Running rcc for resource qmake_ClashQt
+[48/110] Automatic MOC and UIC for target runtime-maintenance-tests
+[49/108] Generating .rcc/qmlcache/home-page-tests_qmlcache_loader.cpp
+[50/108] Generating .rcc/qmlcache/traffic-graph-tests_qmlcache_loader.cpp
+[51/108] Generating .rcc/qmlcache/traffic-graph-frames-tests_qmlcache_loader.cpp
+[52/108] Generating .rcc/qmlcache/traffic-frame-pacing-tests_qmlcache_loader.cpp
+[53/108] Automatic MOC and UIC for target runtime-coordinator-tests
+[54/106] Automatic MOC and UIC for target routing-controller-tests
+[55/104] Generating .rcc/qmlcache/home-page-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/home-page-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[56/104] Automatic MOC and UIC for target w01-first-launch-tests
+[57/102] Automatic MOC and UIC for target w02-subscription-update-tests
+[58/100] Generating .rcc/qmlcache/traffic-graph-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/traffic-graph-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[59/100] Generating .rcc/qmlcache/traffic-graph-frames-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/traffic-graph-frames-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[60/100] Automatic MOC and UIC for target w04-restore-tests
+[61/98] Generating .rcc/qmlcache/traffic-frame-pacing-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/traffic-frame-pacing-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[62/98] Automatic MOC and UIC for target w05-recovery-tests
+[63/96] Automatic MOC and UIC for target app-smoke-tests
+[64/94] Automatic MOC and UIC for target config-composer-tests
+[65/92] Automatic MOC and UIC for target preset-document-tests
+[66/90] Automatic MOC and UIC for target chain-snapshot-tests
+[67/88] Building CXX object tests/CMakeFiles/home-page-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[68/88] Automatic MOC and UIC for target preset-store-tests
+[69/86] Automatic MOC and UIC for target effective-config-preview-tests
+[70/84] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[71/84] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[72/84] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[73/84] Building CXX object tests/CMakeFiles/home-page-tests.dir/.rcc/qmlcache/home-page-tests_qmlcache_loader.cpp.o
+[74/84] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.rcc/qmlcache/traffic-graph-tests_qmlcache_loader.cpp.o
+[75/84] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.rcc/qmlcache/traffic-graph-frames-tests_qmlcache_loader.cpp.o
+[76/84] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.rcc/qmlcache/traffic-frame-pacing-tests_qmlcache_loader.cpp.o
+[77/84] Building CXX object tests/CMakeFiles/home-page-tests.dir/.rcc/qmlcache/home-page-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[78/84] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.rcc/qmlcache/traffic-graph-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[79/84] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.rcc/qmlcache/traffic-frame-pacing-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[80/84] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.rcc/qmlcache/traffic-graph-frames-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[81/84] Linking CXX executable tests/traffic-graph-tests
+[82/84] Linking CXX executable tests/home-page-tests
+[83/84] Linking CXX executable tests/traffic-graph-frames-tests
+[84/84] Linking CXX executable tests/traffic-frame-pacing-tests
+[1/1] Building mihomo from local source
+-- Building mihomo v1.19.31 (ab405bad5beeeac8b003bb01f60f134f6df54471, clean)
+-- mihomo -> /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/core/mihomo
+--   sha256 6f53b2e18687b26c9948a804ab9e7b1b4421e8d0d3a391c11e8468dd1685b544
+--   provenance /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/core/mihomo-provenance.json
+Test project /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4
+      Start  1: controller
+ 1/20 Test  #1: controller .......................   Passed    5.07 sec
+      Start  2: provider
+ 2/20 Test  #2: provider .........................   Passed    1.21 sec
+      Start  3: backup
+ 3/20 Test  #3: backup ...........................   Passed    0.79 sec
+      Start  5: privileged-service
+ 4/20 Test  #5: privileged-service ...............   Passed    1.03 sec
+      Start 21: config-generation
+ 5/20 Test #21: config-generation ................   Passed    0.35 sec
+      Start 22: profile-store
+ 6/20 Test #22: profile-store ....................   Passed    0.69 sec
+      Start 23: core-process
+ 7/20 Test #23: core-process .....................   Passed   11.18 sec
+      Start 24: runtime-maintenance
+ 8/20 Test #24: runtime-maintenance ..............   Passed    0.19 sec
+      Start 39: backend-real-contract
+ 9/20 Test #39: backend-real-contract ............   Passed   12.91 sec
+      Start 41: backend-real-core
+10/20 Test #41: backend-real-core ................   Passed    3.55 sec
+      Start 42: w01-first-launch
+11/20 Test #42: w01-first-launch .................   Passed   11.04 sec
+      Start 43: w02-subscription-update
+12/20 Test #43: w02-subscription-update ..........   Passed    4.97 sec
+      Start 44: w04-restore
+13/20 Test #44: w04-restore ......................   Passed    0.47 sec
+      Start 45: w05-recovery
+14/20 Test #45: w05-recovery .....................   Passed    7.66 sec
+      Start 46: w03-routing-controls
+15/20 Test #46: w03-routing-controls .............   Passed    1.61 sec
+      Start 47: app-smoke
+16/20 Test #47: app-smoke ........................   Passed   39.60 sec
+      Start 48: w02-real-core
+17/20 Test #48: w02-real-core ....................   Passed    3.09 sec
+      Start 55: preset-store
+18/20 Test #55: preset-store .....................   Passed    0.18 sec
+      Start 56: effective-config-preview
+19/20 Test #56: effective-config-preview .........   Passed    4.92 sec
+      Start 57: abi-contract
+20/20 Test #57: abi-contract .....................   Passed    0.12 sec
+
+100% tests passed out of 20
+
+Label Time Summary:
+app            =  68.43 sec*proc (7 tests)
+backups        =   0.79 sec*proc (1 test)
+component      =   0.12 sec*proc (1 test)
+config         =  13.51 sec*proc (5 tests)
+contract       =  13.03 sec*proc (2 tests)
+core           =  41.04 sec*proc (11 tests)
+integration    = 110.61 sec*proc (20 tests)
+mihomo         =  33.92 sec*proc (5 tests)
+packaging      =  39.60 sec*proc (1 test)
+platform       =   1.03 sec*proc (1 test)
+profiles       =   0.88 sec*proc (2 tests)
+real-core      =   6.64 sec*proc (2 tests)
+service        =   1.03 sec*proc (1 test)
+ui             =   1.61 sec*proc (1 test)
+workflow       =  68.43 sec*proc (7 tests)
+
+Total Test time (real) = 110.65 sec
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

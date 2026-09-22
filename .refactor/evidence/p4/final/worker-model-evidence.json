@@ -1,0 +1,186 @@
+[
+  {
+    "worker": "common-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "abi-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "transport-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "w02-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "aborted_streaming"
+  },
+  {
+    "worker": "timer-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "config-audit-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "transport-audit-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "abi-recheck-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "backup-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "abi-audit-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "w02-settle-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "w02-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "core-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "isolation-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "ui-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "abi-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "cfg-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "rc-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "config-recheck-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "config-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "abi-final-fix-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "final-audit-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  },
+  {
+    "worker": "preference-recheck-implement",
+    "models": [
+      "claude-opus-5"
+    ],
+    "nested_agents": 0,
+    "terminal": "completed"
+  }
+]

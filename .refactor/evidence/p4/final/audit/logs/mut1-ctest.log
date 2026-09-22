@@ -1,0 +1,141 @@
+Test project /tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/build
+    Start 25: backend-real-contract
+1/1 Test #25: backend-real-contract ............***Failed   23.83 sec
+********* Start testing of BackendRealContractTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : BackendRealContractTest::initTestCase()
+PASS   : BackendRealContractTest::publishedShapesAreAbiReady()
+PASS   : BackendRealContractTest::detachLeavesTheAttachedControllerRunning()
+PASS   : BackendRealContractTest::anAbortedCompletionIsMarkedSupersededAndCarriesItsSubmitGeneration()
+FAIL!  : BackendRealContractTest::aReplacementAtTheSameAddressCannotClearTheNewSession() 'backend.generation() > submitted' returned FALSE. (re-attaching to a replaced engine left the generation where it was, so nothing the retired process owed was invalidated)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/mihomo/backend_real_contract_test.cpp(497)]
+FAIL!  : BackendRealContractTest::aRetiredSessionsStreamIsReplacedRatherThanInherited() 'controller.waitFor([&] { return controller.streamHandshakes(QStringLiteral("/traffic")) > handshakes; })' returned FALSE. (the replacement never re-opened the stream, so the retired session's socket WAS the live subscription: GET /proxies auth=ok scripted=yes
+GET /configs auth=ok scripted=yes
+GET /version auth=ok scripted=yes
+GET /rules auth=ok scripted=yes
+WS /traffic auth=ok scripted=yes
+GET /version auth=ok scripted=yes
+GET /proxies auth=ok scripted=yes
+GET /rules auth=ok scripted=yes
+GET /configs auth=ok scripted=yes)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/mihomo/backend_real_contract_test.cpp(588)]
+FAIL!  : BackendRealContractTest::aRetiredStreamDropCannotDisconnectTheNewSession() 'observer.connections.size() == transitions' returned FALSE. (the death of the retired session's socket reported the healthy replacement as disconnected)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/core/mihomo/backend_real_contract_test.cpp(644)]
+PASS   : BackendRealContractTest::aCompletionSubmittedBeforeAManagedStartComparesOlder()
+PASS   : BackendRealContractTest::aNonEndpointGenerationBumpReIssuesTheSnapshotSet()
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200 + string version)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(500)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(404)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200, no version field)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200, version is a number)
+PASS   : BackendRealContractTest::readinessRequiresAVersionStringNotAStartedProcess(200, body is not an object)
+PASS   : BackendRealContractTest::logOutputRefreshesTheIdleDeadlineButNotTheHardCap()
+PASS   : BackendRealContractTest::theReadinessHardCapIsNotRefreshedByLogOutput()
+PASS   : BackendRealContractTest::stopTerminatesOnlyTheManagedCoreAndLeavesAnExternalControllerAlive()
+PASS   : BackendRealContractTest::aCancelledReadinessProbeDisconnectsBeforeItAborts()
+PASS   : BackendRealContractTest::aTunChangeCancelledByAnEndpointChangeIsSupersededNotAProtocolError()
+PASS   : BackendRealContractTest::aValidationFailureLeavesTheRunningConfigurationIntact()
+PASS   : BackendRealContractTest::aPendingLaunchIsConsumedOnlyAfterThePriorExitIsObserved()
+PASS   : BackendRealContractTest::aCancelledValidationKeepsItsConfigurationPathActiveUntilItExits()
+QINFO  : BackendRealContractTest::anUnconfirmedStopIsReportedAsUnconfirmed() stopGen= 3  coreFailedGen= 3  lastObserved= 3
+PASS   : BackendRealContractTest::anUnconfirmedStopIsReportedAsUnconfirmed()
+PASS   : BackendRealContractTest::aConfirmedStopIsReportedAsConfirmed()
+PASS   : BackendRealContractTest::noObserverIsInvokedFromInsideAMutatingCall()
+PASS   : BackendRealContractTest::aMutationFromInsideACallbackIsAlsoDeliveredLater()
+PASS   : BackendRealContractTest::removingAnObserverDuringDeliveryIsSafe()
+PASS   : BackendRealContractTest::anObserverAddedDuringDeliverySeesOnlyLaterEvents()
+PASS   : BackendRealContractTest::theTunChangeReportsAReadBackNotAnEcho()
+PASS   : BackendRealContractTest::anIdenticalProviderRequestIsCoalescedOntoTheOutstandingOne()
+PASS   : BackendRealContractTest::executionModeIsRefusedWhileTheCoreIsLive()
+PASS   : BackendRealContractTest::capabilitiesAreQueriedFromTheInstance()
+PASS   : BackendRealContractTest::aPrivilegedServiceStatusQueryIsAnsweredWithoutASecondConnection()
+PASS   : BackendRealContractTest::theHelpersRunningCoreReportReachesThePublishedStatus()
+PASS   : BackendRealContractTest::aMissingManagedEngineFailsWithAnActionableMessage()
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(direct-fake)
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(direct-real)
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(module-real)
+PASS   : BackendRealContractTest::sharedIdentityAndPublishedBudget(module-fake)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(direct-fake)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(direct-real)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(module-real)
+PASS   : BackendRealContractTest::sharedRequestIdentityAndLosslessPayloads(module-fake)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(direct-fake)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(direct-real)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(module-real)
+PASS   : BackendRealContractTest::sharedObserverRegistrationIsExplicit(module-fake)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(direct-fake)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(direct-real)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(module-real)
+PASS   : BackendRealContractTest::sharedRemovingAnObserverDuringDeliveryIsSafe(module-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(direct-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(direct-real)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(module-real)
+PASS   : BackendRealContractTest::sharedObserverAddedDuringACallbackSeesOnlyLaterEvents(module-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(direct-fake)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(direct-real)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(module-real)
+PASS   : BackendRealContractTest::sharedObserverAddedBeforeDeliverySeesNoEarlierEvents(module-fake)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(direct-fake)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(direct-real)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(module-real)
+PASS   : BackendRealContractTest::sharedDeliveryIsNeverReentrant(module-fake)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(direct-fake)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(direct-real)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(module-real)
+PASS   : BackendRealContractTest::sharedAbandonedCompletionIsMarkedSuperseded(module-fake)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(direct-fake)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(direct-real)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(module-real)
+PASS   : BackendRealContractTest::sharedNonEndpointBumpReissuesTheSnapshotSet(module-fake)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(direct-fake)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(direct-real)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(module-real)
+PASS   : BackendRealContractTest::sharedDetachLeavesTheAttachedControllerRunning(module-fake)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(direct-fake)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(direct-real)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(module-real)
+PASS   : BackendRealContractTest::sharedStopTerminatesOnlyTheManagedCore(module-fake)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(direct-fake)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(direct-real)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(module-real)
+PASS   : BackendRealContractTest::sharedFailedValidationLeavesTheRunningConfigurationIntact(module-fake)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(direct-fake)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(direct-real)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(module-real)
+PASS   : BackendRealContractTest::sharedDuplicateProviderRequestIsCoalesced(module-fake)
+PASS   : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(direct-fake)
+FAIL!  : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(direct-real) 'backend.generation() > before' returned FALSE. (re-attaching to a replaced engine left the generation where it was: physical address equality was treated as session identity, so nothing the retired process owed was invalidated)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/contracts/backend/common/backend_common_cases.cpp(697)]
+FAIL!  : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(module-real) 'backend.generation() > before' returned FALSE. (re-attaching to a replaced engine left the generation where it was: physical address equality was treated as session identity, so nothing the retired process owed was invalidated)
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/contracts/backend/common/backend_common_cases.cpp(697)]
+PASS   : BackendRealContractTest::sharedReplacementAtTheSameAddressOpensANewSession(module-fake)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(direct-fake)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(direct-real)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(module-real)
+PASS   : BackendRealContractTest::sharedLifecycleBumpRetiresOutstandingWork(module-fake)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(direct-fake)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(direct-real)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(module-real)
+PASS   : BackendRealContractTest::sharedTunCompletionIsAReadBackNotAnEcho(module-fake)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(direct-fake)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(direct-real)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(module-real)
+PASS   : BackendRealContractTest::sharedPrivilegedStatusCarriesTheHelpersRunningCore(module-fake)
+PASS   : BackendRealContractTest::cleanupTestCase()
+Totals: 100 passed, 5 failed, 0 skipped, 0 blacklisted, 23754ms
+********* Finished testing of BackendRealContractTest *********
+
+
+0% tests passed, 1 tests failed out of 1
+
+Label Time Summary:
+contract       =  23.83 sec*proc (1 test)
+core           =  23.83 sec*proc (1 test)
+integration    =  23.83 sec*proc (1 test)
+mihomo         =  23.83 sec*proc (1 test)
+
+Total Test time (real) =  23.83 sec
+
+The following tests FAILED:
+	 25 - backend-real-contract (Failed)                    contract core integration mihomo
+Errors while running CTest

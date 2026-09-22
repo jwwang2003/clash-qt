@@ -1,0 +1,797 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+-- The CXX compiler identification is AppleClang 17.0.0.17000603
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Found OpenGL: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/OpenGL.framework
+-- Found WrapOpenGL: TRUE
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- The OBJCXX compiler identification is AppleClang 17.0.0.17000603
+-- Detecting OBJCXX compiler ABI info
+-- Detecting OBJCXX compiler ABI info - done
+-- Check for working OBJCXX compiler: /usr/bin/c++ - skipped
+-- Found Python3: /opt/anaconda3/bin/python3.11 (found version "3.11.16") found components: Interpreter
+-- Configuring done (5.1s)
+-- Generating done (0.9s)
+-- Build files have been written to: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4
+[1/568] Automatic MOC and UIC for target clash_yaml
+[2/568] Automatic MOC and UIC for target clash_preferences
+[3/568] Building CXX object src/core/CMakeFiles/clash_yaml.dir/clash_yaml_autogen/mocs_compilation.cpp.o
+[4/568] Building CXX object src/core/CMakeFiles/clashqt_com.dir/component/component.cpp.o
+[5/568] Building CXX object src/core/CMakeFiles/clash_preferences.dir/clash_preferences_autogen/mocs_compilation.cpp.o
+[6/568] Automatic MOC and UIC for target clash_platform
+[7/568] Automatic MOC and UIC for target clash_app_lifecycle
+[8/568] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/com_objects.cpp.o
+[9/568] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/codec.cpp.o
+[10/568] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/runtime_tag.cpp.o
+[11/568] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/backend_marshal.cpp.o
+[12/568] Building CXX object src/core/CMakeFiles/clash_preferences.dir/preferences/preferences.cpp.o
+[13/568] Building CXX object CMakeFiles/clash_component_marshal.dir/src/integrations/component/marshal/connection_snapshot.cpp.o
+[14/568] Linking CXX static library src/core/libclash_preferences.a
+[15/568] Building CXX object src/core/CMakeFiles/clash_yaml.dir/config/yaml_util.cpp.o
+[16/568] Linking CXX static library src/core/libclash_yaml.a
+[17/568] Automatic MOC and UIC for target clash_config_compose
+[18/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/clash_platform_autogen/mocs_compilation.cpp.o
+[19/568] Building CXX object src/core/CMakeFiles/clash_config_compose.dir/clash_config_compose_autogen/mocs_compilation.cpp.o
+[20/568] Automatic MOC and UIC for target clash_config
+[21/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/proxy/system_proxy.cpp.o
+[22/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/proxy/system_proxy_service.cpp.o
+[23/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/browser/browser_launcher.cpp.o
+[24/568] Linking CXX static library src/core/libclashqt_com.a
+[25/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/service/privileged_service_client.cpp.o
+[26/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/system/autostart.cpp.o
+[27/568] Automatic MOC for target clash_backend_bridge
+[28/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/service/privileged_service_installer.cpp.o
+[29/568] Building CXX object src/core/CMakeFiles/clash_config.dir/clash_config_autogen/mocs_compilation.cpp.o
+[30/568] Linking CXX static library libclash_component_marshal.a
+[31/568] Running AUTOMOC file extraction for target clash_backend_bridge
+[32/568] Building CXX object src/app/lifecycle/CMakeFiles/clash_app_lifecycle.dir/clash_app_lifecycle_autogen/mocs_compilation.cpp.o
+[33/568] Building CXX object src/app/lifecycle/CMakeFiles/clash_app_lifecycle.dir/quit_guard.cpp.o
+[34/568] Building CXX object src/core/CMakeFiles/clash_config_compose.dir/config/config_composer.cpp.o
+[35/568] Building CXX object src/app/lifecycle/CMakeFiles/clash_app_lifecycle.dir/shutdown_ports.cpp.o
+[36/568] Automatic MOC and UIC for target clash_module_host
+[37/568] Automatic UIC for target clash-qt-service-helper
+[38/568] Linking CXX static library src/core/libclash_config_compose.a
+[39/568] Running moc --collect-json for target clash_backend_bridge
+[40/568] Building CXX object CMakeFiles/clash_module_host.dir/clash_module_host_autogen/mocs_compilation.cpp.o
+[41/568] Automatic MOC and UIC for target clash_telemetry
+[42/568] Building CXX object tests/CMakeFiles/clash-qt-fake-core.dir/fixtures/fake_core_main.cpp.o
+[43/568] Building CXX object src/platform/CMakeFiles/clash_platform.dir/system/hotkeys.cpp.o
+[44/568] Linking CXX executable tests/clash-qt-fake-core
+[45/568] Building CXX object src/app/lifecycle/CMakeFiles/clash_app_lifecycle.dir/shutdown_coordinator.cpp.o
+[46/568] Linking CXX static library src/platform/libclash_platform.a
+[47/568] Automatic MOC and UIC for target clash_qt_backend_module
+[48/568] Linking CXX static library src/app/lifecycle/libclash_app_lifecycle.a
+[49/568] Automatic MOC and UIC for target clash_backups
+[50/568] Building CXX object src/core/CMakeFiles/clash_config.dir/config/enhance/config_enhancer.cpp.o
+[51/568] Linking CXX static library src/core/libclash_config.a
+[52/568] Automatic MOC and UIC for target clash_profiles
+[53/568] Building CXX object CMakeFiles/clash_module_host.dir/src/integrations/component/module_loader.cpp.o
+[54/568] Building OBJCXX object src/services/macos/CMakeFiles/clash-qt-service-helper.dir/macos_helper.mm.o
+[55/568] Building CXX object src/core/CMakeFiles/clash_backups.dir/clash_backups_autogen/mocs_compilation.cpp.o
+[56/568] Building CXX object CMakeFiles/clash_module_host.dir/src/integrations/component/module_backend.cpp.o
+[57/568] Building CXX object src/core/CMakeFiles/clash_backend_bridge.dir/clash_backend_bridge_autogen/mocs_compilation.cpp.o
+[58/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_session.cpp.o
+[59/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/clash_qt_backend_module_autogen/mocs_compilation.cpp.o
+[60/568] Building CXX object src/core/CMakeFiles/clash_profiles.dir/clash_profiles_autogen/mocs_compilation.cpp.o
+[61/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/backend_module.cpp.o
+[62/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/host_privileged_service.cpp.o
+[63/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/module_export.cpp.o
+[64/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/module/mihomo_module_entry.cpp.o
+[65/568] Building CXX object src/core/CMakeFiles/clash_backups.dir/backups/backup_store.cpp.o
+[66/568] Linking CXX static library src/core/libclash_backups.a
+[67/568] Building CXX object src/core/CMakeFiles/clash_profiles.dir/profiles/profile_store.cpp.o
+[68/568] Linking CXX static library src/core/libclash_profiles.a
+[69/568] Automatic MOC and UIC for target clash_app_backup
+[70/568] Building CXX object src/core/CMakeFiles/clash_telemetry.dir/clash_telemetry_autogen/mocs_compilation.cpp.o
+[71/568] Automatic MOC and UIC for target clash_app_runtime
+[72/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/controller_discovery.cpp.o
+[73/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/provider_client.cpp.o
+[74/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_backend.cpp.o
+[75/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/mihomo_client.cpp.o
+[76/568] Building CXX object src/core/CMakeFiles/clash_telemetry.dir/telemetry/traffic_history.cpp.o
+[77/568] Building CXX object src/core/CMakeFiles/clash_backend_bridge.dir/backend/backend_bridge.cpp.o
+[78/568] Building CXX object CMakeFiles/clash_qt_backend_module.dir/src/core/mihomo/process/core_process.cpp.o
+[79/568] Building CXX object src/app/backup/CMakeFiles/clash_app_backup.dir/clash_app_backup_autogen/mocs_compilation.cpp.o
+[80/568] Linking CXX shared library modules/libclash_qt_backend_module.dylib
+[81/568] Automatic MOC and UIC for target clash_test_support
+[82/568] Copying clash-qt qml sources into build dir
+[83/568] Building CXX object src/app/backup/CMakeFiles/clash_app_backup.dir/backup_store_session.cpp.o
+[84/568] Linking CXX static library libclash_module_host.a
+[85/568] Copying clash-qt qml resources into build dir
+[86/568] Populating .qmlls.ini file at /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/.qt/.qmlls.build.ini
+[87/568] Linking OBJCXX executable src/services/macos/clash-qt-service-helper
+[88/568] Linking CXX static library src/core/libclash_backend_bridge.a
+[89/568] Running AUTOMOC file extraction for target clash_test_support
+[90/568] Linking CXX static library src/core/libclash_telemetry.a
+[91/568] Building CXX object src/app/backup/CMakeFiles/clash_app_backup.dir/backup_coordinator.cpp.o
+[92/568] Running moc --collect-json for target clash_test_support
+[93/568] Automatic UIC for target clash_backend_fake
+[94/568] Linking CXX static library src/app/backup/libclash_app_backup.a
+[95/568] Building CXX object src/app/runtime/CMakeFiles/clash_app_runtime.dir/clash_app_runtime_autogen/mocs_compilation.cpp.o
+[96/568] Running qmlimportscanner for clash-qt
+[97/568] Building CXX object src/app/runtime/CMakeFiles/clash_app_runtime.dir/runtime_coordinator.cpp.o
+[98/568] Building CXX object src/app/runtime/CMakeFiles/clash_app_runtime.dir/routing_controller.cpp.o
+[99/568] Copying home-page-tests qml sources into build dir
+[100/568] Copying home-page-tests qml resources into build dir
+[101/568] Copying traffic-graph-tests qml sources into build dir
+[102/568] Building CXX object src/app/runtime/CMakeFiles/clash_app_runtime.dir/profile_config_source.cpp.o
+[103/568] Copying traffic-graph-tests qml resources into build dir
+[104/568] Copying traffic-graph-frames-tests qml sources into build dir
+[105/568] Copying traffic-graph-frames-tests qml resources into build dir
+[106/568] Copying traffic-frame-pacing-tests qml sources into build dir
+[107/568] Copying traffic-frame-pacing-tests qml resources into build dir
+[108/568] Linking CXX static library src/app/runtime/libclash_app_runtime.a
+[109/568] Running qmlimportscanner for home-page-tests
+[110/568] Running qmlimportscanner for traffic-graph-tests
+[111/568] Running qmlimportscanner for traffic-graph-frames-tests
+[112/568] Running qmlimportscanner for traffic-frame-pacing-tests
+[113/568] Copying w03-routing-controls-tests qml sources into build dir
+[114/568] Copying w03-routing-controls-tests qml resources into build dir
+[115/568] Running qmlimportscanner for w03-routing-controls-tests
+[116/568] Building CXX object tests/CMakeFiles/clash_test_support.dir/clash_test_support_autogen/mocs_compilation.cpp.o
+[117/568] Running qmlimportscanner for preset-editor-tests
+[118/568] Running qmlimportscanner for routing-controls-tests
+[119/568] Running qmlimportscanner for service-settings-tests
+[120/568] Running qmlimportscanner for config-generation-tests
+[121/568] Running qmlimportscanner for profile-store-tests
+[122/568] Automatic MOC and UIC for target clash_mihomo_impl
+[123/568] Running qmlimportscanner for runtime-maintenance-tests
+[124/568] Building CXX object tests/CMakeFiles/clash_test_support.dir/support/scoped_environment.cpp.o
+[125/568] Building CXX object tests/CMakeFiles/clash_test_support.dir/support/fake_core.cpp.o
+[126/568] Building CXX object tests/CMakeFiles/clash_test_support.dir/support/loopback_server.cpp.o
+[127/568] Linking CXX static library tests/libclash_test_support.a
+[128/568] Building CXX object tests/CMakeFiles/clash_backend_fake.dir/support/backend/recording_observer.cpp.o
+[129/568] Automatic MOC and UIC for target clash-qt
+[130/568] Running AUTOMOC file extraction for target clash-qt
+[131/568] Running moc --collect-json for target clash-qt
+[132/568] Building CXX object tests/CMakeFiles/clash_backend_fake.dir/support/backend/fake_backend.cpp.o
+[133/568] Automatic QML type registration for target clash-qt
+[134/568] Linking CXX static library tests/libclash_backend_fake.a
+[135/568] Automatic MOC and UIC for target traffic-graph-tests
+[136/568] Automatic MOC and UIC for target traffic-graph-frames-tests
+[137/568] Running rcc for resource qmake_ClashQt
+[138/568] Generating .rcc/qmlcache/clash-qt_qmlcache_loader.cpp
+[139/568] Generating .rcc/qmlcache/clash-qt_src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/clash-qt_src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[140/568] Running rcc for resource clash-qt_raw_qml_0
+[141/568] Automatic RCC for src/ui/resources/resources.qrc
+[142/568] Running AUTOMOC file extraction for target traffic-graph-tests
+[143/568] Running AUTOMOC file extraction for target traffic-graph-frames-tests
+[144/568] Automatic MOC and UIC for target clash_qt_fake_backend_module
+[145/568] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/clash_mihomo_impl_autogen/mocs_compilation.cpp.o
+[146/568] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/controller_discovery.cpp.o
+[147/568] Automatic MOC and UIC for target traffic-frame-pacing-tests
+[148/568] Running AUTOMOC file extraction for target traffic-frame-pacing-tests
+[149/568] Automatic MOC and UIC for target home-page-tests
+[150/568] Running AUTOMOC file extraction for target home-page-tests
+[151/568] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/mihomo_client.cpp.o
+[152/568] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/mihomo_backend.cpp.o
+[153/568] Automatic MOC and UIC for target w03-routing-controls-tests
+[154/568] Running AUTOMOC file extraction for target w03-routing-controls-tests
+[155/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/shell/tray_proxy_menu.cpp.o
+[156/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/shell/tray_icon.cpp.o
+[157/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/shell/main_window.cpp.o
+[158/568] Building CXX object CMakeFiles/clash-qt.dir/clash-qt_autogen/mocs_compilation.cpp.o
+[159/568] Building CXX object CMakeFiles/clash-qt.dir/src/main.cpp.o
+[160/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/shell/dashboard_button.cpp.o
+[161/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/shell/routing_controls.cpp.o
+[162/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/shell/proxy_environment.cpp.o
+[163/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/overview/home_page.cpp.o
+[164/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/profiles/preset_editor.cpp.o
+[165/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/overview/traffic_graph.cpp.o
+[166/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/profiles/profiles_page.cpp.o
+[167/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/profiles/effective_config_view.cpp.o
+[168/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/proxies/proxies_page.cpp.o
+[169/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/rules/rules_page.cpp.o
+[170/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/connections/connections_page.cpp.o
+[171/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/providers/providers_page.cpp.o
+[172/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/settings/service_settings.cpp.o
+[173/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/backups/backup_page.cpp.o
+[174/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/settings/hotkey_settings.cpp.o
+[175/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/logs/logs_page.cpp.o
+[176/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/settings/settings_page.cpp.o
+[177/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/widgets/combo_box.cpp.o
+[178/568] Building CXX object CMakeFiles/clash-qt.dir/build/p4/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[179/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/pages/settings/chain_editor.cpp.o
+[180/568] Building CXX object CMakeFiles/clash-qt.dir/build/p4/.qt/rcc/qrc_clash-qt_raw_qml_0.cpp.o
+[181/568] Building CXX object CMakeFiles/clash-qt.dir/clash-qt_autogen/DOHTCAYJZN/qrc_resources.cpp.o
+[182/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/widgets/toggle_switch.cpp.o
+[183/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/theme/formatting.cpp.o
+[184/568] Running moc --collect-json for target home-page-tests
+[185/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/widgets/settings_section.cpp.o
+[186/568] Building CXX object CMakeFiles/clash-qt.dir/clash-qt_qmltyperegistrations.cpp.o
+[187/568] Running moc --collect-json for target traffic-graph-tests
+[188/568] Running moc --collect-json for target traffic-graph-frames-tests
+[189/568] Running moc --collect-json for target traffic-frame-pacing-tests
+[190/568] Running moc --collect-json for target w03-routing-controls-tests
+[191/568] Building CXX object CMakeFiles/clash-qt.dir/src/ui/theme/theme.cpp.o
+[192/568] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/clash_qt_fake_backend_module_autogen/mocs_compilation.cpp.o
+[193/568] Building CXX object CMakeFiles/clash-qt.dir/build/p4/.rcc/qmlcache/clash-qt_qmlcache_loader.cpp.o
+[194/568] Building CXX object CMakeFiles/clash-qt.dir/build/p4/.rcc/qmlcache/clash-qt_src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[195/568] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/provider_client.cpp.o
+[196/568] Linking CXX executable clash-qt.app/Contents/MacOS/clash-qt
+-- Running macOS bundle QML support POST_BUILD routine.
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/libqtquick2plugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQml/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQml/libqmlplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQml/Models/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQml/Models/libmodelsplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQml/WorkerScript/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQml/WorkerScript/libworkerscriptplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtGraphs/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtGraphs/libgraphsplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick3D/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick3D/libqquick3dplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/libqtquickcontrols2plugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Layouts/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Layouts/libqquicklayoutsplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Fusion/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Fusion/libqtquickcontrols2fusionstyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Imagine/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Imagine/libqtquickcontrols2imaginestyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Material/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Material/libqtquickcontrols2materialstyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Universal/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Universal/libqtquickcontrols2universalstyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/FluentWinUI3/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/FluentWinUI3/libqtquickcontrols2fluentwinui3styleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/macOS/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/macOS/libqtquickcontrols2macosstyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/iOS/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/iOS/libqtquickcontrols2iosstyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Basic/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Basic/libqtquickcontrols2basicstyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Templates/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Templates/libqtquicktemplates2plugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/impl/libqtquickcontrols2implplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Fusion/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Fusion/impl/libqtquickcontrols2fusionstyleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Window/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Window/libquickwindowplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Imagine/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Imagine/impl/libqtquickcontrols2imaginestyleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Material/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Material/impl/libqtquickcontrols2materialstyleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Universal/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Universal/impl/libqtquickcontrols2universalstyleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/FluentWinUI3/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/FluentWinUI3/impl/libqtquickcontrols2fluentwinui3styleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Effects/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Effects/libeffectsplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Shapes/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Shapes/libqmlshapesplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/macOS/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/macOS/impl/libqtquickcontrols2macosstyleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/NativeStyle/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/NativeStyle/libqtquickcontrols2nativestyleplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/iOS/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/iOS/impl/libqtquickcontrols2iosstyleimplplugin.dylib
+-- Installing: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Basic/impl/qmldir
+-- Symlinking: /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app/Contents/Resources/qml/QtQuick/Controls/Basic/impl/libqtquickcontrols2basicstyleimplplugin.dylib
+/private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4/clash-qt.app: replacing existing signature
+[197/568] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/backend_module.cpp.o
+[198/568] Automatic QML type registration for target home-page-tests
+[199/568] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/host_privileged_service.cpp.o
+[200/568] Automatic QML type registration for target traffic-graph-tests
+[201/568] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/backend_session.cpp.o
+[202/568] Building CXX object src/core/CMakeFiles/clash_mihomo_impl.dir/mihomo/process/core_process.cpp.o
+[203/568] Automatic MOC and UIC for target service-settings-tests
+[204/568] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/__/src/core/mihomo/module/module_export.cpp.o
+[205/568] Automatic MOC and UIC for target routing-controls-tests
+[206/568] Linking CXX static library src/core/libclash_mihomo_impl.a
+[207/568] Building CXX object tests/contracts/component/abi/CMakeFiles/clash_qt_fake_backend_module.dir/__/__/__/support/component/fake_module_entry.cpp.o
+[208/568] Automatic QML type registration for target traffic-graph-frames-tests
+[209/568] Automatic QML type registration for target traffic-frame-pacing-tests
+[210/568] Automatic MOC and UIC for target proxies-page-tests
+[211/568] Running qmlimportscanner for runtime-coordinator-tests
+[212/568] Running qmlimportscanner for routing-controller-tests
+[213/568] Automatic QML type registration for target w03-routing-controls-tests
+[214/568] Running qmlimportscanner for app-smoke-tests
+[215/568] Running qmlimportscanner for w01-first-launch-tests
+[216/568] Running qmlimportscanner for w02-subscription-update-tests
+[217/568] Automatic MOC and UIC for target connections-page-tests
+[218/568] Running qmlimportscanner for w05-recovery-tests
+[219/568] Running qmlimportscanner for w04-restore-tests
+[220/568] Running qmlimportscanner for chain-snapshot-tests
+[221/568] Running qmlimportscanner for preset-store-tests
+[222/568] Running qmlimportscanner for effective-config-preview-tests
+[223/568] Linking CXX shared library modules/libclash_qt_fake_backend_module.dylib
+[224/568] Automatic MOC and UIC for target providers-page-tests
+[225/568] Automatic MOC and UIC for target rules-page-tests
+[226/568] Automatic MOC and UIC for target logs-page-tests
+[227/568] Automatic MOC and UIC for target preset-editor-tests
+[228/568] Automatic MOC and UIC for target traffic-history-tests
+[229/568] Automatic MOC and UIC for target provider-tests
+[230/568] Automatic MOC and UIC for target controller-tests
+[231/568] Automatic MOC and UIC for target backup-tests
+[232/568] Automatic UIC for target privileged-helper-ipc-tests
+[233/568] Automatic MOC and UIC for target privileged-service-tests
+[234/568] Automatic MOC and UIC for target system-proxy-async-tests
+[235/568] Automatic MOC and UIC for target proxy-tests
+[236/568] Automatic MOC and UIC for target tray-tests
+[237/568] Automatic MOC and UIC for target preferences-tests
+[238/568] Automatic MOC and UIC for target scoped-environment-tests
+[239/568] Automatic MOC and UIC for target dashboard-async-tests
+[240/568] Automatic MOC and UIC for target loopback-server-tests
+[241/568] Automatic MOC and UIC for target fake-core-tests
+[242/568] Running rcc for resource qmake_ClashQt
+[243/568] Generating .rcc/qmlcache/home-page-tests_qmlcache_loader.cpp
+[244/568] Running rcc for resource home-page-tests_raw_qml_0
+[245/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[246/568] Generating .rcc/qmlcache/traffic-graph-tests_qmlcache_loader.cpp
+[247/568] Running rcc for resource traffic-graph-tests_raw_qml_0
+[248/568] Generating .rcc/qmlcache/home-page-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/home-page-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[249/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[250/568] Generating .rcc/qmlcache/traffic-graph-frames-tests_qmlcache_loader.cpp
+[251/568] Running rcc for resource traffic-graph-frames-tests_raw_qml_0
+[252/568] Generating .rcc/qmlcache/traffic-graph-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/traffic-graph-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[253/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[254/568] Generating .rcc/qmlcache/traffic-frame-pacing-tests_qmlcache_loader.cpp
+[255/568] Running rcc for resource traffic-frame-pacing-tests_raw_qml_0
+[256/568] Generating .rcc/qmlcache/traffic-graph-frames-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/traffic-graph-frames-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[257/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[258/568] Automatic MOC and UIC for target backend-contract-tests
+[259/568] Generating .rcc/qmlcache/traffic-frame-pacing-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/traffic-frame-pacing-tests_../src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[260/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[261/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[262/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[263/568] Automatic MOC and UIC for target backend-bridge-tests
+[264/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[265/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[266/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[267/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[268/568] Automatic RCC for ../src/ui/resources/resources.qrc
+[269/568] Automatic MOC and UIC for target component-contract-tests
+[270/568] Automatic MOC and UIC for target core-process-tests
+[271/568] Automatic MOC and UIC for target config-generation-tests
+[272/568] Automatic MOC and UIC for target profile-store-tests
+[273/568] Automatic MOC and UIC for target runtime-maintenance-tests
+[274/568] Running rcc for resource qmake_ClashQt
+[275/568] Generating .rcc/qmlcache/w03-routing-controls-tests_qmlcache_loader.cpp
+[276/568] Generating .rcc/qmlcache/src/ui/pages/overview/qml/TrafficGraph_qml.cpp, .rcc/qmlcache/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.aotstats
+[277/568] Automatic MOC and UIC for target backup-coordinator-tests
+[278/568] Automatic MOC and UIC for target shutdown-coordinator-tests
+[279/568] Running rcc for resource w03-routing-controls-tests_raw_qml_0
+[280/568] Automatic RCC for ../../src/ui/resources/resources.qrc
+[281/568] Automatic MOC and UIC for target runtime-coordinator-tests
+[282/568] Automatic MOC and UIC for target routing-controller-tests
+[283/568] Automatic MOC and UIC for target backend-real-contract-tests
+[284/568] Automatic MOC and UIC for target engine-discovery-tests
+[285/568] Automatic MOC and UIC for target backend-real-core-tests
+[286/568] Automatic MOC and UIC for target w01-first-launch-tests
+[287/568] Automatic MOC and UIC for target w02-subscription-update-tests
+[288/568] Automatic MOC and UIC for target app-smoke-tests
+[289/568] Automatic MOC and UIC for target w04-restore-tests
+[290/568] Automatic MOC and UIC for target w05-recovery-tests
+[291/568] Automatic MOC and UIC for target preset-document-tests
+[292/568] Automatic MOC and UIC for target config-composer-tests
+[293/568] Automatic MOC and UIC for target chain-snapshot-tests
+[294/568] Automatic MOC and UIC for target connection-snapshot-marshal-tests
+[295/568] Automatic MOC and UIC for target effective-config-preview-tests
+[296/568] Automatic MOC and UIC for target preset-store-tests
+[297/568] Automatic MOC and UIC for target abi-contract-tests
+[298/568] Building CXX object tests/CMakeFiles/routing-controls-tests.dir/routing-controls-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[299/568] Building CXX object tests/CMakeFiles/routing-controls-tests.dir/routing-controls-tests_autogen/mocs_compilation.cpp.o
+[300/568] Building CXX object tests/CMakeFiles/routing-controls-tests.dir/__/src/ui/shell/routing_controls.cpp.o
+[301/568] Building CXX object tests/CMakeFiles/routing-controls-tests.dir/__/src/ui/widgets/toggle_switch.cpp.o
+[302/568] Building CXX object tests/CMakeFiles/service-settings-tests.dir/service-settings-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[303/568] Building CXX object tests/CMakeFiles/service-settings-tests.dir/service-settings-tests_autogen/mocs_compilation.cpp.o
+[304/568] Building CXX object tests/CMakeFiles/routing-controls-tests.dir/__/src/ui/theme/theme.cpp.o
+[305/568] Building CXX object tests/CMakeFiles/service-settings-tests.dir/__/src/ui/pages/settings/service_settings.cpp.o
+[306/568] Building CXX object tests/CMakeFiles/routing-controls-tests.dir/ui/routing_controls_test.cpp.o
+[307/568] Building CXX object tests/CMakeFiles/service-settings-tests.dir/__/src/ui/widgets/settings_section.cpp.o
+[308/568] Building CXX object tests/CMakeFiles/service-settings-tests.dir/__/src/ui/theme/theme.cpp.o
+[309/568] Building CXX object tests/CMakeFiles/service-settings-tests.dir/ui/service_settings_test.cpp.o
+[310/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/home-page-tests_autogen/mocs_compilation.cpp.o
+[311/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/__/src/ui/pages/overview/home_page.cpp.o
+[312/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[313/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/__/src/ui/theme/theme.cpp.o
+[314/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/__/src/ui/theme/formatting.cpp.o
+[315/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/.qt/rcc/qrc_home-page-tests_raw_qml_0.cpp.o
+[316/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/__/src/ui/pages/overview/traffic_graph.cpp.o
+[317/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/home-page-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[318/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[319/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/home-page-tests_qmltyperegistrations.cpp.o
+[320/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/__/src/ui/widgets/settings_section.cpp.o
+[321/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/ui/home_page_test.cpp.o
+[322/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/.rcc/qmlcache/home-page-tests_qmlcache_loader.cpp.o
+[323/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[324/568] Building CXX object tests/CMakeFiles/home-page-tests.dir/.rcc/qmlcache/home-page-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[325/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/traffic-graph-tests_autogen/mocs_compilation.cpp.o
+[326/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/__/src/ui/theme/theme.cpp.o
+[327/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.qt/rcc/qrc_traffic-graph-tests_raw_qml_0.cpp.o
+[328/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/traffic-graph-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[329/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[330/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/traffic-graph-tests_qmltyperegistrations.cpp.o
+[331/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/__/src/ui/pages/overview/traffic_graph.cpp.o
+[332/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.rcc/qmlcache/traffic-graph-tests_qmlcache_loader.cpp.o
+[333/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/.rcc/qmlcache/traffic-graph-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[334/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/proxies-page-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[335/568] Building CXX object tests/CMakeFiles/traffic-graph-tests.dir/ui/traffic_graph_test.cpp.o
+[336/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/proxies-page-tests_autogen/mocs_compilation.cpp.o
+[337/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/__/src/ui/theme/theme.cpp.o
+[338/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/__/src/ui/theme/formatting.cpp.o
+[339/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/__/src/ui/pages/proxies/proxies_page.cpp.o
+[340/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[341/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/connections-page-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[342/568] Building CXX object tests/CMakeFiles/proxies-page-tests.dir/ui/proxies_page_test.cpp.o
+[343/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/connections-page-tests_autogen/mocs_compilation.cpp.o
+[344/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/__/src/ui/theme/theme.cpp.o
+[345/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/__/src/ui/theme/formatting.cpp.o
+[346/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/__/src/ui/pages/connections/connections_page.cpp.o
+[347/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[348/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/providers-page-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[349/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/providers-page-tests_autogen/mocs_compilation.cpp.o
+[350/568] Building CXX object tests/CMakeFiles/connections-page-tests.dir/ui/connections_page_test.cpp.o
+[351/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/__/src/ui/theme/formatting.cpp.o
+[352/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/__/src/ui/theme/theme.cpp.o
+[353/568] Building CXX object tests/CMakeFiles/rules-page-tests.dir/rules-page-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[354/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/__/src/ui/pages/providers/providers_page.cpp.o
+[355/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[356/568] Building CXX object tests/CMakeFiles/providers-page-tests.dir/ui/providers_page_test.cpp.o
+[357/568] Building CXX object tests/CMakeFiles/rules-page-tests.dir/rules-page-tests_autogen/mocs_compilation.cpp.o
+[358/568] Building CXX object tests/CMakeFiles/rules-page-tests.dir/__/src/ui/pages/rules/rules_page.cpp.o
+[359/568] Building CXX object tests/CMakeFiles/rules-page-tests.dir/__/src/ui/theme/theme.cpp.o
+[360/568] Building CXX object tests/CMakeFiles/logs-page-tests.dir/logs-page-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[361/568] Building CXX object tests/CMakeFiles/logs-page-tests.dir/logs-page-tests_autogen/mocs_compilation.cpp.o
+[362/568] Building CXX object tests/CMakeFiles/rules-page-tests.dir/ui/rules_page_test.cpp.o
+[363/568] Building CXX object tests/CMakeFiles/logs-page-tests.dir/__/src/ui/theme/theme.cpp.o
+[364/568] Building CXX object tests/CMakeFiles/logs-page-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[365/568] Building CXX object tests/CMakeFiles/logs-page-tests.dir/__/src/ui/pages/logs/logs_page.cpp.o
+[366/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[367/568] Building CXX object tests/CMakeFiles/logs-page-tests.dir/ui/logs_page_test.cpp.o
+[368/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/traffic-graph-frames-tests_autogen/mocs_compilation.cpp.o
+[369/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.qt/rcc/qrc_traffic-graph-frames-tests_raw_qml_0.cpp.o
+[370/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/traffic-graph-frames-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[371/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/__/src/ui/theme/theme.cpp.o
+[372/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/traffic-graph-frames-tests_qmltyperegistrations.cpp.o
+[373/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/__/src/ui/pages/overview/traffic_graph.cpp.o
+[374/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[375/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.rcc/qmlcache/traffic-graph-frames-tests_qmlcache_loader.cpp.o
+[376/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/benchmarks/traffic_graph_frames_test.cpp.o
+[377/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[378/568] Building CXX object tests/CMakeFiles/traffic-graph-frames-tests.dir/.rcc/qmlcache/traffic-graph-frames-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[379/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/traffic-frame-pacing-tests_autogen/mocs_compilation.cpp.o
+[380/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.qt/rcc/qrc_traffic-frame-pacing-tests_raw_qml_0.cpp.o
+[381/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/traffic-frame-pacing-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[382/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/__/src/ui/theme/theme.cpp.o
+[383/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[384/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/traffic-frame-pacing-tests_qmltyperegistrations.cpp.o
+[385/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/__/src/ui/pages/overview/traffic_graph.cpp.o
+[386/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.rcc/qmlcache/traffic-frame-pacing-tests_qmlcache_loader.cpp.o
+[387/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/.rcc/qmlcache/traffic-frame-pacing-tests___/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[388/568] Building CXX object tests/CMakeFiles/traffic-frame-pacing-tests.dir/benchmarks/traffic_frame_pacing_test.cpp.o
+[389/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/preset-editor-tests_autogen/mocs_compilation.cpp.o
+[390/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/preset-editor-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[391/568] Building CXX object tests/CMakeFiles/controller-tests.dir/controller-tests_autogen/mocs_compilation.cpp.o
+[392/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/__/src/ui/widgets/combo_box.cpp.o
+[393/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/__/src/ui/theme/formatting.cpp.o
+[394/568] Building CXX object tests/CMakeFiles/provider-tests.dir/provider-tests_autogen/mocs_compilation.cpp.o
+[395/568] Building CXX object tests/CMakeFiles/backup-tests.dir/backup-tests_autogen/mocs_compilation.cpp.o
+[396/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/__/src/ui/pages/profiles/effective_config_view.cpp.o
+[397/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/__/src/ui/theme/theme.cpp.o
+[398/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/__/src/ui/pages/profiles/preset_editor.cpp.o
+[399/568] Building CXX object tests/CMakeFiles/traffic-history-tests.dir/traffic-history-tests_autogen/mocs_compilation.cpp.o
+[400/568] Building CXX object tests/CMakeFiles/privileged-service-tests.dir/privileged-service-tests_autogen/mocs_compilation.cpp.o
+[401/568] Building CXX object tests/CMakeFiles/system-proxy-async-tests.dir/system-proxy-async-tests_autogen/mocs_compilation.cpp.o
+[402/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/__/src/ui/pages/profiles/profiles_page.cpp.o
+[403/568] Building CXX object tests/CMakeFiles/proxy-tests.dir/proxy-tests_autogen/mocs_compilation.cpp.o
+[404/568] Building CXX object tests/CMakeFiles/preset-editor-tests.dir/ui/preset_editor_test.cpp.o
+[405/568] Building CXX object tests/CMakeFiles/controller-tests.dir/core/controller_test.cpp.o
+[406/568] Building CXX object tests/CMakeFiles/traffic-history-tests.dir/core/traffic_history_test.cpp.o
+[407/568] Building CXX object tests/CMakeFiles/tray-tests.dir/tray-tests_autogen/mocs_compilation.cpp.o
+[408/568] Building CXX object tests/CMakeFiles/provider-tests.dir/core/provider_test.cpp.o
+[409/568] Building CXX object tests/CMakeFiles/backup-tests.dir/core/backup_test.cpp.o
+[410/568] Building CXX object tests/CMakeFiles/privileged-service-tests.dir/platform/privileged_service_client_test.cpp.o
+[411/568] Building CXX object tests/CMakeFiles/system-proxy-async-tests.dir/platform/system_proxy_async_test.cpp.o
+[412/568] Building CXX object tests/CMakeFiles/proxy-tests.dir/platform/system_proxy_test.cpp.o
+[413/568] Building CXX object tests/CMakeFiles/preferences-tests.dir/preferences-tests_autogen/mocs_compilation.cpp.o
+[414/568] Building CXX object tests/CMakeFiles/tray-tests.dir/__/src/ui/shell/proxy_environment.cpp.o
+[415/568] Building CXX object tests/CMakeFiles/scoped-environment-tests.dir/scoped-environment-tests_autogen/mocs_compilation.cpp.o
+[416/568] Building CXX object tests/CMakeFiles/tray-tests.dir/__/src/ui/shell/tray_proxy_menu.cpp.o
+[417/568] Building CXX object tests/CMakeFiles/dashboard-async-tests.dir/dashboard-async-tests_autogen/mocs_compilation.cpp.o
+[418/568] Building CXX object tests/CMakeFiles/loopback-server-tests.dir/loopback-server-tests_autogen/mocs_compilation.cpp.o
+[419/568] Building CXX object tests/CMakeFiles/fake-core-tests.dir/fake-core-tests_autogen/mocs_compilation.cpp.o
+[420/568] Building OBJCXX object tests/CMakeFiles/privileged-helper-ipc-tests.dir/__/src/services/macos/macos_helper.mm.o
+[421/568] Building CXX object tests/CMakeFiles/backend-contract-tests.dir/backend-contract-tests_autogen/mocs_compilation.cpp.o
+[422/568] Building CXX object tests/CMakeFiles/dashboard-async-tests.dir/__/src/ui/shell/dashboard_button.cpp.o
+[423/568] Building CXX object tests/CMakeFiles/backend-bridge-tests.dir/backend-bridge-tests_autogen/mocs_compilation.cpp.o
+[424/568] Building CXX object tests/CMakeFiles/tray-tests.dir/ui/tray_test.cpp.o
+[425/568] Building CXX object tests/CMakeFiles/component-contract-tests.dir/component-contract-tests_autogen/mocs_compilation.cpp.o
+[426/568] Building CXX object tests/CMakeFiles/dashboard-async-tests.dir/ui/dashboard_async_test.cpp.o
+[427/568] Building CXX object tests/CMakeFiles/config-generation-tests.dir/config-generation-tests_autogen/mocs_compilation.cpp.o
+[428/568] Building CXX object tests/CMakeFiles/preferences-tests.dir/core/preferences_test.cpp.o
+[429/568] Building CXX object tests/CMakeFiles/profile-store-tests.dir/profile-store-tests_autogen/mocs_compilation.cpp.o
+[430/568] Building CXX object tests/CMakeFiles/scoped-environment-tests.dir/support/scoped_environment_test.cpp.o
+[431/568] Building CXX object tests/CMakeFiles/core-process-tests.dir/core-process-tests_autogen/mocs_compilation.cpp.o
+[432/568] Building CXX object tests/CMakeFiles/fake-core-tests.dir/support/fake_core_test.cpp.o
+[433/568] Building CXX object tests/CMakeFiles/runtime-maintenance-tests.dir/runtime-maintenance-tests_autogen/mocs_compilation.cpp.o
+[434/568] Building CXX object tests/CMakeFiles/backend-contract-tests.dir/contracts/backend/backend_contract_test.cpp.o
+[435/568] Building CXX object tests/app/lifecycle/CMakeFiles/shutdown-coordinator-tests.dir/shutdown-coordinator-tests_autogen/mocs_compilation.cpp.o
+[436/568] Building CXX object tests/CMakeFiles/loopback-server-tests.dir/support/loopback_server_test.cpp.o
+[437/568] Building CXX object tests/CMakeFiles/backend-bridge-tests.dir/contracts/backend/bridge/backend_bridge_test.cpp.o
+[438/568] Building CXX object tests/app/backup/CMakeFiles/backup-coordinator-tests.dir/backup-coordinator-tests_autogen/mocs_compilation.cpp.o
+[439/568] Building CXX object tests/app/runtime/CMakeFiles/runtime-coordinator-tests.dir/runtime-coordinator-tests_autogen/mocs_compilation.cpp.o
+[440/568] Building CXX object tests/CMakeFiles/component-contract-tests.dir/contracts/component/component_contract_test.cpp.o
+[441/568] Building CXX object tests/app/runtime/CMakeFiles/routing-controller-tests.dir/routing-controller-tests_autogen/mocs_compilation.cpp.o
+[442/568] Building CXX object tests/CMakeFiles/profile-store-tests.dir/core/profile_store_test.cpp.o
+[443/568] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/backend-real-contract-tests_autogen/mocs_compilation.cpp.o
+[444/568] Building CXX object tests/CMakeFiles/config-generation-tests.dir/core/config_generation_test.cpp.o
+[445/568] Building CXX object tests/CMakeFiles/core-process-tests.dir/core/core_process_test.cpp.o
+[446/568] Building CXX object tests/CMakeFiles/runtime-maintenance-tests.dir/core/maintenance_test.cpp.o
+[447/568] Building CXX object tests/core/mihomo/CMakeFiles/engine-discovery-tests.dir/engine-discovery-tests_autogen/mocs_compilation.cpp.o
+[448/568] Building CXX object tests/app/lifecycle/CMakeFiles/shutdown-coordinator-tests.dir/shutdown_coordinator_test.cpp.o
+[449/568] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-core-tests.dir/backend-real-core-tests_autogen/mocs_compilation.cpp.o
+[450/568] Building CXX object tests/app/backup/CMakeFiles/backup-coordinator-tests.dir/backup_coordinator_test.cpp.o
+[451/568] Building CXX object tests/app/runtime/CMakeFiles/runtime-coordinator-tests.dir/runtime_coordinator_test.cpp.o
+[452/568] Building CXX object tests/app/runtime/CMakeFiles/routing-controller-tests.dir/routing_controller_test.cpp.o
+[453/568] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/__/__/contracts/backend/common/backend_common_cases.cpp.o
+[454/568] Building CXX object tests/core/mihomo/CMakeFiles/engine-discovery-tests.dir/engine_discovery_test.cpp.o
+[455/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/w03-routing-controls-tests_autogen/mocs_compilation.cpp.o
+[456/568] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/__/__/support/backend/common_contract_driver.cpp.o
+[457/568] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-contract-tests.dir/backend_real_contract_test.cpp.o
+[458/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/backups/backup_page.cpp.o
+[459/568] Building CXX object tests/core/mihomo/CMakeFiles/backend-real-core-tests.dir/backend_real_core_test.cpp.o
+[460/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/connections/connections_page.cpp.o
+[461/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/overview/home_page.cpp.o
+[462/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/logs/logs_page.cpp.o
+[463/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/overview/traffic_graph.cpp.o
+[464/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/w03_routing_controls_test.cpp.o
+[465/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/profiles/effective_config_view.cpp.o
+[466/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/profiles/preset_editor.cpp.o
+[467/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/profiles/profiles_page.cpp.o
+[468/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/providers/providers_page.cpp.o
+[469/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/rules/rules_page.cpp.o
+[470/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/settings/hotkey_settings.cpp.o
+[471/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/proxies/proxies_page.cpp.o
+[472/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/settings/service_settings.cpp.o
+[473/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/settings/chain_editor.cpp.o
+[474/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/shell/dashboard_button.cpp.o
+[475/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/pages/settings/settings_page.cpp.o
+[476/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/shell/proxy_environment.cpp.o
+[477/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/shell/routing_controls.cpp.o
+[478/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/shell/tray_icon.cpp.o
+[479/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/shell/main_window.cpp.o
+[480/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/.qt/rcc/qrc_qmake_ClashQt.cpp.o
+[481/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/theme/formatting.cpp.o
+[482/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/shell/tray_proxy_menu.cpp.o
+[483/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/.qt/rcc/qrc_w03-routing-controls-tests_raw_qml_0.cpp.o
+[484/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/theme/theme.cpp.o
+[485/568] Building CXX object tests/workflows/CMakeFiles/w01-first-launch-tests.dir/w01-first-launch-tests_autogen/mocs_compilation.cpp.o
+[486/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/w03-routing-controls-tests_autogen/HELBQ7FBLO/qrc_resources.cpp.o
+[487/568] Building CXX object tests/workflows/CMakeFiles/w02-subscription-update-tests.dir/w02-subscription-update-tests_autogen/mocs_compilation.cpp.o
+[488/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/widgets/combo_box.cpp.o
+[489/568] Building CXX object tests/workflows/CMakeFiles/w04-restore-tests.dir/w04-restore-tests_autogen/mocs_compilation.cpp.o
+[490/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/widgets/settings_section.cpp.o
+[491/568] Building CXX object tests/workflows/CMakeFiles/w05-recovery-tests.dir/w05-recovery-tests_autogen/mocs_compilation.cpp.o
+[492/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/__/__/src/ui/widgets/toggle_switch.cpp.o
+[493/568] Building CXX object tests/workflows/CMakeFiles/app-smoke-tests.dir/app-smoke-tests_autogen/mocs_compilation.cpp.o
+[494/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/w03-routing-controls-tests_qmltyperegistrations.cpp.o
+[495/568] Building CXX object tests/core/config/CMakeFiles/config-composer-tests.dir/config-composer-tests_autogen/mocs_compilation.cpp.o
+[496/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/.rcc/qmlcache/w03-routing-controls-tests_qmlcache_loader.cpp.o
+[497/568] Building CXX object tests/core/config/CMakeFiles/preset-document-tests.dir/preset-document-tests_autogen/mocs_compilation.cpp.o
+[498/568] Building CXX object tests/workflows/CMakeFiles/w03-routing-controls-tests.dir/.rcc/qmlcache/src/ui/pages/overview/qml/TrafficGraph_qml.cpp.o
+[499/568] Building CXX object tests/core/config/CMakeFiles/chain-snapshot-tests.dir/chain-snapshot-tests_autogen/mocs_compilation.cpp.o
+[500/568] Building CXX object tests/core/config/CMakeFiles/preset-document-tests.dir/preset_document_test.cpp.o
+[501/568] Building CXX object tests/core/profiles/CMakeFiles/preset-store-tests.dir/preset-store-tests_autogen/mocs_compilation.cpp.o
+[502/568] Building CXX object tests/core/config/CMakeFiles/chain-snapshot-tests.dir/chain_snapshot_test.cpp.o
+[503/568] Building CXX object tests/core/profiles/CMakeFiles/effective-config-preview-tests.dir/effective-config-preview-tests_autogen/mocs_compilation.cpp.o
+[504/568] Building CXX object tests/workflows/CMakeFiles/w01-first-launch-tests.dir/w01_first_launch_test.cpp.o
+[505/568] Building CXX object tests/contracts/component/abi/CMakeFiles/abi-contract-tests.dir/abi-contract-tests_autogen/mocs_compilation.cpp.o
+[506/568] Building CXX object tests/core/config/CMakeFiles/config-composer-tests.dir/config_composer_test.cpp.o
+[507/568] Building CXX object tests/contracts/component/abi/CMakeFiles/connection-snapshot-marshal-tests.dir/connection-snapshot-marshal-tests_autogen/mocs_compilation.cpp.o
+[508/568] Building CXX object tests/workflows/CMakeFiles/w02-subscription-update-tests.dir/w02_subscription_update_test.cpp.o
+[509/568] Building CXX object tests/workflows/CMakeFiles/w04-restore-tests.dir/w04_restore_test.cpp.o
+[510/568] Building CXX object tests/workflows/CMakeFiles/w05-recovery-tests.dir/w05_recovery_test.cpp.o
+[511/568] Linking CXX executable tests/controller-tests
+[512/568] Linking CXX executable tests/provider-tests
+[513/568] Linking CXX executable tests/backup-tests
+[514/568] Linking CXX executable tests/traffic-history-tests
+[515/568] Building CXX object tests/workflows/CMakeFiles/app-smoke-tests.dir/app_smoke_test.cpp.o
+[516/568] Linking CXX executable tests/system-proxy-async-tests
+[517/568] Linking CXX executable tests/privileged-service-tests
+[518/568] Linking CXX executable tests/tray-tests
+[519/568] Linking CXX executable tests/proxy-tests
+[520/568] Linking CXX executable tests/routing-controls-tests
+[521/568] Linking CXX executable tests/service-settings-tests
+[522/568] Linking OBJCXX executable tests/privileged-helper-ipc-tests
+[523/568] Linking CXX executable tests/preferences-tests
+[524/568] Linking CXX executable tests/dashboard-async-tests
+[525/568] Linking CXX executable tests/scoped-environment-tests
+[526/568] Linking CXX executable tests/backend-contract-tests
+[527/568] Linking CXX executable tests/loopback-server-tests
+[528/568] Linking CXX executable tests/fake-core-tests
+[529/568] Linking CXX executable tests/backend-bridge-tests
+[530/568] Linking CXX executable tests/component-contract-tests
+[531/568] Linking CXX executable tests/config-generation-tests
+[532/568] Linking CXX executable tests/profile-store-tests
+[533/568] Linking CXX executable tests/core-process-tests
+[534/568] Linking CXX executable tests/runtime-maintenance-tests
+[535/568] Linking CXX executable tests/traffic-graph-tests
+[536/568] Linking CXX executable tests/home-page-tests
+[537/568] Linking CXX executable tests/proxies-page-tests
+[538/568] Linking CXX executable tests/connections-page-tests
+[539/568] Linking CXX executable tests/providers-page-tests
+[540/568] Linking CXX executable tests/rules-page-tests
+[541/568] Linking CXX executable tests/logs-page-tests
+[542/568] Linking CXX executable tests/traffic-graph-frames-tests
+[543/568] Linking CXX executable tests/traffic-frame-pacing-tests
+[544/568] Linking CXX executable tests/preset-editor-tests
+[545/568] Linking CXX executable tests/app/lifecycle/shutdown-coordinator-tests
+[546/568] Linking CXX executable tests/app/backup/backup-coordinator-tests
+[547/568] Linking CXX executable tests/app/runtime/runtime-coordinator-tests
+[548/568] Linking CXX executable tests/app/runtime/routing-controller-tests
+[549/568] Linking CXX executable tests/core/mihomo/backend-real-contract-tests
+[550/568] Linking CXX executable tests/core/mihomo/engine-discovery-tests
+[551/568] Linking CXX executable tests/core/mihomo/backend-real-core-tests
+[552/568] Linking CXX executable tests/workflows/w01-first-launch-tests
+[553/568] Linking CXX executable tests/workflows/w02-subscription-update-tests
+[554/568] Linking CXX executable tests/workflows/w04-restore-tests
+[555/568] Linking CXX executable tests/workflows/w05-recovery-tests
+[556/568] Linking CXX executable tests/workflows/app-smoke-tests
+[557/568] Linking CXX executable tests/core/config/config-composer-tests
+[558/568] Linking CXX executable tests/core/config/preset-document-tests
+[559/568] Linking CXX executable tests/workflows/w03-routing-controls-tests
+[560/568] Linking CXX executable tests/core/config/chain-snapshot-tests
+[561/568] Building CXX object tests/contracts/component/abi/CMakeFiles/connection-snapshot-marshal-tests.dir/__/__/__/benchmarks/connection_snapshot_marshal_test.cpp.o
+[562/568] Building CXX object tests/core/profiles/CMakeFiles/preset-store-tests.dir/preset_store_test.cpp.o
+[563/568] Linking CXX executable tests/contracts/component/abi/connection-snapshot-marshal-tests
+[564/568] Linking CXX executable tests/core/profiles/preset-store-tests
+[565/568] Building CXX object tests/core/profiles/CMakeFiles/effective-config-preview-tests.dir/effective_config_preview_test.cpp.o
+[566/568] Linking CXX executable tests/core/profiles/effective-config-preview-tests
+[567/568] Building CXX object tests/contracts/component/abi/CMakeFiles/abi-contract-tests.dir/abi_contract_test.cpp.o
+[568/568] Linking CXX executable tests/contracts/component/abi/abi-contract-tests
+Test project /private/tmp/clash-qt-p4.w0Y8Uo/fresh-6/build/p4
+      Start  1: controller
+ 1/54 Test  #1: controller .......................   Passed    5.01 sec
+      Start  2: provider
+ 2/54 Test  #2: provider .........................   Passed    1.21 sec
+      Start  3: backup
+ 3/54 Test  #3: backup ...........................   Passed    0.76 sec
+      Start  4: traffic-history
+ 4/54 Test  #4: traffic-history ..................   Passed    0.03 sec
+      Start  5: privileged-service
+ 5/54 Test  #5: privileged-service ...............   Passed    1.02 sec
+      Start  6: system-proxy-async
+ 6/54 Test  #6: system-proxy-async ...............   Passed    0.73 sec
+      Start  7: proxy
+ 7/54 Test  #7: proxy ............................   Passed    0.03 sec
+      Start  8: tray
+ 8/54 Test  #8: tray .............................   Passed    0.06 sec
+      Start  9: routing-controls
+ 9/54 Test  #9: routing-controls .................   Passed    0.39 sec
+      Start 10: service-settings
+10/54 Test #10: service-settings .................   Passed    0.30 sec
+      Start 11: dashboard-async
+11/54 Test #11: dashboard-async ..................   Passed    0.55 sec
+      Start 12: privileged-helper
+12/54 Test #12: privileged-helper ................   Passed    0.01 sec
+      Start 13: privileged-helper-ipc
+13/54 Test #13: privileged-helper-ipc ............   Passed    0.39 sec
+      Start 14: preferences
+14/54 Test #14: preferences ......................   Passed    0.78 sec
+      Start 15: scoped-environment
+15/54 Test #15: scoped-environment ...............   Passed    0.05 sec
+      Start 16: loopback-server
+16/54 Test #16: loopback-server ..................   Passed    0.63 sec
+      Start 17: fake-core
+17/54 Test #17: fake-core ........................   Passed    1.45 sec
+      Start 18: backend-contract
+18/54 Test #18: backend-contract .................   Passed    0.03 sec
+      Start 19: backend-bridge
+19/54 Test #19: backend-bridge ...................   Passed    0.03 sec
+      Start 20: component-contract
+20/54 Test #20: component-contract ...............   Passed    0.04 sec
+      Start 21: config-generation
+21/54 Test #21: config-generation ................   Passed    0.35 sec
+      Start 22: profile-store
+22/54 Test #22: profile-store ....................   Passed    0.66 sec
+      Start 23: core-process
+23/54 Test #23: core-process .....................   Passed   10.97 sec
+      Start 24: runtime-maintenance
+24/54 Test #24: runtime-maintenance ..............   Passed    0.19 sec
+      Start 25: home-page
+25/54 Test #25: home-page ........................   Passed    0.49 sec
+      Start 26: traffic-graph
+26/54 Test #26: traffic-graph ....................   Passed    1.37 sec
+      Start 27: proxies-page
+27/54 Test #27: proxies-page .....................   Passed    0.57 sec
+      Start 28: connections-page
+28/54 Test #28: connections-page .................   Passed    1.46 sec
+      Start 29: providers-page
+29/54 Test #29: providers-page ...................   Passed    0.29 sec
+      Start 30: rules-page
+30/54 Test #30: rules-page .......................   Passed    0.25 sec
+      Start 31: logs-page
+31/54 Test #31: logs-page ........................   Passed    0.58 sec
+      Start 34: preset-editor
+32/54 Test #34: preset-editor ....................   Passed    0.61 sec
+      Start 35: shutdown-coordinator
+33/54 Test #35: shutdown-coordinator .............   Passed    0.03 sec
+      Start 36: backup-coordinator
+34/54 Test #36: backup-coordinator ...............   Passed    0.04 sec
+      Start 37: runtime-coordinator
+35/54 Test #37: runtime-coordinator ..............   Passed    0.91 sec
+      Start 38: routing-controller
+36/54 Test #38: routing-controller ...............   Passed    0.49 sec
+      Start 39: backend-real-contract
+37/54 Test #39: backend-real-contract ............   Passed   12.76 sec
+      Start 40: engine-discovery
+38/54 Test #40: engine-discovery .................   Passed    1.84 sec
+      Start 42: w01-first-launch
+39/54 Test #42: w01-first-launch .................   Passed   10.97 sec
+      Start 43: w02-subscription-update
+40/54 Test #43: w02-subscription-update ..........   Passed    4.99 sec
+      Start 44: w04-restore
+41/54 Test #44: w04-restore ......................   Passed    0.48 sec
+      Start 45: w05-recovery
+42/54 Test #45: w05-recovery .....................   Passed    7.72 sec
+      Start 46: w03-routing-controls
+43/54 Test #46: w03-routing-controls .............   Passed    1.71 sec
+      Start 47: app-smoke
+44/54 Test #47: app-smoke ........................   Passed   39.78 sec
+      Start 49: arch-graph
+45/54 Test #49: arch-graph .......................   Passed    5.69 sec
+      Start 50: arch-public-headers
+46/54 Test #50: arch-public-headers ..............   Passed   13.65 sec
+      Start 51: arch-selftest
+47/54 Test #51: arch-selftest ....................   Passed   13.88 sec
+      Start 52: config-composer
+48/54 Test #52: config-composer ..................   Passed    0.06 sec
+      Start 53: preset-document
+49/54 Test #53: preset-document ..................   Passed    0.04 sec
+      Start 54: chain-snapshot
+50/54 Test #54: chain-snapshot ...................   Passed    0.08 sec
+      Start 55: preset-store
+51/54 Test #55: preset-store .....................   Passed    0.23 sec
+      Start 56: effective-config-preview
+52/54 Test #56: effective-config-preview .........   Passed    4.89 sec
+      Start 57: abi-contract
+53/54 Test #57: abi-contract .....................   Passed    0.15 sec
+      Start 58: connection-snapshot-codec
+54/54 Test #58: connection-snapshot-codec ........   Passed    0.14 sec
+
+100% tests passed out of 54
+
+Label Time Summary:
+app             =  67.11 sec*proc (10 tests)
+architecture    =  33.23 sec*proc (3 tests)
+backend         =   0.06 sec*proc (2 tests)
+backup          =   0.04 sec*proc (1 test)
+backups         =   0.76 sec*proc (1 test)
+component       =   0.34 sec*proc (3 tests)
+config          =  11.25 sec*proc (8 tests)
+contract        =  13.02 sec*proc (5 tests)
+core            =  39.87 sec*proc (16 tests)
+integration     = 103.86 sec*proc (18 tests)
+lifecycle       =   0.03 sec*proc (1 test)
+mihomo          =  31.80 sec*proc (5 tests)
+packaging       =  39.78 sec*proc (1 test)
+pages           =   5.32 sec*proc (8 tests)
+platform        =   2.18 sec*proc (5 tests)
+preferences     =   0.78 sec*proc (1 test)
+profiles        =   0.85 sec*proc (2 tests)
+proxy           =   0.76 sec*proc (2 tests)
+runtime         =   1.40 sec*proc (2 tests)
+service         =   1.72 sec*proc (4 tests)
+shell           =   1.00 sec*proc (3 tests)
+support         =   2.12 sec*proc (3 tests)
+telemetry       =   0.03 sec*proc (1 test)
+ui              =   8.63 sec*proc (13 tests)
+unit            =   7.81 sec*proc (21 tests)
+workflow        =  65.65 sec*proc (6 tests)
+
+Total Test time (real) = 151.86 sec
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

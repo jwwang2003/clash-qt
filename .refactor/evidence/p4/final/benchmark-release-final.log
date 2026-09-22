@@ -1,0 +1,58 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+UpdateCTestConfiguration  from :/tmp/clash-qt-p4.w0Y8Uo/benchmark-headless/DartConfiguration.tcl
+Parse Config file:/tmp/clash-qt-p4.w0Y8Uo/benchmark-headless/DartConfiguration.tcl
+Test project /tmp/clash-qt-p4.w0Y8Uo/benchmark-headless
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 43
+    Start 43: connection-snapshot-marshal
+
+43: Test command: /tmp/clash-qt-p4.w0Y8Uo/benchmark-headless/tests/contracts/component/abi/connection-snapshot-marshal-tests "comparePackedAndNaiveAtSnapshotScale" "benchmarkPackingAPacked" "benchmarkUnpackingAPacked"
+43: Working Directory: /tmp/clash-qt-p4.w0Y8Uo/benchmark-headless/tests/contracts/component/abi
+43: Environment variables: 
+43:  CLASH_QT_DATA_DIR=/tmp/clash-qt-p4.w0Y8Uo/benchmark-headless/test-data/connection-snapshot-marshal
+43: Test timeout computed to be: 1500
+43: ********* Start testing of ConnectionSnapshotMarshalTest *********
+43: Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+43: PASS   : ConnectionSnapshotMarshalTest::initTestCase()
+43: QINFO  : ConnectionSnapshotMarshalTest::comparePackedAndNaiveAtSnapshotScale() 500-row snapshot, 200 round trips: packed 662.88 ms (114182 B), naive 738.12 ms (136336 B)
+43: QINFO  : ConnectionSnapshotMarshalTest::comparePackedAndNaiveAtSnapshotScale() build=Release Qt=6.11.1 packed/naive=0.898
+43: PASS   : ConnectionSnapshotMarshalTest::comparePackedAndNaiveAtSnapshotScale()
+43: PASS   : ConnectionSnapshotMarshalTest::benchmarkPackingAPacked(64)
+43: RESULT : ConnectionSnapshotMarshalTest::benchmarkPackingAPacked():"64":
+43:      0.39 msecs per iteration (total: 51, iterations: 128)
+43: PASS   : ConnectionSnapshotMarshalTest::benchmarkPackingAPacked(500)
+43: RESULT : ConnectionSnapshotMarshalTest::benchmarkPackingAPacked():"500":
+43:      2.7 msecs per iteration (total: 89, iterations: 32)
+43: PASS   : ConnectionSnapshotMarshalTest::benchmarkPackingAPacked(2000)
+43: RESULT : ConnectionSnapshotMarshalTest::benchmarkPackingAPacked():"2000":
+43:      11 msecs per iteration (total: 90, iterations: 8)
+43: PASS   : ConnectionSnapshotMarshalTest::benchmarkUnpackingAPacked(64)
+43: RESULT : ConnectionSnapshotMarshalTest::benchmarkUnpackingAPacked():"64":
+43:      0.063 msecs per iteration (total: 65, iterations: 1024)
+43: PASS   : ConnectionSnapshotMarshalTest::benchmarkUnpackingAPacked(500)
+43: RESULT : ConnectionSnapshotMarshalTest::benchmarkUnpackingAPacked():"500":
+43:      0.50 msecs per iteration (total: 64, iterations: 128)
+43: PASS   : ConnectionSnapshotMarshalTest::benchmarkUnpackingAPacked(2000)
+43: RESULT : ConnectionSnapshotMarshalTest::benchmarkUnpackingAPacked():"2000":
+43:      2.0 msecs per iteration (total: 64, iterations: 32)
+43: PASS   : ConnectionSnapshotMarshalTest::cleanupTestCase()
+43: Totals: 9 passed, 0 failed, 0 skipped, 0 blacklisted, 3423ms
+43: ********* Finished testing of ConnectionSnapshotMarshalTest *********
+1/1 Test #43: connection-snapshot-marshal ......   Passed    3.45 sec
+
+The following tests passed:
+	connection-snapshot-marshal
+
+100% tests passed out of 1
+
+Label Time Summary:
+benchmark    =   3.45 sec*proc (1 test)
+component    =   3.45 sec*proc (1 test)
+
+Total Test time (real) =   3.45 sec
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

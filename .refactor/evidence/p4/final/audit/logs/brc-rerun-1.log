@@ -1,0 +1,13 @@
+Test project /tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/build
+    Start 25: backend-real-contract
+1/1 Test #25: backend-real-contract ............   Passed   12.98 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+contract       =  12.98 sec*proc (1 test)
+core           =  12.98 sec*proc (1 test)
+integration    =  12.98 sec*proc (1 test)
+mihomo         =  12.98 sec*proc (1 test)
+
+Total Test time (real) =  12.99 sec

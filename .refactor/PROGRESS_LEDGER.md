@@ -6,7 +6,15 @@ do not repeat completed analysis.
 This file and its siblings live in `.refactor/`, **not** in `docs/`. See the binding
 cutover rule below.
 
-Last updated: 2026-09-22 (P3-RECORDS).
+Last updated: 2026-09-22 (P4 closure).
+
+**Current resume point: P4 implementation and macOS arm64 qualification complete.**
+Qualified production source: `be851f5edf34a25d216df62fcd3d35ab52a08e9b`.
+Fresh-clone routine 54/54, integration 20/20, package, packaged module launch,
+installed-SDK consumer and independent whole-P4 audit GO. No active source lease.
+See P4_QUALIFICATION.md and the final closure entries below for evidence and
+limitations. Earlier pending statements are historical. Windows/Linux evidence
+remains zero; G5 and later waves are open. No push or merge.
 
 **How to read a status in this file.** Every closed item names the commit that
 closed it and something checkable in the tree. Anything written as "still open"
@@ -1528,3 +1536,61 @@ Packaging now runs Qt deployment with -no-codesign, signs the nested bundle befo
 installing the engine, then seals/verifies the completed app. Repeat staging removes
 only the prior generated engine copy before deployment. No signing credentials,
 network timestamp or trust-store operation is used. New clean qualification pending.
+
+
+### P4 closed — qualified source be851f5, independent GO
+
+Fresh-6 passed make test54/54, make test-integration20/20 (including fixture and
+pinned-core W02), and make package with no deployment ERROR and successful
+ad-hoc deep/strict signature verification. Engine SHA is identical before/after
+staging. An independent consumer built from the installed public SDK, linked
+only QtCore/system libraries, drove the pinned engine ready → confirmed stop →
+actual module unmap. The native Cocoa package resolved its bundle-relative module
+with no developer Qt paths. All59 registered entries have isolated data dirs.
+The two temporary G2 exceptions are deleted; the permanent six-site allowance
+remains. Headless module build and Debug/Release D8 measurement passed.
+
+Independent Opus whole-P4 audit returned GO after its own artifact/consumer/app
+runs and external-copy inversions. Reverting same-address session retirement
+failed5 cases including direct-real and module-real; deleting runtime-tag refusal
+failed the ABI mismatch test; dropping profile presets failed composition,
+persistence and actual UI preview. Same contract assertions span four subjects,
+17 shared cases ×4 =68 shared rows. Mutation copies were restored. No new product
+scope beyond P4. Final evidence is evidence/p4/final/; source is be851f5 and this
+closure changes records only.
+
+Retained limits: Qt runtime tag verifies a build, not one physical mapped image;
+host/module must share Qt. The sample defaults to a broad source include root,
+whereas qualification used the installed SDK. Redundant host-queue guard mutation
+survives and is not claimed as covered. Cocoa smoke is startup/module-load evidence,
+not native GPU or orderly GUI-quit qualification. Developer-ID/notarization and
+Windows/Linux are unqualified; Windows/Linux compile/run evidence is exactly zero
+and remains G5's blocker, not P4's. See P4_QUALIFICATION.md for measured artifacts.
+
+### Preference guard attribution corrected using user-confirmed concurrent use
+
+All final qualification runs retained original native preference SHA
+681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c before and after.
+During the final auditor's backend-only baseline the guard detected transition to
+82a0d1e4531f9b55cdcaa986f3d2a37519d3acd34186eff35190f96a5f744f04; later it became
+204612a89e487d9f3307438f3f2ca97e60056c66919bcebe113a89f863428ffc while no audit run
+was active. The sole key remains window.geometry. The user confirmed separate
+clash-qt window use. macOS shows development-app PID57802 receiving Dock quit
+at16:29:20, after qualification staged-app PID51881 exited16:23:23. The first transition overlaps
+confirmed user activity; the later transition has no identified writer. The guard
+alone cannot attribute the writer. The prior
+auditor statement that its QSettings lookup caused the write was unsupported and
+is corrected, not treated as a product failure. No restoration/write was made to
+the user's geometry. Prior stable repeated backend checks are retained.
+
+This does NOT retract the earlier genuine helper-isolation incident: early smoke
+could request status from the installed helper; those claims remain withdrawn.
+The final implementation and harness isolate helper/controller/geo discovery.
+No helper install/uninstall/restart or system proxy/VPN/trust change was performed.
+
+The bounded independent Opus attribution follow-up has finished: GO stands. It
+withdrew the unsupported test/daemon-flush causal claim, preserved all three
+historical hashes and recorded the later transition as unattributed. Current
+geometry was read only. The source remains be851f5; no rerun was needed for this
+records-only correction. Its report and corrected original notes are archived
+under evidence/p4/final/audit/.

@@ -1,0 +1,69 @@
+Test project /tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/build
+    Start 41: abi-contract
+1/1 Test #41: abi-contract .....................***Failed    0.14 sec
+********* Start testing of AbiContractTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : AbiContractTest::initTestCase()
+PASS   : AbiContractTest::theHandshakeAcceptsAHostBuiltFromTheSameHeaders()
+PASS   : AbiContractTest::theHandshakeRefusesAnIncompatibleModuleAbiVersion()
+PASS   : AbiContractTest::theHandshakeRefusesAForeignTargetAbi()
+FAIL!  : AbiContractTest::theHandshakeRefusesAMismatchedRuntime() Compared values are not the same
+   Actual   (module.entry(&request, &response, &root)): 0
+   Expected (com::kUnsupportedVersion)                : -8
+   Loc: [/tmp/clash-qt-p4.w0Y8Uo/final-audit/mutate/src/tests/contracts/component/abi/abi_contract_test.cpp(565)]
+PASS   : AbiContractTest::theHandshakeRefusesAStructSizeItDoesNotKnow()
+PASS   : AbiContractTest::theLoaderRefusesAModuleThatIsNotTheOneItAskedFor()
+PASS   : AbiContractTest::theLoaderRefusesAnArtifactItCannotSeeWithoutSearching()
+PASS   : AbiContractTest::theModuleRootAnswersItsIdentityAndRefusesAnUnknownClass()
+PASS   : AbiContractTest::aLiveObjectKeepsTheLibraryMapped()
+PASS   : AbiContractTest::anActivatedShippingModuleIsActuallyUnmapped()
+PASS   : AbiContractTest::aModuleThatRefusesTheUnmapKeepsItsImageMapped()
+PASS   : AbiContractTest::aRetainedRootReferenceKeepsTheImageMapped()
+PASS   : AbiContractTest::aRetainedReplyBufferKeepsTheModuleCountedAndMapped()
+PASS   : AbiContractTest::aRetainedDiagnosticAndItsMessageBufferEachKeepTheModule()
+PASS   : AbiContractTest::creatingAndPreparingInParallelNeverHandsOutAnObjectAfterPrepare()
+PASS   : AbiContractTest::aPreparedModuleCreatesNothingFurther()
+PASS   : AbiContractTest::preparingRefusesWithoutLatchingWhileAnotherHolderRemains()
+PASS   : AbiContractTest::theFinalReleaseFromAnotherThreadKeepsTheModuleCountedUntilCleanupRuns()
+PASS   : AbiContractTest::aQuiescentSessionIsDestroyedInsideReleaseAndOnlyThenReportsZero()
+PASS   : AbiContractTest::aQueuedCleanupKeepsItsOwnReferenceUntilItHasActuallyDestroyed()
+PASS   : AbiContractTest::closingAloneDoesNotConsumeTheCallersReference()
+PASS   : AbiContractTest::extraAndForeignReleasesNeverDestroyWhileAHolderRemains()
+PASS   : AbiContractTest::queryingASessionInterfaceTakesExactlyOneReference()
+PASS   : AbiContractTest::theReaderLatchesAnOverrunInsteadOfContinuing()
+PASS   : AbiContractTest::closingIsIdempotentAndAClosedSessionRefusesCommands()
+PASS   : AbiContractTest::outstandingWorkCountsHeldRequestsAndCloseReportsTheTimeout()
+PASS   : AbiContractTest::sixtyFourBitIdentityAndCountersSurviveTheBoundary()
+PASS   : AbiContractTest::everyQueryOfTheContractCrossesTheBoundary()
+PASS   : AbiContractTest::stagedTelemetryRoundTripsThroughAReleasedRequest()
+PASS   : AbiContractTest::aTimestampKeepsItsRepresentationAndNotOnlyItsInstant()
+PASS   : AbiContractTest::aTimestampWithAnUnusableRepresentationIsRefused()
+PASS   : AbiContractTest::aPackedConnectionSnapshotRoundTripsExactly()
+PASS   : AbiContractTest::aMalformedConnectionSnapshotIsRefusedWithAReason()
+PASS   : AbiContractTest::thePrivilegedStatusCarriesCoreRunning()
+PASS   : AbiContractTest::noObserverIsInvokedFromInsideACommand()
+PASS   : AbiContractTest::removingAnObserverDuringDeliveryStopsFurtherCallbacks()
+PASS   : AbiContractTest::anObserverAddedAfterProductionIsRefusedTheSameEventsAsDirect()
+PASS   : AbiContractTest::anObserverAddedDuringDeliveryIsAdmittedTheSameAsDirect()
+PASS   : AbiContractTest::thePrivilegedSeamReachesTheHostsServiceAndAllowsOneListener()
+PASS   : AbiContractTest::aMalformedArgumentBlockIsRefusedWithADiagnostic()
+PASS   : AbiContractTest::everyRefusedCommandLeavesItsOwnDiagnostic()
+PASS   : AbiContractTest::anUnknownCommandIsNotImplementedRatherThanIgnored()
+PASS   : AbiContractTest::theShippingModuleDoesNotImplementTheTestControlRange()
+PASS   : AbiContractTest::cleanupTestCase()
+Totals: 44 passed, 1 failed, 0 skipped, 0 blacklisted, 103ms
+********* Finished testing of AbiContractTest *********
+
+
+0% tests passed, 1 tests failed out of 1
+
+Label Time Summary:
+component      =   0.14 sec*proc (1 test)
+contract       =   0.14 sec*proc (1 test)
+integration    =   0.14 sec*proc (1 test)
+
+Total Test time (real) =   0.15 sec
+
+The following tests FAILED:
+	 41 - abi-contract (Failed)                             component contract integration
+Errors while running CTest

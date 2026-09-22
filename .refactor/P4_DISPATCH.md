@@ -1,8 +1,12 @@
 # P4 dispatch and ownership
 
-Current active source leases: NONE. All implementation workers returned STABLE.
-Independent config and ABI subgate rechecks returned GO. Coordinator is at the
-source barrier and beginning fresh-clone qualification of the combined result.
+Current active source leases: NONE. All implementation workers are STABLE.
+Fresh-6 qualification passed at be851f5: routine 54/54, integration 20/20,
+package/signature, installed-SDK consumer and native packaged launch. The
+independent read-only whole-P4 audit returned GO. The bounded Opus preference-attribution
+follow-up is also complete: unsupported causality withdrawn, user-confirmed
+concurrent app use recorded, GO unchanged. All workers have finished.
+Original main/legacy refs remain untouched.
 Status/evidence scratch: `/tmp/clash-qt-p4.w0Y8Uo`, `status.py` reads worker logs.
 The rounds below are historical dispatch records; later entries supersede status.
 

@@ -1,0 +1,30 @@
+[1/30] Running qmlimportscanner for preset-store-tests
+[2/30] Running qmlimportscanner for effective-config-preview-tests
+[3/30] Automatic MOC and UIC for target clash_config_compose
+[4/30] Building CXX object src/core/CMakeFiles/clash_config_compose.dir/clash_config_compose_autogen/mocs_compilation.cpp.o
+[5/30] Automatic MOC and UIC for target clash_config
+[6/30] Building CXX object src/core/CMakeFiles/clash_config.dir/clash_config_autogen/mocs_compilation.cpp.o
+[7/30] Building CXX object src/core/CMakeFiles/clash_config_compose.dir/config/config_composer.cpp.o
+[8/30] Linking CXX static library src/core/libclash_config_compose.a
+[9/30] Building CXX object src/core/CMakeFiles/clash_config.dir/config/enhance/config_enhancer.cpp.o
+[10/30] Automatic MOC and UIC for target preset-document-tests
+[11/30] Building CXX object tests/core/config/CMakeFiles/preset-document-tests.dir/preset-document-tests_autogen/mocs_compilation.cpp.o
+[12/30] Automatic MOC and UIC for target config-composer-tests
+[13/30] Linking CXX static library src/core/libclash_config.a
+[14/30] Building CXX object tests/core/config/CMakeFiles/config-composer-tests.dir/config-composer-tests_autogen/mocs_compilation.cpp.o
+[15/30] Automatic MOC and UIC for target clash_profiles
+[16/30] Building CXX object src/core/CMakeFiles/clash_profiles.dir/clash_profiles_autogen/mocs_compilation.cpp.o
+[17/30] Building CXX object tests/core/config/CMakeFiles/preset-document-tests.dir/preset_document_test.cpp.o
+[18/30] Linking CXX executable tests/core/config/preset-document-tests
+[19/30] Building CXX object tests/core/config/CMakeFiles/config-composer-tests.dir/config_composer_test.cpp.o
+[20/30] Building CXX object src/core/CMakeFiles/clash_profiles.dir/profiles/profile_store.cpp.o
+[21/30] Linking CXX executable tests/core/config/config-composer-tests
+[22/30] Linking CXX static library src/core/libclash_profiles.a
+[23/30] Automatic MOC and UIC for target preset-store-tests
+[24/30] Automatic MOC and UIC for target effective-config-preview-tests
+[25/30] Building CXX object tests/core/profiles/CMakeFiles/preset-store-tests.dir/preset-store-tests_autogen/mocs_compilation.cpp.o
+[26/30] Building CXX object tests/core/profiles/CMakeFiles/effective-config-preview-tests.dir/effective-config-preview-tests_autogen/mocs_compilation.cpp.o
+[27/30] Building CXX object tests/core/profiles/CMakeFiles/preset-store-tests.dir/preset_store_test.cpp.o
+[28/30] Building CXX object tests/core/profiles/CMakeFiles/effective-config-preview-tests.dir/effective_config_preview_test.cpp.o
+[29/30] Linking CXX executable tests/core/profiles/preset-store-tests
+[30/30] Linking CXX executable tests/core/profiles/effective-config-preview-tests

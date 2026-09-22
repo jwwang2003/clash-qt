@@ -1,0 +1,111 @@
+Timestamp               Ty Process[PID:TID]
+2026-09-22 16:28:47.993 A  clash-qt[57802:1195217] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-09-22 16:28:50.239 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]
+2026-09-22 16:28:50.241 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges] finishing enqueued operations
+2026-09-22 16:28:50.241 Df clash-qt[57802:1195229] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]_block_invoke asyncing to main queue
+2026-09-22 16:28:50.462 Df clash-qt[57802:1195306] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]_block_invoke writing records
+2026-09-22 16:28:51.791 A  clash-qt[57802:1195217] (TCC) TCCAccessRequest() IPC
+2026-09-22 16:28:51.791 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4500] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-09-22 16:28:51.807 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4500] invalidated after the last release of the connection object
+2026-09-22 16:28:57.338 Df clash-qt[57802:1195217] [com.apple.AppKit:Screen] NSApplication._react(to:) dock
+2026-09-22 16:28:57.338 Df clash-qt[57802:1195217] [com.apple.AppKit:Screen] NSApplication._react(to:) reactions=83
+2026-09-22 16:29:06.720 A  clash-qt[57802:1195217] (TCC) TCCAccessRequest() IPC
+2026-09-22 16:29:06.720 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4000] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-09-22 16:29:06.742 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4000] invalidated after the last release of the connection object
+2026-09-22 16:29:15.444 Df clash-qt[57802:119522d] [com.apple.xpc:connection] [0xa18de4000] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService
+2026-09-22 16:29:15.446 Df clash-qt[57802:1195224] [com.apple.xpc:connection] [0xa18de4000] invalidated after the last release of the connection object
+2026-09-22 16:29:15.456 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de43c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-09-22 16:29:15.456 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4000] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-09-22 16:29:15.493 Df clash-qt[57802:1195217] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController
+2026-09-22 16:29:15.494 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4140] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:15.494 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4280] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:20.842 Df clash-qt[57802:1195217] [com.apple.inputmethodkitClient:Client] +[IMKInputSession subclass]: chose IMKInputSession_Modern
+2026-09-22 16:29:20.847 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4280] activating connection: mach=true listener=false peer=false name=com.apple.inputmethodkit.getxpcendpoint
+2026-09-22 16:29:20.848 Df clash-qt[57802:1195f46] [com.apple.xpc:connection] [0xa18de4140] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService
+2026-09-22 16:29:20.848 Df clash-qt[57802:1195f46] [com.apple.xpc:connection] [0xa18de4140] invalidated after the last release of the connection object
+2026-09-22 16:29:20.923 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4780] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-09-22 16:29:20.923 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4140] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-09-22 16:29:20.924 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de48c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-09-22 16:29:20.933 I  clash-qt[57802:1195217] [com.apple.appleevents:receive] RECEIVED:(aevt,quit) {aevt,quit target=Dock  returnID=-32224}...
+2026-09-22 16:29:20.934 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Handling Quit AppleEvent
+2026-09-22 16:29:20.934 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] -[NSApplication _setShouldRestoreStateOnNextLaunch:] shouldRestore=1
+2026-09-22 16:29:20.934 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSApplication _pushPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 1
+2026-09-22 16:29:20.934 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushPersistentStateAndClose:waitingUntilDone:] shouldClose=1 waitingUntilDone=1
+2026-09-22 16:29:20.934 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges] finishing enqueued operations
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] finishing pending changes
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _finishEncodingImmediatelyWithCompletionHandler:] _encodingQueue=0xa1b4ad470
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195224] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]_block_invoke asyncing to main queue
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195224] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke asyncing to main runloop
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] observer=0xa186f50e0
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.libsystem.libdispatch:] DEPRECATED USE in libdispatch client: Setting timer interval to 0 requests a 1ns timer, did you mean FOREVER (a one-shot timer)?; set a breakpoint on _dispatch_bug_deprecated to debug
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] spinning the runloop
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f50e0 activity=1 depth=0 finished=0
+2026-09-22 16:29:20.943 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke finished=YES
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f50e0 activity=128 depth=1 finished=1
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] completed spinning the runloop
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] finished waiting
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously] workQueue=0xa1c28aa00
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195224] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]_block_invoke writing records
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _windowSnapshotter=0xa19820690
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIWindowSnapshotter flushPendingSnapshotsSynchronously] _workQueue=0xa1c28aa80
+2026-09-22 16:29:20.944 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _store=0xa1aeae3a0
+2026-09-22 16:29:20.946 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] finished flushing
+2026-09-22 16:29:20.946 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Checking whether app should terminate
+2026-09-22 16:29:20.946 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Asking app delegate whether applicationShouldTerminate:
+2026-09-22 16:29:20.950 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] applicationShouldTerminate: NSTerminateCancel
+2026-09-22 16:29:20.950 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] replyToApplicationShouldTerminate:NO
+2026-09-22 16:29:20.950 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] App termination canceled
+2026-09-22 16:29:20.950 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] -[NSApplication _unsetShouldRestoreStateOnNextLaunch]
+2026-09-22 16:29:20.950 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSApplication _popPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 0
+2026-09-22 16:29:20.998 Df clash-qt[57802:1195217] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController
+2026-09-22 16:29:20.998 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de4000] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:20.998 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de43c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] terminate:
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Terminating
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSApplication _pushPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 1
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushPersistentStateAndClose:waitingUntilDone:] shouldClose=1 waitingUntilDone=1
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges] finishing enqueued operations
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] finishing pending changes
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _finishEncodingImmediatelyWithCompletionHandler:] _encodingQueue=0xa1b4ad470
+2026-09-22 16:29:21.173 Df clash-qt[57802:11964d3] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]_block_invoke asyncing to main queue
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] observer=0xa186f4be0
+2026-09-22 16:29:21.173 Df clash-qt[57802:11964d3] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke asyncing to main runloop
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] spinning the runloop
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f4be0 activity=1 depth=0 finished=0
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke finished=YES
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish]_block_invoke observer=0xa186f4be0 activity=128 depth=1 finished=1
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] completed spinning the runloop
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] finished waiting
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously] workQueue=0xa1c28aa00
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195224] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager flushAllChanges]_block_invoke writing records
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _windowSnapshotter=0xa19820690
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIWindowSnapshotter flushPendingSnapshotsSynchronously] _workQueue=0xa1c28aa80
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _flushPendingPostEncodingChangesSynchronously]_block_invoke _store=0xa1aeae3a0
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSPersistentUIManager _waitForPendingChangesToFinish] finished flushing
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Attempting sudden termination (1st attempt)
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Checking whether app should terminate
+2026-09-22 16:29:21.173 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Asking app delegate whether applicationShouldTerminate:
+2026-09-22 16:29:21.198 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSApplication _pushPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 2
+2026-09-22 16:29:21.198 Df clash-qt[57802:1195224] [com.apple.xpc:connection] [0xa1a817700] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:21.198 Df clash-qt[57802:1195224] [com.apple.xpc:session] [0xa19ddcf50] Session canceled.
+2026-09-22 16:29:21.198 Df clash-qt[57802:1195224] [com.apple.UIIntelligenceSupport:xpc] agent connection cancelled (details: Session manually canceled)
+2026-09-22 16:29:21.198 Df clash-qt[57802:1195224] [com.apple.xpc:session] [0xa19ddcf50] Disposing of session
+2026-09-22 16:29:21.200 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] applicationShouldTerminate: NSTerminateCancel
+2026-09-22 16:29:21.200 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] replyToApplicationShouldTerminate:NO
+2026-09-22 16:29:21.200 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] App termination canceled
+2026-09-22 16:29:21.200 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSApplication _popPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 1
+2026-09-22 16:29:21.200 Df clash-qt[57802:1195217] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Terminating
+2026-09-22 16:29:21.200 Df clash-qt[57802:1195217] [com.apple.AppKit:Application] Termination aborted
+2026-09-22 16:29:21.201 Df clash-qt[57802:1195217] [com.apple.AppKit:StateRestoration] -[NSApplication _popPersistentStateTerminationGeneration] sPersistentStateTerminateStackHeight -> 0
+2026-09-22 16:29:21.210 E  clash-qt[57802:11964d3] [com.apple.FrontBoard:SceneClient] No scene exists for identity: com.apple.controlcenter:2F703D9F-FF76-41C0-AE6C-D194AA9D050B-Aux[1]-NSStatusItemView
+2026-09-22 16:29:21.262 Df clash-qt[57802:1195217] [com.apple.xpc:connection] [0xa18de48c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:21.267 Df clash-qt[57802:1195217] [com.apple.appleevents:main] OSErr AERemoveEventHandler(AEEventClass, AEEventID, AEEventHandlerUPP, Boolean)(GURL,GURL handler=0x183a9fd74 isSys=NO) err=0/noErr
+2026-09-22 16:29:21.267 Df clash-qt[57802:11964d3] [com.apple.xpc:connection] [0xa18de4640] activating connection: mach=true listener=false peer=false name=com.apple.powerlog.plxpclogger.xpc
+2026-09-22 16:29:21.270 Df clash-qt[57802:1195217] [com.apple.CoreAnalytics:client] Entering exit handler.
+2026-09-22 16:29:21.270 Df clash-qt[57802:1195217] [com.apple.CoreAnalytics:client] Queueing exit procedure onto XPC queue. Any further messages sent will be discarded. activeSendTransactions=0
+2026-09-22 16:29:21.270 Df clash-qt[57802:1196584] [com.apple.CoreAnalytics:client] Cancelling XPC connection. Any further reply handler invocations will not retry messages
+2026-09-22 16:29:21.270 Df clash-qt[57802:1196584] [com.apple.xpc:connection] [0xa1a814640] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-09-22 16:29:21.270 Df clash-qt[57802:1195217] [com.apple.CoreAnalytics:client] Exiting exit handler.
+2026-09-22 16:29:21.270 Df clash-qt[57802:11964d3] [com.apple.CoreAnalytics:client] XPC connection invalidated (daemon unloaded/disabled)
