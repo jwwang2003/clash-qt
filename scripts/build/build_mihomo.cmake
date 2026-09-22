@@ -1,7 +1,7 @@
 # Builds mihomo from the recorded local submodule checkout and records its
 # provenance. Written in CMake script mode on purpose: CMake is already a hard
 # prerequisite on every supported platform, whereas Python is not present on a
-# clean Windows machine (see docs/BUILD_RELEASE_PLAN.md).
+# clean Windows machine (see docs/build.md).
 #
 # Invoked as:
 #   cmake -DSOURCE_DIR=... -DOUTPUT=... -DGO=... [-DRELEASE=ON] [-DGOOS=] [-DGOARCH=]

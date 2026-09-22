@@ -1,4 +1,5 @@
-# P4 binary boundary. Included after src/core defines the host-side contracts.
+# The binary boundary between the host and a loaded module. Included after
+# src/core defines the host-side contracts.
 add_library(clash_component_abi INTERFACE)
 target_link_libraries(clash_component_abi INTERFACE clashqt_com)
 target_sources(clash_component_abi INTERFACE FILE_SET HEADERS

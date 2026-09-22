@@ -1626,3 +1626,122 @@ checks retained that value. Before replacement a further geometry-only transitio
 was observed, without an identified writer: the update check read
 71cb7aee79d36a01cfbfab969aa1add7e46b330ecb9f97227f30a4d42df361ca both before and
 after. No preference restoration or modification was made.
+
+## Naming wave — closed (b902e4e)
+
+Three workers ran concurrently over disjoint files: source comments, tests, and
+the architecture checker's keys. The plan's ordinals are gone from the shipping
+tree; a scan of all 376 tracked files outside `.refactor/` finds zero goal,
+worker, phase or decision tokens.
+
+Five workflow sources were renamed by subject, so the file, the CMake target and
+the registered CTest name now agree. They had disagreed: an earlier pass renamed
+the registered names but not the targets, because the file declaring targets was
+leased to another worker at the time.
+
+**Two dangling references the rename created or exposed.** Both are the project's
+recurring class -- a producer moved, a consumer left behind.
+
+1. The `.moc` self-includes still named the old stems. AutoMoc failed on three
+   targets with zero compiler errors, so nothing pointed at the cause. A source
+   rename in a Qt target has a second half that no compiler checks.
+2. `src/core/CMakeLists.txt` cited `.refactor/DECISIONS.md`, a path cutover
+   removes, and pinned `backend-r4` in a file that does not define it. Rewritten
+   to state its own reason and to let the contract doc hold the revision.
+
+**A measurement error of mine, recorded because it would recur.** My first token
+scan passed `CMakeLists.txt` as a pathspec. That matches only the root file, and
+`*.cmake` does not match `CMakeLists.txt` at all, so every subdirectory build
+file went unscanned and the scan reported a clean tree. Re-running against the
+full tracked-file list found the one real hit. Pathspecs in this repo must be
+built from `git ls-files`, not from guessed globs. Same family as the invalid
+`\b` word boundaries and the `ctest -V` parse error recorded earlier: in all
+three the tool answered a different question than the one I believed I asked.
+
+**Verified.** 59/59 suites green, architecture lane clean, `help` and `doctor`
+exit 0 on make 3.81 and 4.4.1. The real-core suite failed first because the
+engine was absent from this build directory; it was built from the pinned
+submodule revision ab405bad (mihomo v1.19.31, clean) and the suite passed. That
+suite fails loudly rather than skipping, which is why the gap was visible.
+
+**Build directories.** `build-namecheck`, `build-namesrc` and `build-nametests`
+removed, 1.54 GB. `build/dev` is the live lane and is kept. `build-baseline` is
+already gone; references to it above are historical.
+
+## Docs wave — findings
+
+Three workers wrote the published set over disjoint files. Two have reported.
+
+### A detector for the class that keeps recurring
+
+`tests/architecture/reference_check.py`, registered in the architecture lane with
+`reference_selftest.py` beside it (11 cases, each rule with a case it must reject
+and one it must accept). It enforces three rules: a path named in a shipping file
+must exist; a shipping file must not name a path the merge deletes; and a comment
+must not identify anything by its position in the plan.
+
+This is the first automated detector for the documentation form of "a producer
+removed, a consumer left behind". Four of the six recorded instances had none. A
+comment citing a deleted document compiles exactly as well as one citing a real
+document, so nothing but this test stands between the tree and slow drift.
+
+It found, on the tree I had already declared clean: **33 files citing
+`docs/module-api.md` when no such file existed**, six plan-position labels in
+build files, and one comment naming a build file that deliberately does not
+exist (rephrased -- the check stays strict, the prose says what it means).
+
+### Two more measurement errors of mine, both the same shape
+
+The first token scan used glob pathspecs and missed every subdirectory build
+file. The second dropped the phase pattern entirely, so `make help` kept printing
+a plan ordinal to the user until a third scan found it. In both, the tool
+answered a narrower question than the one I believed I had asked, and returned
+zero, and I read zero as clean. **A scan that reports no hits is now treated as
+unproven until it has been shown to report a hit it should.** That is why the
+checker ships with a failing case per rule rather than a clean run as evidence.
+
+### Contract documentation disagreed with the headers in six places
+
+The headers won each time; the published doc records what the code does.
+
+- The claim that every published method is `noexcept` is false of
+  `backend/privileged_core_service.h:29-34,49-64`, which is in the published set.
+- The shared acceptance set names two implementations; the driver names four.
+- Three items the source listed as shared coverage are explicitly not shared.
+- Config precedence: source says defaults last; `config_composer.cpp:679-682`
+  runs overrides, then defaults, then controller fields.
+- Protected paths: source names three, `config_composer.cpp:134-146` protects eight.
+- A published UI accessor was missing from the documented surface.
+
+A fourth revision, `module-r1`, had six citations and was absent from my brief.
+Had the worker followed the brief rather than the tree, those six would have
+dangled. **The brief is not evidence.**
+
+### Live defects found by reading, not fixed
+
+Recorded for triage; none is being changed inside a documentation wave.
+
+1. `config_composer.cpp:264-285` emits duplicate, contradictory provenance: every
+   controller-owned override key except `/mixed-port` warns, then falls through
+   and records itself as an applied override, while the controller pass records
+   the same path again. The comment at `:260-262` names the hazard for the one
+   key that got a guard. The composed value is correct; the Provenance tab lies.
+2. `settings_page.cpp:277-278` emits two signals with no `connect()` anywhere in
+   `src/` or `tests/`. The same shape as the privileged-service regression that
+   shipped: a producer wired to nothing.
+3. `wire.h:10` says 25 events; the enum has 27.
+4. `config_composer.h:45-46` documents three of six diagnostic sources.
+5. The `CORE-NOT-PLATFORM` include rule has no failing self-test fixture -- the
+   one rule in the graph never proven to fire.
+6. Nine test executables link modules with no `consumers[]` entry, and
+   `arch_check.py:585` skips undeclared executables entirely.
+
+Items 5 and 6 say the architecture check covers less than its green run implies.
+
+### One intermittent, recorded rather than dismissed
+
+`routing-controls-journey` failed once under `-j4` (16.73 s) and passed alone
+(1.65 s) and on a second full parallel run. It is `RUN_SERIAL`, so concurrency
+alone does not explain it. This is the same signature as the racing assertion
+already fixed once in this suite. Not reproduced on demand yet, so not diagnosed;
+it is open, not closed.

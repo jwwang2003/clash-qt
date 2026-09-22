@@ -52,7 +52,7 @@ help:
 	@echo "Prerequisites: GNU Make >= 3.81, CMake >= 3.21, Ninja, Go, Git, Qt 6.9+, yaml-cpp."
 	@echo "Windows: use GNU Make from an initialised MSVC/Qt environment, not NMake."
 	@echo ""
-	@echo "Not in this milestone: capture-addons, test-capture (delivered by P8/P9)."
+	@echo "Not yet available: capture-addons, test-capture."
 
 doctor:
 	@$(CMAKE) -E make_directory build && $(CMAKE) -S scripts/build/doctor -B build/doctor $(PREFIX_ARG) -DSOURCE_ROOT=$(CURDIR) -DMAKE_VERSION_REPORT="$(MAKE_VERSION)" > build/doctor.log 2>&1 || (cat build/doctor.log && exit 1) && grep -E "^-- " build/doctor.log

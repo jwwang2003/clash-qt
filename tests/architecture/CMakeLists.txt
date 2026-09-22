@@ -138,11 +138,26 @@ add_test(NAME arch-selftest COMMAND "${Python3_EXECUTABLE}"
     "${CLASH_ARCH_DIR}/selftest/run_selftests.py"
     --work-dir "${CMAKE_BINARY_DIR}/arch-selftest")
 
+# Documentation references. The graph checks name the compiler can see; this
+# checks the ones it cannot. A comment citing a document that has been moved or
+# deleted compiles exactly as well as one citing a document that is there, so
+# nothing but this test stands between the tree and a slow drift into comments
+# that send the reader somewhere empty.
+add_test(NAME reference-check COMMAND "${Python3_EXECUTABLE}"
+    "${CLASH_ARCH_DIR}/reference_check.py"
+    --repo-root "${CLASH_ARCH_REPO_ROOT}")
+
+add_test(NAME reference-selftest COMMAND "${Python3_EXECUTABLE}"
+    "${CLASH_ARCH_DIR}/selftest/reference_selftest.py"
+    --work-dir "${CMAKE_BINARY_DIR}/reference-selftest")
+
 set_tests_properties(arch-graph arch-public-headers arch-selftest
+                     reference-check reference-selftest
     PROPERTIES LABELS "architecture")
 # The probe test shells out to the build system; it must not run concurrently
 # with another job that is writing the same build tree.
 set_tests_properties(arch-public-headers PROPERTIES RUN_SERIAL TRUE)
-foreach(name arch-graph arch-public-headers arch-selftest)
+foreach(name arch-graph arch-public-headers arch-selftest
+             reference-check reference-selftest)
     clash_qt_isolate_test(${name})
 endforeach()

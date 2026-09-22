@@ -1,5 +1,5 @@
 // Contract suite for the MihomoBackend facade.
-// Specification: docs/module-api.md, revision backend-r3, section 10.
+// Specification: docs/module-api.md, section 10.
 //
 // Every case here is one the contract names, and every case was validated by
 // temporarily inverting the behaviour it protects and confirming this suite

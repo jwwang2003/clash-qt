@@ -1,5 +1,5 @@
 // The MihomoBackend contract, run against the REAL backend.
-// Specification: docs/module-api.md, revision backend-r3, section 10.
+// Specification: docs/module-api.md, section 10.
 //
 // WHY THIS FILE EXISTS ALONGSIDE tests/contracts/backend/backend_contract_test.cpp
 //

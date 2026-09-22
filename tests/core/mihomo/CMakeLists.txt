@@ -1,6 +1,6 @@
 # The real MihomoBackend.
 #
-# backend-real-contract runs the backend-r3 acceptance set against the real
+# backend-real-contract runs the published acceptance set against the real
 # backend adapter, with real child processes and a real loopback controller but a
 # FIXTURE core binary. It is not evidence about mihomo; that claim rests on
 # backend-real-core below, which is label-gated to the integration lane. It is

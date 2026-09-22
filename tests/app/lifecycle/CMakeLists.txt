@@ -2,9 +2,10 @@
 #
 # Registration: tests/CMakeLists.txt adds
 #   add_subdirectory(app/lifecycle)
-# after clash_backend_fake is defined. Registered per package rather than
-# through a shared tests/app/CMakeLists.txt, because tests/app/runtime is
-# another package's and a shared parent would be a guaranteed collision.
+# after clash_backend_fake is defined. Each package under tests/app registers
+# itself; there is deliberately no shared parent for them, because the runtime
+# package belongs to another owner and one parent file would be a standing
+# collision between the two.
 #
 # QTEST_GUILESS_MAIN, so it needs neither QT_QPA_PLATFORM=offscreen nor a place
 # in the `offscreen_tests` list. The label is set here because clash_qt_label()

@@ -1,5 +1,5 @@
 // An in-process, deterministic implementation of core::backend::MihomoBackend.
-// Contract: docs/module-api.md, revision backend-r3.
+// Contract: docs/module-api.md.
 //
 // WHAT MAKES IT DETERMINISTIC
 //   * No sleeps and no wall clock. Time is a counter the test advances, and

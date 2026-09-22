@@ -17,8 +17,8 @@ target_include_directories(clash_backend INTERFACE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(clash_backend INTERFACE clash_types)
 
 # Qt-native view of the backend contract. BackendObserver is a plain non-QObject,
-# but ~66 UI call sites connect to signals; without this bridge the G2 migration
-# cannot start. Deliberately NOT itself a BackendObserver: 23 callbacks share a
+# but ~66 UI call sites connect to signals, and they need a QObject to connect
+# to. Deliberately NOT itself a BackendObserver: 23 callbacks share a
 # name with their signal, which would make &BackendBridge::proxiesUpdated
 # ambiguous at every migrated call site. The sink is a nested member.
 qt_add_library(clash_backend_bridge STATIC backend/backend_bridge.cpp)
@@ -102,19 +102,19 @@ target_link_libraries(clash_backups
 add_library(clash_telemetry STATIC telemetry/traffic_history.cpp)
 target_link_libraries(clash_telemetry PUBLIC clash_types)
 
-# Component-private per G2: the UI must reach the engine through the published
+# Component-private: the UI must reach the engine through the published
 # component interface, never by linking this directly. The architecture checker
-# enforces that once the component boundary exists.
+# enforces it, so a new link site fails the build rather than the review.
 add_library(clash_mihomo_impl STATIC
     mihomo/mihomo_backend.cpp
     mihomo/controller_discovery.cpp
     mihomo/mihomo_client.cpp
     mihomo/provider_client.cpp
     mihomo/process/core_process.cpp)
-# D2 is DISCHARGED: CoreProcess now takes core::PrivilegedCoreService, an
-# interface this library owns and publishes through clash_backend. The concrete
-# platform client is adapted in the composition root, so no platform type
-# appears in this component's surface and the edge is gone, not baselined.
+# CoreProcess takes core::PrivilegedCoreService, an interface this library owns
+# and publishes through clash_backend. The concrete platform client is adapted
+# in the composition root, so no platform type appears in this component's
+# surface: the forbidden edge is absent, not merely excepted.
 target_link_libraries(clash_mihomo_impl
     PUBLIC  clash_types clash_backend
     PRIVATE Qt6::Network Qt6::WebSockets Qt6::Concurrent clash_yaml)

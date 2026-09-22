@@ -107,9 +107,11 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 endif()
 
-# Stage the locally built engine beside the application executable. G1 requires
-# the package to consume this exact build output. discoverBinary() already looks
-# next to the executable first, so no runtime change is needed to find it.
+# Stage the locally built engine beside the application executable. The package
+# must consume this exact build output, never a downloaded binary and never one
+# found on PATH, so that what ships is what the provenance file describes.
+# discoverBinary() already looks next to the executable first, so no runtime
+# change is needed to find it.
 #
 # Installed AFTER the Qt deployment script on purpose: macdeployqt rewrites and
 # signs what it finds in the bundle, and the engine is a self-contained Go binary

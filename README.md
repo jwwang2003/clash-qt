@@ -12,27 +12,25 @@ an additional native Qt reference.
 
 ## Build and test
 
-Requires Qt 6.9+ with Widgets, Network, WebSockets, Qml, Quick, Graphs and Concurrent,
-CMake 3.21+, a C++20 compiler and yaml-cpp.
+Requires Qt 6.9+ with Widgets, Network, WebSockets, Qml, Quick, Graphs and
+Concurrent, CMake 3.21+, a C++20 compiler, yaml-cpp and Go (to build the proxy
+engine from source).
 
 ```sh
-brew install qt yaml-cpp cmake ninja
-cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
-cmake --build build
-ctest --test-dir build --output-on-failure
+brew install qt yaml-cpp cmake ninja go
+make doctor     # check the toolchain before building anything
+make build      # the application and every runtime dependency
+make test       # the portable feature, architecture and UI suites
+make run        # launch what you just built
 ```
 
-On macOS, run `build/clash-qt.app/Contents/MacOS/clash-qt` or open the app bundle.
-The original `./build/clash-qt` command is maintained as a link to that executable;
-rebuilding replaces any stale pre-bundle binary at that path.
-On Windows/Linux, run the `clash-qt` executable in the build directory.
-Use `-DBUILD_TESTING=OFF` when configuring a build without Qt Test.
-`cmake --install build --prefix /your/install/prefix` installs the bundle or
-executable; Linux installs a desktop entry and icon alongside it. On macOS and
-Windows, installation also runs Qt’s runtime deployment tool. Linux uses system
-runtime dependencies. The mihomo executable is still supplied separately.
-The macOS bundle is a development artifact; mihomo distribution, release signing
-and installers still need a release pipeline.
+`make` on its own prints the full list of commands, which is also what `make
+help` does. The engine is compiled from the `3rdparty/mihomo` submodule at
+a pinned revision and recorded in a provenance file beside the binary; it is
+never downloaded at build time and never taken from `PATH`. See
+[docs/build.md](docs/build.md) for the presets, the individual targets and how to
+build without Qt Test, and [docs/packaging.md](docs/packaging.md) for producing a
+signed bundle.
 
 ### Display refresh rate
 
@@ -47,7 +45,7 @@ To measure the graph on a native macOS display using synthetic traffic:
 
 ```sh
 QT_QPA_PLATFORM=cocoa QSG_INFO=1 CLASH_QT_MEASURE_FRAMES=1 \
-  ./build/data-pages-tests trafficNativeFrameTiming
+  ./build/dev/tests/traffic-frame-pacing-tests trafficNativeFrameTiming
 ```
 
 Keep the test window visible. The output reports the render loop, graphics API,
@@ -65,7 +63,7 @@ baseline coordinates avoid the issue; recorded rates and readouts remain exact.
 
 ```sh
 QT_QPA_PLATFORM=cocoa CLASH_QT_VERIFY_GRAPH_FRAMES=1 \
-  ./build/data-pages-tests trafficNativeFillStaysBelowOutline
+  ./build/dev/tests/traffic-graph-frames-tests trafficNativeFillStaysBelowOutline
 ```
 
 ## Running
@@ -110,7 +108,7 @@ For an isolated test session:
 
 ```sh
 CLASH_QT_CONTROLLER=127.0.0.1:29097 \
-  build/clash-qt.app/Contents/MacOS/clash-qt \
+  build/dev/clash-qt.app/Contents/MacOS/clash-qt \
   --data-dir /tmp/clash-qt-test --no-autostart
 ```
 
@@ -152,15 +150,27 @@ need native validation before claiming support equivalent to Verge Rev.
 
 ## Layout
 
-- `src/app/`: application-wide context shared by the composition root.
-- `src/core/`: backend responsibilities, one folder each — `mihomo/` (controller
-  client, discovery, providers, and the managed `process/`), `config/` (YAML and
-  `enhance/`), `profiles/`, `backups/` and `telemetry/`.
+- `src/core/`: the portable centre, with no dependency on the application or the
+  UI. `component/` is the object model modules are built on, `backend/` is the
+  published contract the application codes against, `mihomo/` implements it over
+  the proxy engine, and `config/`, `profiles/`, `backups/` and `telemetry/` each
+  own one responsibility.
+- `src/integrations/`: the glue that carries the contract across the module
+  boundary, including marshalling between the process and the loaded module.
+- `src/app/`: composition and coordination — the context the root assembles,
+  plus `runtime/`, `lifecycle/`, `backup/` and `composition/`.
 - `src/platform/`: OS adapters — `browser/`, `proxy/`, `service/` and `system/`.
 - `src/services/macos/`: the standalone privileged helper executable.
 - `src/ui/`: `shell/` (main window, tray, toolbar), `pages/<feature>/` (each page
   beside its own implementation), `widgets/`, `theme/` and `resources/`.
-- `tests/`: grouped as `core/`, `platform/` and `ui/`.
+- `tests/`: one directory per lane — `contracts/`, `workflows/`, `architecture/`,
+  `app/`, `core/`, `platform/`, `ui/` and `benchmarks/`, with `support/` and
+  `fixtures/` shared between them.
 
-Each module owns its `sources.cmake`. Public core headers form the UI contract;
-prefer extending them to changing existing signal signatures.
+The dependency direction is one-way: core knows nothing of the application, and
+the application knows the backend only through its published headers. That rule
+is enforced by a check, not by convention — see
+[docs/architecture.md](docs/architecture.md) for the boundaries and
+[docs/module-api.md](docs/module-api.md) for the contract itself.
+[docs/development.md](docs/development.md) covers working in the tree and
+[docs/testing.md](docs/testing.md) covers what each test lane proves.
