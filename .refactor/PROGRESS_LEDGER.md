@@ -1745,3 +1745,47 @@ Items 5 and 6 say the architecture check covers less than its green run implies.
 alone does not explain it. This is the same signature as the racing assertion
 already fixed once in this suite. Not reproduced on demand yet, so not diagnosed;
 it is open, not closed.
+
+## The workflow suites report success when they run nothing
+
+Confirmed by direct experiment, not inference. Hold 127.0.0.1:29097 and run the
+first-launch journey:
+
+    first-launch ... Passed  0.12 sec      (11.1 sec when it actually runs)
+    100% tests passed out of 1
+
+Every case skipped. `ctest` exited 0 and reported success.
+
+The cause is plain in the sources: `if (!relay.listen(controller.port()))
+QSKIP(...)` appears throughout `tests/workflows/**`. ProfileStore forces the
+fixed controller port into every generated config, so a journey cannot choose
+its own, and when the port is busy the suite skips instead of failing. QtTest
+exits 0 for a skip-only run and CTest scores that as a pass.
+
+**Why this is the worst defect found so far.** Every other defect in this ledger
+was found because something went red. This one is invisible by construction: the
+lane that exists to catch a component that builds but is wired to nothing is also
+the lane that silently proves nothing when a port is held. The suite's own stated
+rule is that skips are not passes, and the harness violates it.
+
+Two independent observations, from different directions:
+
+- A worker running `make test-integration` saw four journeys report Passed in
+  roughly 0.1 s each, after an earlier suite left the port busy.
+- Running the workflow lane repeatedly, `routing-controls-journey` failed 1 run
+  in 3 at 16.7 s against 1.7 s clean, on
+  `wf::waitFor([&] { return app.routing->systemProxyEnabled(); })` with the
+  diagnostic "the settings toggle was never confirmed: Refresh -> Refresh ->
+  Refresh". That journey asserts rather than skipping, which is the only reason
+  the contention was visible at all.
+
+So the same root condition produces a loud failure in one suite and a false green
+in four. The false green is the part that has been running for the whole refactor.
+
+There is no `SO_REUSEADDR`, no wait-for-release and no retry anywhere in `src/`
+or `tests/`.
+
+**Not fixed here.** It is test-infrastructure work across every workflow suite
+and does not belong inside a documentation wave. It should come before P5: until
+it is fixed, a green workflow lane is not evidence, and P5 will be verified
+against it.
