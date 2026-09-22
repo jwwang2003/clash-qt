@@ -56,7 +56,9 @@ if(APPLE OR WIN32)
     if(APPLE AND Qt6_VERSION VERSION_GREATER_EQUAL 6.7)
         # Modular Qt installations keep plugin frameworks outside QtCore's prefix.
         get_filename_component(qt_library_dir "${Qt6_DIR}/../.." ABSOLUTE)
-        list(APPEND deploy_options DEPLOY_TOOL_OPTIONS "-libpath=${qt_library_dir}")
+        list(APPEND deploy_options DEPLOY_TOOL_OPTIONS
+            "-libpath=${qt_library_dir}"
+            "-executable=$<TARGET_BUNDLE_DIR:clash-qt>/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>")
     endif()
     qt_generate_deploy_qml_app_script(TARGET clash-qt OUTPUT_SCRIPT deploy_script
         MACOS_BUNDLE_POST_BUILD ${deploy_options})
@@ -81,6 +83,7 @@ include(\"${PROJECT_SOURCE_DIR}/cmake/ResolveQmlLinks.cmake\")
 resolve_qml_links(\"\${QT_DEPLOY_PREFIX}/clash-qt.app\" \"${qt_qml_dir}\")
 qt_deploy_runtime_dependencies(EXECUTABLE \"clash-qt.app\"
     ADDITIONAL_MODULES \${qml_plugins}
+        \"clash-qt.app/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>\"
     DEPLOY_TOOL_OPTIONS \"-libpath=${qt_library_dir}\")
 ")
     endif()
@@ -106,6 +109,19 @@ if(APPLE)
         DESTINATION "clash-qt.app/Contents/MacOS")
     install(FILES "${CLASH_QT_CORE_DIR}/mihomo-provenance.json"
         DESTINATION "clash-qt.app/Contents/Resources")
+    # Qt deployment runs before the Go engine is copied. Seal the completed
+    # developer bundle afterwards without re-signing the pinned engine itself.
+    # Ad-hoc signing needs no certificate or trust-store change. Unlike a tool
+    # that only logs an error, verification failure must fail `make package`.
+    find_program(clash_qt_codesign NAMES codesign REQUIRED)
+    install(CODE "
+execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
+    \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/clash-qt.app\"
+    COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND \"${clash_qt_codesign}\" --verify --deep --strict
+    \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/clash-qt.app\"
+    COMMAND_ERROR_IS_FATAL ANY)
+")
 else()
     install(PROGRAMS "${CLASH_QT_CORE_BINARY}" DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES "${CLASH_QT_CORE_DIR}/mihomo-provenance.json"

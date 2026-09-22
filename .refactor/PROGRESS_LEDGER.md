@@ -1494,3 +1494,15 @@ not offscreen; no native-GPU correctness claim is inferred. Installed-SDK consum
 built separately (QtCore + system libraries only), drove matching pinned engine,
 confirmed stop and independently reported actual image unmapping. Full final Make
 qualification will run on a new clone including W02 and headless registration fixes.
+
+### Package exit-zero was not a clean package gate
+
+Fresh-3 at edb78ec passed routine54/54 and integration20/20 without required
+skips/XFAIL, and make package returned0. Its Qt deployment log nevertheless reported
+an unsigned libclash_qt_backend_module.dylib nested code object. Coordinator does
+NOT treat that as clean qualification. The module is now explicitly passed to Qt
+deployment as an additional executable/module for both development and install
+bundles. After the pinned engine/manifest are copied, the completed developer bundle
+is ad-hoc signed (no certificate/trust-store change) and verified deep/strict with
+failure propagated. The engine itself is not re-signed, preserving its build hash.
+This packaging fix needs a new clean qualification run; prior logs are retained.
