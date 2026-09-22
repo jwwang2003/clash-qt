@@ -2,9 +2,9 @@
 #define CLASHQT_CORE_COMPONENT_OBJECT_SUPPORT_H
 
 // Implementation aids for writing an IObject. Nothing here is required to CALL a
-// component; it exists so that the QueryInterface rules of
-// .refactor/COMPONENT_CONTRACT.md (component-r1) live in one place instead of
-// being re-derived, and re-broken, in every implementing class.
+// component; it exists so that the QueryInterface rules of docs/module-api.md
+// (component-r1) live in one place instead of being re-derived, and re-broken,
+// in every implementing class.
 
 #include <atomic>
 #include <cstddef>

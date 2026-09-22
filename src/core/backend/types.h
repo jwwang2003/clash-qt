@@ -3,21 +3,21 @@
 
 // Shared vocabulary of the MihomoBackend facade: request identity, generations,
 // outcomes, and the value types that cross the boundary.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4.
+// Contract: docs/module-api.md revision backend-r4.
 //
-// r3 is r1's section text as amended by A1-A4 (r1 -> r2) and B1-B4 (r2 -> r3).
-// Four of those amendments are load-bearing in this file and are cited where
-// they apply: A1 (completion stamping), A2 and B2 (supersession is MARKED, not
-// merely inferred), A3 (Endpoint is standard-layout, not POD), A4 (StopCompleted
-// and TunChangeCompleted carry a Generation).
+// Four rules of that contract are load-bearing in this file and are restated
+// where they apply: a completion is stamped with the generation its operation
+// was SUBMITTED under; a supersession is MARKED, never merely inferred;
+// Endpoint is standard-layout rather than strictly POD; and StopCompleted and
+// TunChangeCompleted both carry a Generation.
 //
-// r3 is the SEMANTIC contract, not the binary boundary (COMPONENT-ABI owns that
-// in P4), so Qt value types are permitted here. What is NOT permitted is listed
+// This is the SEMANTIC contract, not the binary boundary - the module ABI owns
+// that - so Qt value types are permitted here. What is NOT permitted is listed
 // in the contract's section 9 and is enforced throughout:
 //   * no QObject *parent in any published signature;
 //   * no process-global statics - every capability query is an instance method;
 //   * Endpoint is returned by value, is standard-layout and carries no
-//     behaviour (section 9 as refined by A3);
+//     behaviour;
 //   * no reference into the component's heap is returned;
 //   * no exception may unwind across the interface - every published method is
 //     noexcept, and yaml-cpp's exceptions are converted to ErrorInfo at the edge;
@@ -71,11 +71,10 @@ enum class RequestId : std::uint64_t {
 //     (start, stop, a managed failure) carries the generation AFTER that bump.
 //     It reports the managed core's new state and a consumer must act on it; it
 //     is not work that the bump invalidated.
-// The three bullets above are amendment A1, which SUPERSEDES the last paragraph
-// of r1 section 2. r1 said every event and completion carries "the Generation
-// current when it was produced"; for a completion that is self-defeating,
-// because a completion stamped at delivery always looks current and the
-// rejection rule above could never fire.
+// The three bullets above are deliberately not the simpler rule "every event
+// and completion carries the generation current when it was produced". For a
+// completion that rule is self-defeating: a completion stamped at delivery
+// always looks current, so the rejection rule above could never fire.
 //
 // ORDERING RULE (contract section 2, inherited from mihomo_client.cpp:44). The
 // generation is bumped BEFORE in-flight work is aborted. finished() may run
@@ -90,8 +89,7 @@ constexpr std::uint64_t number(Generation g) noexcept { return static_cast<std::
 
 // True when `stamp` is older than `observed` and must therefore be rejected.
 //
-// Amendment A2: this test is the consumer's SECOND line of defence, not its
-// only one. Completions abandoned by an abort are queued BEFORE the event that
+// This test is the consumer's SECOND line of defence, not its only one. Completions abandoned by an abort are queued BEFORE the event that
 // bumped the generation, so at the moment they are delivered `observed` is
 // still the pre-bump value and this comparison cannot catch them. The backend
 // marks them CompletionStatus::Superseded instead; a consumer checks both.
@@ -102,7 +100,7 @@ constexpr bool isSuperseded(Generation stamp, Generation observed) noexcept {
 // ------------------------------------------------------------------ errors
 
 // Fixed underlying type; values are permanently stable. Distinct from
-// clashqt::com::Result, which P4 maps these onto.
+// clashqt::com::Result, which the module boundary maps these onto.
 enum class ErrorCode : std::int32_t {
     None = 0,  // no error; the only non-failure value
 
@@ -172,20 +170,19 @@ struct Completion {
 // quit (main.cpp:195-210) and that behaviour must survive.
 struct StopCompleted {
     RequestId request = RequestId::Invalid;
-    // Amendment A4 added this field: section 2 requires a generation on every
-    // completion and section 6's StopCompleted omitted one.
+    // Section 2 requires a generation on every completion, and this is one.
     //
-    // backend-r3 B1. stop() is an operation that bumps the generation itself,
-    // so per A1 this carries the POST-bump value. It is not the generation
+    // stop() is an operation that bumps the generation itself, so this carries
+    // the POST-bump value. It is not the generation
     // captured when stop() was submitted: the real backend emits coreFailed
     // (which bumps) before stopFinished, so a submit-time stamp is delivered as
     // coreFailed(N+1) then stopCompleted(N), and a consumer applying section 2's
     // mandatory rejection rule drops the very unconfirmed stop that blocks quit.
     Generation generation = Generation::Initial;
-    // backend-r3 B2. Every completion type carries a status, because A2 requires
-    // an abandoned completion to be MARKED and a bare `confirmed` flag cannot
-    // express that: `false` would be indistinguishable from the unconfirmed
-    // lease cleanup below, which is a different thing entirely.
+    // Every completion type carries a status, because an abandoned completion
+    // has to be MARKED and a bare `confirmed` flag cannot express that: `false`
+    // would be indistinguishable from the unconfirmed lease cleanup below,
+    // which is a different thing entirely.
     //   Ok         - the managed child's exit was observed (confirmed == true)
     //   Failed     - cleanup was requested and nothing confirmed the exit
     //   Superseded - abandoned because a newer stop replaced this one
@@ -201,7 +198,7 @@ struct StopCompleted {
 struct TunChangeCompleted {
     RequestId request = RequestId::Invalid;
     Generation generation = Generation::Initial;
-    // backend-r3 B2. A TUN change cancelled because the controller changed or
+    // A TUN change cancelled because the controller changed or
     // disconnected is a SUPERSESSION, not a protocol error: the controller never
     // answered unusably, it stopped being the controller. Reporting it as
     // ErrorCode::Protocol told a consumer the engine misbehaved when nothing of
@@ -230,12 +227,12 @@ enum class Ownership : std::uint8_t {
 // owns the transport; it is not part of the published surface.
 //
 // Strictly POD is unreachable while the struct carries QString (section 9 also
-// permits Qt types in an in-process C++ interface), and amendment A3 settled
-// that: r1 demanded both and the two cannot hold together. What r3 requires,
-// and what is asserted below, is standard layout with no virtuals and no
-// behaviour. Decision D8 keeps this Qt value host-side. COMPONENT-ABI uses
-// separate fixed-layout values and UTF-8 byte ranges; its host shim converts
-// them without changing this interface or its consumers.
+// permits Qt types in an in-process C++ interface), so the two demands cannot
+// hold together. What the contract requires, and what is asserted below, is
+// standard layout with no virtuals and no behaviour. This Qt value stays
+// host-side: the module ABI uses separate fixed-layout values and UTF-8 byte
+// ranges, and its host shim converts them without changing this interface or
+// its consumers.
 struct Endpoint {
     QString host;
     quint16 port = 0;
@@ -302,10 +299,10 @@ auto makeSpan(const Container &container) noexcept
 
 // ---------------------------------------------------- re-exported value types
 //
-// Reused from core/types.h rather than redeclared, so MOD-RUNTIME and
-// MOD-LIFECYCLE do not have to convert between two spellings of the same
-// record. MOVE-CORE owns the eventual split of that header; these aliases are
-// the only thing that has to follow it.
+// Reused from core/types.h rather than redeclared, so the runtime and
+// lifecycle consumers do not have to convert between two spellings of the same
+// record. If that header is ever split, these aliases are the only thing that
+// has to follow it.
 using BaseConfig = core::BaseConfig;
 using Connection = core::Connection;
 using LogEntry = core::LogEntry;

@@ -1,4 +1,5 @@
-# SEALED-MODULE graph: the shape of the G2 link ledger in miniature.
+# SEALED-MODULE graph: the shape of the component-private link ledger in
+# miniature.
 #
 # synth_impl stands in for clash_mihomo_impl, the component-private module that
 # consumers are not supposed to link. Two executables link it directly, and a
@@ -9,8 +10,9 @@
 #   synth_app    a declared consumer that links the sealed module
 #   synth_tool   an UNdeclared executable that links it too. Undeclared
 #                executables are invisible to the consumer allowlist, which is
-#                how three P3-created targets linked clash_mihomo_impl without
-#                appearing anywhere in the exception ledger.
+#                how three newly created targets once linked
+#                clash_mihomo_impl without appearing anywhere in the
+#                exception ledger.
 #   synth_probe  links only the OS adapter. It exists so that a rule which
 #                flagged everything would fail this case.
 cmake_minimum_required(VERSION 3.21)

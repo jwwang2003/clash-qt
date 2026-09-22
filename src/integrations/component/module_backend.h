@@ -3,7 +3,7 @@
 // ModuleBackend: a core::backend::MihomoBackend whose implementation lives in
 // a loaded module.
 //
-// This is decision D8 option A, in one class. The UI, the Qt bridge and all ~66
+// The whole boundary, in one class. The UI, the Qt bridge and all ~66
 // connect() sites are unchanged, because what they code against is
 // MihomoBackend and this IS one. Everything that knows about the boundary -
 // command codes, packed buffers, owned IBuffers, the reverse seam for
@@ -17,8 +17,8 @@
 //     command is still delivered after that command returns.
 //   * Order (rule 2). Events are queued in arrival order and drained in that
 //     order, so an abort's Superseded completions still reach the consumer
-//     ahead of the event announcing the bump - which is the whole of amendment
-//     A2's observability.
+//     ahead of the event announcing the bump, which is what makes the
+//     Superseded mark observable at all.
 //   * Removal during delivery (rule 3). An observer removed inside a callback
 //     receives nothing further, including events already queued.
 //   * Nothing unwinds (rule 4). Every path here is noexcept or catches at the
@@ -52,7 +52,7 @@ namespace cb = ::core::backend;
 class ModuleBackend final : public cb::MihomoBackend, private core::PrivilegedCoreServiceListener {
   public:
     /// Takes the session the loader created. `service` is the host-owned
-    /// privileged-execution seam (decision D2); null means this host has none,
+    /// privileged-execution seam; null means this host has none,
     /// and the module is told exactly that rather than being left to guess.
     explicit ModuleBackend(com::ComPtr<abi::IBackendSession> session,
                            core::PrivilegedCoreService *service = nullptr);

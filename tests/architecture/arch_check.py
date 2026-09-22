@@ -41,24 +41,33 @@ from pathlib import Path
 CLIENT = "client-clash-arch"
 
 # --------------------------------------------------------------------------
-# Violation codes.  Every rule that can fail has its own code so the self-tests
-# can assert on the specific rule rather than "something went wrong".
+# Violation codes.  Every rule that can fail has its own code so a self-test can
+# assert that *that* rule fired, rather than that "something went wrong".  A
+# code no case can provoke is a rule that has quietly stopped checking anything.
+#
+# These codes are printed verbatim in failure output and are what people grep
+# for, so each is a published name: change one only together with the self-test
+# in selftest/run_selftests.py that asserts it, or the case silently starts
+# accepting a rule that no longer fires.
 # --------------------------------------------------------------------------
-R1_FORBIDDEN_EDGE = "ARCH-R1-FORBIDDEN-EDGE"
-R1_MODULE_TO_NON_MODULE = "ARCH-R1-MODULE-DEPENDS-ON-NON-MODULE"
-R1_UNDECLARED_CONSUMER = "ARCH-R1-UNDECLARED-CONSUMER"
-R2_CYCLE = "ARCH-R2-CYCLE"
-R3_FORBIDDEN_EXTERNAL = "ARCH-R3-FORBIDDEN-EXTERNAL"
-R3_UNDECLARED_EXTERNAL = "ARCH-R3-UNDECLARED-EXTERNAL"
-R3_TRANSITIVE_CREEP = "ARCH-R3-TRANSITIVE-EXTERNAL-CREEP"
-R4_STALE_EXCEPTION = "ARCH-R4-STALE-EXCEPTION"
-R4_MISSING_TARGET = "ARCH-R4-DECLARED-TARGET-MISSING"
-R4_UNDECLARED_TARGET = "ARCH-R4-UNDECLARED-TARGET"
-R4_ZOMBIE_SITE = "ARCH-R4-EXCEPTION-SITE-TARGET-MISSING"
-R4_SEALED_DECLARED_DEP = "ARCH-R4-SEALED-MODULE-DECLARED-DEP"
-R4_SEALED_UNBASELINED_LINK = "ARCH-R4-SEALED-MODULE-UNBASELINED-LINK"
-R5_INCLUDE = "ARCH-R5-INCLUDE"
-R5_STALE_INCLUDE_EXCEPTION = "ARCH-R5-STALE-INCLUDE-EXCEPTION"
+FORBIDDEN_EDGE = "FORBIDDEN-EDGE"
+MODULE_DEPENDS_ON_NON_MODULE = "MODULE-DEPENDS-ON-NON-MODULE"
+UNDECLARED_CONSUMER = "UNDECLARED-CONSUMER"
+DEPENDENCY_CYCLE = "DEPENDENCY-CYCLE"
+FORBIDDEN_EXTERNAL = "FORBIDDEN-EXTERNAL"
+UNDECLARED_EXTERNAL = "UNDECLARED-EXTERNAL"
+TRANSITIVE_EXTERNAL_CREEP = "TRANSITIVE-EXTERNAL-CREEP"
+STALE_EXCEPTION = "STALE-EXCEPTION"
+DECLARED_TARGET_MISSING = "DECLARED-TARGET-MISSING"
+UNDECLARED_TARGET = "UNDECLARED-TARGET"
+EXCEPTION_SITE_TARGET_MISSING = "EXCEPTION-SITE-TARGET-MISSING"
+SEALED_MODULE_DECLARED_DEP = "SEALED-MODULE-DECLARED-DEP"
+SEALED_MODULE_UNBASELINED_LINK = "SEALED-MODULE-UNBASELINED-LINK"
+# A prefix, not a whole code: the emitted code is this joined to the id of the
+# include rule that fired, so the failure names the rule rather than the scan
+# ("INCLUDE-COMPONENT-PRIVATE", "INCLUDE-CORE-NOT-PLATFORM", ...).
+INCLUDE_VIOLATION = "INCLUDE"
+STALE_INCLUDE_EXCEPTION = "STALE-INCLUDE-EXCEPTION"
 
 
 class Violation:
@@ -541,7 +550,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
         if spec.get("optional"):
             continue
         v = Violation(
-            R4_MISSING_TARGET,
+            DECLARED_TARGET_MISSING,
             name,
             "declared in architecture.json but absent from the evaluated build graph",
             "the module has not been extracted yet, or the build was configured "
@@ -566,7 +575,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
         ):
             violations.append(
                 Violation(
-                    R4_UNDECLARED_TARGET,
+                    UNDECLARED_TARGET,
                     name,
                     "library target is not declared in architecture.json",
                     "add it to modules with its allowed deps, or to ignore_targets",
@@ -589,7 +598,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
             if dep in modules:
                 violations.append(
                     Violation(
-                        R1_FORBIDDEN_EDGE,
+                        FORBIDDEN_EDGE,
                         "%s -> %s" % (name, dep),
                         "edge is neither in the module's declared deps nor a "
                         "baselined exception",
@@ -599,7 +608,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
             else:
                 violations.append(
                     Violation(
-                        R1_MODULE_TO_NON_MODULE,
+                        MODULE_DEPENDS_ON_NON_MODULE,
                         "%s -> %s" % (name, dep),
                         "a library depends on a non-module target (%s); libraries "
                         "must not depend on application, UI or test targets"
@@ -617,7 +626,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
             if exceptions.match_external(name, ext):
                 continue
             code = (
-                R3_FORBIDDEN_EXTERNAL if ext in forbidden_external else R3_UNDECLARED_EXTERNAL
+                FORBIDDEN_EXTERNAL if ext in forbidden_external else UNDECLARED_EXTERNAL
             )
             violations.append(
                 Violation(
@@ -626,7 +635,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
                     "external dependency is not in the module's declared "
                     "'external' allowlist",
                     "a backend module must not reach for desktop Qt"
-                    if code == R3_FORBIDDEN_EXTERNAL
+                    if code == FORBIDDEN_EXTERNAL
                     else "declare the dependency if it is intended",
                 )
             )
@@ -638,7 +647,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
                 continue
             violations.append(
                 Violation(
-                    R3_FORBIDDEN_EXTERNAL,
+                    FORBIDDEN_EXTERNAL,
                     "%s ~> %s" % (name, ext),
                     "forbidden dependency reaches this module transitively "
                     "(seen on its evaluated compile/link line)",
@@ -657,7 +666,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
                     continue
                 violations.append(
                     Violation(
-                        R3_TRANSITIVE_CREEP,
+                        TRANSITIVE_EXTERNAL_CREEP,
                         "%s ~> %s" % (name, ext),
                         "dependency acquired transitively, outside the module's "
                         "declared transitive allowlist",
@@ -680,7 +689,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
                 continue
             violations.append(
                 Violation(
-                    R1_UNDECLARED_CONSUMER,
+                    UNDECLARED_CONSUMER,
                     "%s -> %s" % (name, dep),
                     "consumer links a module it is not declared to use",
                     "component-private modules must only be linked by their "
@@ -695,7 +704,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
                 continue
             violations.append(
                 Violation(
-                    R3_FORBIDDEN_EXTERNAL,
+                    FORBIDDEN_EXTERNAL,
                     "%s ~> %s" % (name, ext),
                     "headless target reaches a desktop Qt module",
                     "a backend test must build and run without Widgets/Quick/Graphs",
@@ -705,7 +714,7 @@ def check_targets(graph, targets, exceptions, allow_missing):
     for comp in find_cycles(targets):
         violations.append(
             Violation(
-                R2_CYCLE,
+                DEPENDENCY_CYCLE,
                 " -> ".join(comp + [comp[0]]),
                 "dependency cycle in the evaluated target graph",
                 "CMake permits static-library cycles; the architecture does not",
@@ -749,7 +758,7 @@ def check_exception_sites(graph, exceptions):
                     continue
                 violations.append(
                     Violation(
-                        R4_ZOMBIE_SITE,
+                        EXCEPTION_SITE_TARGET_MISSING,
                         "%s: %s" % (entry["id"],
                                     exceptions.describe_site(entry, site)),
                         "the site's %r target %r is declared nowhere in "
@@ -801,7 +810,7 @@ def check_seals(graph, targets, exceptions):
                     continue
                 violations.append(
                     Violation(
-                        R4_SEALED_DECLARED_DEP,
+                        SEALED_MODULE_DECLARED_DEP,
                         "%s -> %s" % (name, module),
                         "%r declares the sealed module %r in its deps while %s "
                         "is open; deps is consulted before exceptions, so this "
@@ -830,7 +839,7 @@ def check_seals(graph, targets, exceptions):
                 continue
             violations.append(
                 Violation(
-                    R4_SEALED_UNBASELINED_LINK,
+                    SEALED_MODULE_UNBASELINED_LINK,
                     "%s -> %s" % (name, module),
                     "target links the sealed module %r but is carried by no "
                     "baselined site of %s"
@@ -998,7 +1007,7 @@ def check_includes(graph, repo_root: Path, src_root: Path, exceptions, qt_index)
                 continue
             violations.append(
                 Violation(
-                    "%s-%s" % (R5_INCLUDE, rule["id"]),
+                    "%s-%s" % (INCLUDE_VIOLATION, rule["id"]),
                     "%s:%d" % (rel, line),
                     "#include %s -- %s: %s" % (included, reason, rule["message"]),
                     rule.get("hint", ""),
@@ -1086,13 +1095,13 @@ def main(argv=None):
         violations += check_targets(graph, targets, exceptions, args.allow_missing_targets)
         violations += check_exception_sites(graph, exceptions)
         violations += check_seals(graph, targets, exceptions)
-        checked += ["R1 module edge allowlist", "R2 acyclicity",
-                    "R3 external dependency allowlist", "R4 exception ratchet",
-                    "R4 exception-site liveness", "R4 sealed-module seals"]
+        checked += ["module edge allowlist", "acyclicity",
+                    "external dependency allowlist", "exception ratchet",
+                    "exception-site liveness", "sealed-module seals"]
     if not args.no_include_scan:
         qt_index = qt_header_index(qt_roots)
         violations += check_includes(graph, repo_root, src_root, exceptions, qt_index)
-        checked.append("R5 project-include scan")
+        checked.append("project-include scan")
 
     # A stale baseline entry is only reported when the rules that could have
     # matched it were actually run, otherwise --no-include-scan (or a build
@@ -1113,8 +1122,8 @@ def main(argv=None):
             subject = site.get("from") or site.get("target")
             if subject not in targets:
                 continue
-        code = (R5_STALE_INCLUDE_EXCEPTION if entry["kind"] == "include"
-                else R4_STALE_EXCEPTION)
+        code = (STALE_INCLUDE_EXCEPTION if entry["kind"] == "include"
+                else STALE_EXCEPTION)
         violations.append(
             Violation(
                 code,

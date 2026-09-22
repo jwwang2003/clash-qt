@@ -1,9 +1,10 @@
 # Reusable backend libraries. Each owns one responsibility and declares only the
-# dependencies its code actually has; see .refactor/DECISIONS.md D1.
+# dependencies its code actually has -- a target that links what it does not use
+# makes the dependency graph lie, and the architecture check reads that graph.
 
-# Published MihomoBackend contract, revision backend-r4. Header-only: it is the
-# boundary the application codes against, and both the real backend and the fake
-# implement it. Depends on clash_types alone.
+# The published MihomoBackend contract; docs/module-api.md states its revision.
+# Header-only: it is the boundary the application codes against, and both the
+# real backend and the fake implement it. Depends on clash_types alone.
 add_library(clash_backend INTERFACE)
 target_sources(clash_backend INTERFACE FILE_SET HEADERS
     BASE_DIRS "${PROJECT_SOURCE_DIR}/src"

@@ -36,10 +36,10 @@
 // below - and those cases are the real proof. This file is the net under
 // everything that cannot be reached that way, which today is every connection
 // on the quit path: there is no supported way to ask the shipped application to
-// quit from outside it, and adding one would be exactly the test-control API
-// docs/TEST_STRATEGY.md forbids. See the worker report for the production
-// change that would replace this file with a behavioural check: a composition
-// function in src/app/composition that both main() and this directory call.
+// quit from outside it, and adding one would be exactly the unrestricted
+// test-control API a release must not carry. The production change that would
+// replace this file with a behavioural check is a composition function in
+// src/app/composition that both main() and this directory call.
 //
 // A FAILURE HERE IS NOT NECESSARILY A BUG IN src/main.cpp. It means the two
 // files disagree. Whoever changed one of them decides which is right, then

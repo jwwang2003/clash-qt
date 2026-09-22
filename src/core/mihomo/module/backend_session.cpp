@@ -1166,7 +1166,7 @@ void BackendSession::connectionsUpdated(cb::Generation generation,
                                         cb::Span<cb::Connection> connections, quint64 uploadTotal,
                                         quint64 downloadTotal) noexcept {
     // The one payload that does not use the general encoding: one packed
-    // buffer with fixed-layout records indexing a shared UTF-8 blob (D8).
+    // buffer with fixed-layout records indexing a shared UTF-8 blob.
     const std::vector<std::uint8_t> packed =
         marshal::packConnectionSnapshot(generation, connections, uploadTotal, downloadTotal);
     emitEventBytes(abi::kEvtConnectionsUpdated, packed.data(), packed.size());

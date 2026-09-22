@@ -3,7 +3,7 @@
 
 // The versioned command/event protocol carried over the two fixed vtables in
 // backend_abi.h, and the fixed record layouts telemetry uses.
-// Contract: .refactor/P4_ABI_CONTRACT.md revision module-r1.
+// Contract: docs/module-api.md revision module-r1.
 //
 // WHY A COMMAND PROTOCOL RATHER THAN SIXTY VTABLE SLOTS
 //   module-r1 permits it, and backend-r4 has 61 operations and 25 events. Sixty
@@ -31,8 +31,9 @@
 //     the peer, and silence is how it survives to the next release.
 //
 // The connection snapshot does NOT use this encoding: it is one packed buffer
-// with fixed-layout records indexing a shared UTF-8 blob (decision D8's second
-// binding constraint). Its layout is at the bottom of this file.
+// with fixed-layout records indexing a shared UTF-8 blob, because it is the one
+// payload large and frequent enough for per-string allocation to matter. Its
+// layout is at the bottom of this file.
 //
 // THE EVENT ENVELOPE
 //   Every payload passed to IBackendHost::Notify begins with ONE fixed-width
@@ -299,11 +300,10 @@ inline constexpr std::int64_t kNoTimestamp = INT64_MIN;
 
 // ---------------------------------------------------- packed connection set
 //
-// D8's second binding constraint: "One buffer per snapshot with fixed-layout
-// structs indexing into it, and a case in the benchmark lane before the claim
-// is made." A snapshot can be hundreds of entries and arrives at the engine's
-// emission rate, so it is the one payload where per-string allocation would be
-// a real regression.
+// One buffer per snapshot, with fixed-layout structs indexing into it, and a
+// case in the benchmark lane before any performance claim is made. A snapshot
+// can be hundreds of entries and arrives at the engine's emission rate, so it
+// is the one payload where per-string allocation would be a real regression.
 //
 // Layout, in one buffer, in this order and with no padding between sections:
 //

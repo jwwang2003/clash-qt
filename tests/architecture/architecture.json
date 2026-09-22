@@ -4,10 +4,11 @@
     "architecture: tests/architecture/arch_check.py reads the evaluated CMake",
     "target graph through the File API and fails on anything not declared here.",
     "",
-    "Sources of truth: docs/TEST_STRATEGY.md 'Architecture checks';",
-    ".refactor/DECISIONS.md D1 (clash_types / clash_yaml), D2 (the",
-    "clash_mihomo_impl -> clash_platform edge) and D4 (what must and must not be",
-    "flagged); PRE-ARCH sections 1a, 1b and 2.",
+    "Every '_role', '_note' and 'reason' below states its own reason, so this",
+    "graph can be read and changed without another document open. Where a name",
+    "is matched by machine -- a target name, an include rule id, an exception id",
+    "and the sealed_while glob that pairs with it -- the name is the mechanism,",
+    "and it may only be changed together with whatever matches it.",
     "",
     "'deps'                 allowed edges to other project targets, exactly.",
     "'external'             allowed DIRECT external dependencies, exactly.",
@@ -43,15 +44,16 @@
     "Qt6::DataVisualization"
   ],
   "_forbidden_external_note": [
-    "DECISION D4. Qt6::Gui is deliberately NOT forbidden: platform/system/",
-    "hotkeys.h puts QKeySequence in a public header, so clash_platform links",
-    "Qt6::Gui PUBLIC and that is allowed for a platform adapter. Qt6::Qml is",
-    "deliberately NOT forbidden either: core/config/enhance/config_enhancer.cpp",
-    "runs profile enhancement scripts through QJSEngine. Qml is not Quick."
+    "Desktop UI toolkits only. Qt6::Gui is deliberately NOT forbidden:",
+    "platform/system/hotkeys.h puts QKeySequence in a public header, so",
+    "clash_platform links Qt6::Gui PUBLIC and that is allowed for a platform",
+    "adapter. Qt6::Qml is deliberately NOT forbidden either:",
+    "core/config/enhance/config_enhancer.cpp runs profile enhancement scripts",
+    "through QJSEngine. Qml is not Quick, and Gui is not Widgets."
   ],
   "modules": {
     "clash_types": {
-      "_role": "D1: header-only value types. Everything may depend on it; it depends on nothing.",
+      "_role": "Header-only value types, split out so the UI, the configuration library, the engine implementation and the published component contract can all share them without any of those depending on each other. Everything may depend on it; it depends on nothing.",
       "deps": [],
       "external": [
         "Qt6::Core"
@@ -64,7 +66,7 @@
       ]
     },
     "clash_yaml": {
-      "_role": "D1: yaml helpers as their own leaf, so the packaged component never drags clash_config in (PRE-ARCH edge 5).",
+      "_role": "YAML helpers as their own leaf, so the packaged component never drags clash_config in. The component is built and shipped separately; pulling the configuration library into its package would be the difference between a component and a second copy of the application.",
       "deps": [
         "clash_types"
       ],
@@ -139,7 +141,7 @@
         "Qt6::QmlIntegration",
         "yaml-cpp::yaml-cpp"
       ],
-      "_note": "PRE-ARCH edge 1 is gone: the composition root supplies seedDir. The Qt Gui and WebSockets entries went with it -- they were only ever reaching this module through clash_mihomo_impl -> clash_platform.",
+      "_note": "The edge onto the configuration library is gone: the composition root supplies seedDir. The Qt Gui and WebSockets entries went with it -- they were only ever reaching this module through clash_mihomo_impl -> clash_platform.",
       "public_headers": [
         "core/profiles/profile_store.h"
       ]
@@ -178,7 +180,7 @@
       ]
     },
     "clash_mihomo_impl": {
-      "_role": "Component-private per G2. The UI must reach it through the published component contract.",
+      "_role": "Component-private: this is the engine implementation, built and packaged as a separate module, so nothing may link it except the suites whose subject it is. The UI reaches the engine through the published component contract instead. Enforced by the entry for this module under sealed_modules below.",
       "deps": [
         "clash_types",
         "clash_backend",
@@ -201,8 +203,10 @@
         "framework:Carbon"
       ],
       "_transitive_note": [
-        "Qt6::Gui and the three Apple frameworks arrive solely through the D2",
-        "baselined edge onto clash_platform. They leave when that edge does.",
+        "Qt6::Gui and the three Apple frameworks arrive solely through the",
+        "baselined edge onto clash_platform -- the privileged-service client is",
+        "injected through an interface this module owns, so the concrete platform",
+        "type stays out of its published surface. They leave when that edge does.",
         "They are listed, not exempted, so any OTHER route to desktop Qt still",
         "fails: Widgets/Quick/Graphs remain forbidden."
       ],
@@ -214,7 +218,7 @@
       ]
     },
     "clash_platform": {
-      "_role": "OS adapters. Qt Gui is allowed here (D4); Widgets/Quick/Graphs are not.",
+      "_role": "OS adapters. Qt Gui is allowed here -- native hotkey and browser behaviour needs it, and platform/system/hotkeys.h puts QKeySequence in a public header -- but Widgets, Quick and Graphs are not: those are the desktop UI, and an OS adapter is not the UI.",
       "deps": [
         "clash_types"
       ],
@@ -271,7 +275,7 @@
       ]
     },
     "clash_backend": {
-      "_role": "Published MihomoBackend contract (backend-r4). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when D2 was discharged: the composition root needs it, so it cannot live in component-private core/mihomo/**.",
+      "_role": "Published MihomoBackend contract (backend-r4). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when the engine stopped naming a platform type in its own public surface: the composition root needs that seam, so it cannot live in component-private core/mihomo/**.",
       "deps": [
         "clash_types"
       ],
@@ -356,7 +360,7 @@
       ]
     },
     "clash_app_composition": {
-      "_role": "Composition-root adapters. The only layer permitted to see both sides of the privileged seam: IR-CORE-NOT-PLATFORM keeps it out of core, IR-PLATFORM-NOT-CORE keeps it out of platform.",
+      "_role": "Composition-root adapters. The only layer permitted to see both sides of the privileged seam: CORE-NOT-PLATFORM keeps it out of core, PLATFORM-NOT-CORE keeps it out of platform.",
       "deps": [
         "clash_backend",
         "clash_platform"
@@ -373,7 +377,7 @@
       ]
     },
     "clash_backend_bridge": {
-      "_role": "Qt-native view of the backend contract; the mechanism the G2 UI migration consumes. Filters superseded events on behalf of ~66 call sites, with one deliberate exemption for the managed core's terminal outcomes -- uniform filtering would drop the unconfirmed stop that blocks quit, and wedge quit forever.",
+      "_role": "Qt-native view of the backend contract; what the UI consumes in place of the component-private engine headers it used to include. Filters superseded events on behalf of ~66 call sites, with one deliberate exemption for the managed core's terminal outcomes -- uniform filtering would drop the unconfirmed stop that blocks quit, and wedge quit forever.",
       "deps": [
         "clash_backend"
       ],
@@ -388,7 +392,7 @@
       ]
     },
     "clash_config_compose": {
-      "_role": "Pure P4 YAML composer: immutable input, no disk/network/process or JS engine.",
+      "_role": "Pure YAML composer: immutable input, no disk/network/process or JS engine.",
       "deps": [
         "clash_types",
         "clash_yaml"
@@ -403,7 +407,7 @@
       ]
     },
     "clash_component_abi": {
-      "_role": "D8 binary boundary; no Qt or STL values.",
+      "_role": "Binary boundary; no Qt or STL values cross it. A QString cannot: its layout and implicit sharing depend on the exact Qt build, and its memory would be allocated in one module and freed in another.",
       "deps": [
         "clashqt_com"
       ],
@@ -432,7 +436,7 @@
       "public_headers": []
     },
     "clash_qt_backend_module": {
-      "_role": "D8 shared engine supervisor; production component artifact.",
+      "_role": "Shared engine supervisor; the production component artifact, built and packaged separately from the application so that what ships is exercised as a real module and not only as a static library.",
       "deps": [
         "clash_component_marshal",
         "clash_backend",
@@ -455,7 +459,7 @@
       "public_headers": []
     },
     "clash_module_host": {
-      "_role": "D8 host-owned MihomoBackend facade and explicit-path module loader.",
+      "_role": "Host-owned MihomoBackend facade and explicit-path module loader. It holds the module's ABI-safe pointers and marshals each call, so the UI and the Qt bridge see the same contract as the in-process implementations and a boundary bug stays in one shim instead of spreading across the call sites.",
       "deps": [
         "clash_backend",
         "clash_component_abi",
@@ -478,7 +482,9 @@
     "_about": [
       "Targets that consume modules. 'headless: true' means the target must",
       "configure, build and run with no Widgets/Quick/Graphs anywhere in its",
-      "evaluated closure -- the enforceable half of TEST_STRATEGY rule 4."
+      "evaluated closure. That is the half of 'a backend test must run without",
+      "a desktop' a checker can actually enforce: it cannot prove the code never",
+      "needs a display, but it can prove no desktop Qt module is linked in."
     ],
     "clash-qt": {
       "_note": "Links the backend libraries directly; clash-qt-service-helper is an add_dependencies() edge, which the File API reports and which must therefore be declared like any other.",
@@ -735,7 +741,7 @@
       ]
     },
     "backend-real-core-tests": {
-      "_note": "MOD-CORE P3: the same adapter against the locally built engine. Label-gated to the integration lane.",
+      "_note": "The same adapter against the locally built engine. Label-gated to the integration lane.",
       "headless": true,
       "deps": [
         "clash_app_composition",
@@ -743,14 +749,14 @@
       ]
     },
     "engine-discovery-tests": {
-      "_note": "MOD-CORE P3: controller discovery against the real engine layout.",
+      "_note": "Controller discovery against the real engine layout.",
       "headless": true,
       "deps": [
         "clash_test_support"
       ]
     },
-    "w01-first-launch-tests": {
-      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
+    "first-launch-tests": {
+      "_note": "Journey suite driving the dynamically loaded module; it must not link the private engine implementation.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -769,8 +775,8 @@
       ],
       "optional": true
     },
-    "w03-routing-controls-tests": {
-      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
+    "routing-controls-journey-tests": {
+      "_note": "Journey suite driving the dynamically loaded module; it must not link the private engine implementation.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -790,8 +796,8 @@
       ],
       "optional": true
     },
-    "w04-restore-tests": {
-      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
+    "restore-tests": {
+      "_note": "Journey suite driving the dynamically loaded module; it must not link the private engine implementation.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -810,8 +816,8 @@
       ],
       "optional": true
     },
-    "w05-recovery-tests": {
-      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
+    "recovery-tests": {
+      "_note": "Journey suite driving the dynamically loaded module; it must not link the private engine implementation.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -831,7 +837,7 @@
       "optional": true
     },
     "app-smoke-tests": {
-      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
+      "_note": "Journey suite driving the dynamically loaded module; it must not link the private engine implementation.",
       "deps": [
         "clash-qt",
         "clash_app_backup",
@@ -893,8 +899,8 @@
         "clash_test_support"
       ]
     },
-    "w02-subscription-update-tests": {
-      "_note": "W02 fixture and pinned real-core subscription journey, module-backed.",
+    "subscription-update-tests": {
+      "_note": "Subscription-update fixture and pinned real-core journey, module-backed.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -939,7 +945,7 @@
   },
   "include_rules": [
     {
-      "id": "IR-NO-UPWARD-INCLUDE",
+      "id": "NO-UPWARD-INCLUDE",
       "applies_to": [
         "src/core/**",
         "src/platform/**"
@@ -952,7 +958,7 @@
       "hint": "invert the dependency: publish a signal or an interface the UI consumes"
     },
     {
-      "id": "IR-NO-DESKTOP-QT",
+      "id": "NO-DESKTOP-QT",
       "applies_to": [
         "src/core/**",
         "src/platform/**"
@@ -965,11 +971,11 @@
         "Qt6::Charts",
         "Qt6::DataVisualization"
       ],
-      "message": "backend code must not use Qt Widgets, Quick or Graphs (D4: Qt Gui and Qt Qml are allowed)",
+      "message": "backend code must not use Qt Widgets, Quick or Graphs; Qt Gui and Qt Qml are allowed",
       "hint": "QKeySequence (Gui) and QJSEngine (Qml) are deliberately not flagged"
     },
     {
-      "id": "IR-PLATFORM-NOT-CORE",
+      "id": "PLATFORM-NOT-CORE",
       "applies_to": [
         "src/platform/**"
       ],
@@ -984,18 +990,18 @@
       "hint": "shared value types belong in clash_types"
     },
     {
-      "id": "IR-CORE-NOT-PLATFORM",
+      "id": "CORE-NOT-PLATFORM",
       "applies_to": [
         "src/core/**"
       ],
       "forbid_project_includes": [
         "platform/**"
       ],
-      "message": "core must reach the OS through an interface it owns, not a platform header (D2)",
+      "message": "core must reach the OS through an interface it owns, not a platform header",
       "hint": "inject an abstract interface owned by clash_mihomo_impl; the composition root adapts the concrete platform type"
     },
     {
-      "id": "IR-COMPONENT-PRIVATE",
+      "id": "COMPONENT-PRIVATE",
       "applies_to": [
         "src/ui/**",
         "src/main.cpp",
@@ -1004,36 +1010,37 @@
       "forbid_project_includes": [
         "core/mihomo/**"
       ],
-      "message": "G2: clash_mihomo_impl is component-private; the UI must use the published component contract",
-      "hint": "MOD-CORE publishes the contract that displaces these includes"
+      "message": "clash_mihomo_impl is component-private; the UI must use the published component contract",
+      "hint": "use the published MihomoBackend contract and its Qt bridge -- they exist to displace exactly these includes"
     }
   ],
   "_sealed_modules_note": [
-    "clash_mihomo_impl stays sealed by the permanent G2 implementation-subject allowance.",
-    "P4 removed both migration exceptions: desktop and journeys use clash_module_host and the separately built shared artifact.",
+    "clash_mihomo_impl stays sealed by the permanent implementation-subject allowance below, which never closes.",
+    "The two migration exceptions that once carried the desktop application and the journey suites are gone: both now reach the engine through clash_module_host and the separately built shared artifact.",
     "The shared artifact compiles the private engine sources itself; it does not widen access to the private static library.",
-    "Every non-probe linker to that static library must remain an explicitly named implementation-subject suite."
+    "Every non-probe linker to that static library must remain an explicitly named implementation-subject suite.",
+    "The seal is matched to its exceptions by id glob, so the glob and the exception ids are one mechanism in two places: change either alone and the seal silently stops applying."
   ],
   "sealed_modules": [
     {
       "module": "clash_mihomo_impl",
       "sealed_while": [
-        "G2-*"
+        "*-component-private"
       ],
       "exempt_linkers": [
         "arch_probe_*"
       ],
-      "reason": "Component-private per G2. Only the six permanent implementation-subject test targets may link this static library; arch_probe_* compiles the public-header checks. Application and journeys load the shared module through the host facade. The permanent allowance keeps this seal active after the two P4 migration exceptions are discharged."
+      "reason": "clash_mihomo_impl is the engine implementation and is component-private: everything else is meant to use the published component contract. Only the named implementation-subject test targets may link this static library; arch_probe_* is exempt because it compiles the public-header checks, which is the opposite of reaching inside. The application and the journey suites load the shared module through the host facade instead. LOAD-BEARING: sealed_while matches exception ids as globs, so '*-component-private' is a naming contract -- an exception that lets something reach this module must be named so that it ends in '-component-private', or this seal quietly stops applying and nothing fails to say so. The permanent implementation-subject allowance below is what keeps the seal active now that the two migration exceptions are discharged; if it were ever deleted, the seal would lift with it."
     }
   ],
   "exceptions": [
     {
-      "id": "G2-impl-subject-suites-link-component-private",
+      "id": "impl-subject-suites-link-component-private",
       "class": "architecture",
       "kind": "target_edge",
       "owner": "coordinator",
       "remove_in": "never",
-      "reason": "PERMANENT, and deliberately so -- this is an allowance, not debt. These six suites link clash_mihomo_impl because the implementation is their subject: controller-tests and provider-tests drive core/mihomo/mihomo_client.h and provider_client.h; core-process-tests drives core/mihomo/process/core_process.h; engine-discovery-tests drives core/mihomo/process/engine_discovery.h; backend-real-contract-tests and backend-real-core-tests run the backend-r3 acceptance set against the real MihomoBackend. A test whose subject is a component-private implementation must link that implementation. No P4 factory removes these links, and no later phase does either, so no phase may be written in remove_in. 'never' is the honest value: arch_check.py requires id, kind, owner, remove_in and reason on every exception so that migration debt always carries an owner and a phase, and the checker's own self-test fixtures (tests/architecture/selftest/cases/**) already use 'never' for entries that are not debt. class 'architecture' keeps it out of the summary's 'migration baseline (must shrink to zero)' group, where it would have inflated a count that is supposed to fall. The id stays under the G2-* prefix on purpose: sealed_modules[].sealed_while matches on the id, and clause (b) of that seal -- every direct linker must appear as a baselined site -- is what keeps this list derived from the evaluated graph instead of remembered. Deleting this entry would not delete the links; it would only stop the checker seeing them, which is exactly how eight sites once became architecture by way of consumers[].deps. What it does NOT grant: each site names one target, so a seventh impl-subject linker still fails the check and has to be argued for here.",
+      "reason": "PERMANENT, and deliberately so -- this is an allowance, not debt. These six suites link clash_mihomo_impl because the implementation is their subject: controller-tests and provider-tests drive core/mihomo/mihomo_client.h and provider_client.h; core-process-tests drives core/mihomo/process/core_process.h; engine-discovery-tests drives core/mihomo/process/engine_discovery.h; backend-real-contract-tests and backend-real-core-tests run the backend-r3 acceptance set against the real MihomoBackend. A test whose subject is a component-private implementation must link that implementation. Nothing planned removes these links, so no removal phase can honestly be written in remove_in and 'never' is the true value: arch_check.py requires id, kind, owner, remove_in and reason on every exception precisely so that migration debt always carries an owner and a date, and the checker's own self-test fixtures (tests/architecture/selftest/cases/**) already use 'never' for entries that are not debt. class 'architecture' keeps it out of the summary's 'migration baseline (must shrink to zero)' group, where it would have inflated a count that is supposed to fall. LOAD-BEARING: the id must keep ending in '-component-private', because sealed_modules[].sealed_while matches exception ids as globs, and the second clause of that seal -- every direct linker of the module must appear here as a baselined site -- is what keeps this list derived from the evaluated graph instead of from memory. Rename the id without the glob, or the glob without the id, and the seal stops applying with nothing failing to report it. Deleting this entry would not delete the links; it would only stop the checker seeing them, which is exactly how eight sites once became architecture by way of consumers[].deps -- deps is consulted before exceptions, so one line of JSON there turns tracked debt into permanent architecture with no owner and no removal phase. What this entry does NOT grant: each site names one target, so a seventh implementation-subject linker still fails the check and has to be argued for here.",
       "sites": [
         {
           "from": "controller-tests",

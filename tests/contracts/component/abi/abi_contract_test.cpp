@@ -1834,9 +1834,9 @@ void AbiContractTest::thePrivilegedStatusCarriesCoreRunning() {
 // --------------------------------------------------------- delivery rules
 
 void AbiContractTest::noObserverIsInvokedFromInsideACommand() {
-    // backend-r4 section 7, and the half D8 says the Qt event loop provides
-    // for free in process and that "across a raw ABI would have to be
-    // re-established".
+    // backend-r4 section 7. In process the Qt event loop guarantees this for
+    // free; across a raw ABI it has to be re-established, so it is asserted
+    // here rather than assumed.
     fixtures::ModuleFixture fixture(fakePath_, abi::kFakeModuleId);
     QVERIFY(fixture.load());
     BoundaryObserver observer(fixture.backend());
@@ -2061,9 +2061,9 @@ void AbiContractTest::thePrivilegedSeamReachesTheHostsServiceAndAllowsOneListene
         QVERIFY(fixture.load(&service));
 
         // The component attached itself as THE listener while it was being
-        // built, through the reverse interface. ONE connection: decision D3
-        // removed a second live client to one privileged socket, and the
-        // boundary does not get to reintroduce one.
+        // built, through the reverse interface. ONE connection: two live clients
+        // on one privileged socket is a correctness hazard that was removed
+        // once, and the boundary does not get to reintroduce it.
         QCOMPARE(service.listener() != nullptr, true);
         QCOMPARE(service.listenerChanges, 1);
 

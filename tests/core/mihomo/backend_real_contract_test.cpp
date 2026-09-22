@@ -1,5 +1,5 @@
 // The MihomoBackend contract, run against the REAL backend.
-// Specification: .refactor/BACKEND_CONTRACT.md revision backend-r3, section 10.
+// Specification: docs/module-api.md, revision backend-r3, section 10.
 //
 // WHY THIS FILE EXISTS ALONGSIDE tests/contracts/backend/backend_contract_test.cpp
 //
@@ -46,9 +46,9 @@
 // backend_common_cases.cpp, rather than four times.
 //
 // They are hosted in THIS target on purpose. clash_mihomo_impl is
-// component-private (G2): a new executable linking it would be a sixth
-// permanent exception to that rule, and the permanent allowance is for the
-// targets that already exist. Nothing of the shared suite is specific to this
+// component-private: a new executable linking it would be a sixth permanent
+// exception to that rule, and the permanent allowance is for the targets that
+// already exist. Nothing of the shared suite is specific to this
 // file, and nothing here is weakened by them: the specialist cases above keep
 // every claim they already made.
 
@@ -235,10 +235,10 @@ class Recorder final : public cb::BackendObserver {
     cb::Generation lastObserved_ = cb::Generation::Initial;
 };
 
-// A privileged core service with no socket at all. D2's seam is what makes this
-// possible: before it, this case needed a QLocalServer speaking the helper's
-// framing, because platform::PrivilegedServiceClient was baked into the
-// constructor.
+// A privileged core service with no socket at all. The injected seam is what
+// makes this possible: before it, this case needed a QLocalServer speaking the
+// helper's framing, because platform::PrivilegedServiceClient was baked into
+// the constructor.
 class StubPrivilegedService final : public core::PrivilegedCoreService {
   public:
     explicit StubPrivilegedService(cb::Endpoint endpoint) : endpoint_(std::move(endpoint)) {}
@@ -460,10 +460,9 @@ class BackendRealContractTest : public QObject {
     // announces a new session on an unchanged endpoint. Everything the retired
     // process still owes has to be invalidated at that moment. Left current,
     // those replies land after the replacement has answered and clear the live
-    // session - observed against the real engine
-    // (/tmp/clash-qt-p4.w0Y8Uo/w02-fix/logs/w02-real-probe3.log: ten refused
-    // connections, connected false, and an explicit refreshVersion() healing it
-    // with the generation unchanged).
+    // session - observed against the real engine, which produced ten refused
+    // connections, a connected flag of false, and an explicit refreshVersion()
+    // healing it with the generation unchanged.
     void aReplacementAtTheSameAddressCannotClearTheNewSession() {
         using Reply = testsupport::LoopbackServer::Reply;
         testsupport::LoopbackServer controller;
@@ -1588,16 +1587,14 @@ class BackendRealContractTest : public QObject {
         bare.removeObserver(&bareObserver);
     }
 
-    // G1: a missing managed engine fails with an actionable message rather than
-    // silently supervising another Clash installation.
     // The helper's own running-core report reaches the published status.
     //
     // The macOS helper keeps ONE core for the machine and answers `status` from
     // it on every connection, so its `state` field is "running" even when the
     // core belongs to another app session. That is the fact the UI's uninstall
-    // guard is built on. Decision D3 removed the second PrivilegedServiceClient
-    // that used to read this key and the contract did not carry it, so the
-    // guard was inert; this case is what keeps the producer honest.
+    // guard is built on. When the page's second PrivilegedServiceClient was
+    // removed, the contract did not yet carry this key, so the guard went inert;
+    // this case is what keeps the producer honest.
     void theHelpersRunningCoreReportReachesThePublishedStatus() {
         struct Capture final : cb::BackendObserver {
             int answers = 0;
@@ -1659,7 +1656,7 @@ class BackendRealContractTest : public QObject {
         QVERIFY2(failure.error.message.contains(QStringLiteral("make core")),
                  "the failure did not say how to fix it");
         QVERIFY2(!failure.error.message.contains(QStringLiteral("PATH or in a local Clash")),
-                 "the message still advertises the fallback that G1 forbids");
+                 "the message still advertises a fallback to another installation");
         backend.removeObserver(&observer);
     }
 

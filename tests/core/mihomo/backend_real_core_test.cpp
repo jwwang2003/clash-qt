@@ -312,7 +312,9 @@ class BackendRealCoreTest : public QObject {
         environment_.reset();
     }
 
-    // --- 4 (positive arm), 9 (confirmed arm), B1, and G1 provenance.
+    // --- #4 (positive arm), #9 (confirmed arm), B1's stamping rule, and the
+    //     engine-provenance claim. The bullet numbers index this file's own
+    //     table above.
 
     void theRealEngineIsSupervisedThroughThePublishedContract() {
         const quint16 controllerPort = claimFreePort();
@@ -328,7 +330,8 @@ class BackendRealCoreTest : public QObject {
         Watcher watcher(&backend);
         QVERIFY(backend.addObserver(&watcher));
 
-        // G1: the managed path is the staged engine or nothing. Here it is the
+        // The managed path resolves the engine this project staged or nothing -
+        // never a PATH lookup or another Clash installation. Here it is the
         // locally built one, and it is REPORTED - label and provenance both.
         backend.setBinaryPath(engine_);
         QCOMPARE(backend.binaryPath(), engine_);

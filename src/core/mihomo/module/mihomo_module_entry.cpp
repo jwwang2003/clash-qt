@@ -1,8 +1,8 @@
 // The shipping backend module's one exported symbol.
 //
 // This translation unit is what turns the existing MihomoBackendImpl into a
-// separately built, separately packaged shared library, which is G2's
-// requirement and decision D8's option A. It adds no behaviour: the engine is
+// separately built, separately packaged shared library reached through
+// ABI-safe interfaces. It adds no behaviour: the engine is
 // still a child process reached over a loopback controller, the module is a
 // thin supervisor over that process edge, and no proxy traffic crosses the
 // boundary.

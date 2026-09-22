@@ -2,19 +2,20 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_H
 
 // MihomoBackend: the asynchronous facade the application talks to.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4.
+// Contract: docs/module-api.md revision backend-r4.
 //
 // One object exposing five facets. A consumer that needs only part of the
-// surface takes a reference to the facet it needs - MOD-RUNTIME can hold a
-// BackendControl &, MOD-LIFECYCLE a BackendLifecycle & - and cannot reach the
+// surface takes a reference to the facet it needs - the runtime coordinator
+// holds a BackendControl &, the shutdown coordinator a BackendLifecycle & -
+// and cannot reach the
 // rest. The facets are separate base classes rather than accessor methods
 // returning pointers, so nothing hands out a reference into the component and
 // no facet can be deleted (each has a protected, non-virtual destructor).
 //
 // LIFETIME
 //   The facade's destructor is public and virtual: the host creates and deletes
-//   this in-process facade. Per D8, the module-backed implementation is a host
-//   shim that holds COM references; module allocations are released inside the
+//   this in-process facade. The module-backed implementation is a host shim
+//   that holds COM references; module allocations are released inside the
 //   module. This Qt interface itself never crosses the binary boundary.
 //
 // THREAD AFFINITY

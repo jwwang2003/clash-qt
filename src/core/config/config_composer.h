@@ -1,7 +1,6 @@
 #pragma once
 
-// Pure configuration composition, contract revision config-r1
-// (.refactor/P4_CONFIG_CONTRACT.md).
+// Pure configuration composition, contract revision config-r1.
 //
 // Everything here is a function of its arguments. No filesystem, no network, no
 // process, no QObject, no clock, no environment. That is the whole point: the
@@ -38,8 +37,8 @@ namespace core::config {
 
 // ---------------------------------------------------------------- UI-facing
 //
-// These four names and their field names are fixed for this wave by the
-// contract; the UI codes against them. Add beside them, do not reshape them.
+// These four names and their field names are fixed by the contract the UI
+// codes against. Add beside them, do not reshape them.
 
 /// One thing that went wrong, or was worth saying, while composing.
 /// `severity` is "error", "warning" or "info"; `source` names the producer

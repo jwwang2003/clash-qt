@@ -2,16 +2,16 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_BRIDGE_H
 
 // BackendBridge: the Qt-native view of MihomoBackend.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 2, 7, 9.
+// Contract: docs/module-api.md revision backend-r4, sections 2, 7, 9.
 //
 // WHY THIS EXISTS
 //   BackendObserver is a plain C++ sink with defaulted callbacks, which is what
-//   lets it cross a module boundary in P4. The UI does not consume sinks: the
-//   20 include sites and the 66 pointer-to-member references enumerated in the
-//   G2 link ledger all spell their subscription `connect(client_, &core::
-//   MihomoClient::someSignal, ...)`. Nothing in the four existing observers
-//   republishes proxies, rules, traffic, connections, logs, version, config,
-//   DNS, providers or errors, so the migration has nothing to connect to.
+//   lets it cross a module boundary. The UI does not consume sinks: all 20 of
+//   its include sites and all 66 of its pointer-to-member references spell
+//   their subscription `connect(client_, &core::MihomoClient::someSignal, ...)`.
+//   Nothing in the four existing observers republishes proxies, rules, traffic,
+//   connections, logs, version, config, DNS, providers or errors, so the
+//   migration has nothing to connect to.
 //
 //   This class is the one adapter: one BackendObserver in, Qt signals out, and
 //   the UI's intent forwarded back to the five facets. It is deliberately the
@@ -84,11 +84,10 @@
 //   Filtering them would be actively unsafe, not merely pedantic. main.cpp
 //   blocks quit until stopFinished arrives and raises a shutdown warning when
 //   confirmed == false; a dropped stop wedges the quit path forever. That is
-//   not hypothetical - backend-r3 B1 records that a stop completion can today
-//   reach a consumer stamped with a superseded generation, so a bridge that
-//   filtered uniformly would swallow exactly the event the application cannot
-//   proceed without. The exemption follows the stamping rule and is robust to
-//   B1 either way.
+//   not hypothetical: a stop completion has been observed reaching a consumer
+//   stamped with a superseded generation, so a bridge that filtered uniformly
+//   would swallow exactly the event the application cannot proceed without. The
+//   exemption follows the stamping rule and holds either way.
 //
 //   Stream samples (traffic, memory, connections, logs, provider busy) ARE
 //   filtered. A sample produced before an endpoint change and delivered after
@@ -336,8 +335,8 @@ class BackendBridge : public QObject {
     //
     // ServiceSettings' one status channel. It used to open a SECOND
     // PrivilegedServiceClient beside the one the backend owns - two live
-    // connections to one privileged socket, the hazard decision D3 names - and
-    // this is what it migrated onto.
+    // connections to one privileged socket, which is a correctness hazard -
+    // and this is what it migrated onto.
     //
     // `coreRunning` is APPENDED, not substituted: a slot may take fewer
     // arguments, so the three-argument handlers that predate it connect

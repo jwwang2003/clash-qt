@@ -1,6 +1,4 @@
-// W05 - Recovery.
-//
-// docs/TEST_STRATEGY.md, "Complete workflows":
+// Recovery - a complete journey.
 //
 //   Exercise  Run core -> controller drops or child crashes -> attempt restart
 //             -> switch profile -> quit
@@ -30,7 +28,8 @@
 //       PUBLISHES, and no process may survive. A quit that only completes
 //       because the child was cooperative proves nothing about the bound.
 //
-// THE ENGINE IS LOADED, NOT LINKED. Since decision D8 these journeys drive
+// THE ENGINE IS LOADED, NOT LINKED. The supervisor ships as a separately built
+// shared library, so these journeys drive
 // clashqt::integration::ModuleBackend over a session
 // clashqt::integration::ModuleLoader created from CLASH_QT_MODULE_PATH, exactly
 // as src/main.cpp does; nothing here names core/mihomo/** any more. The
@@ -82,13 +81,13 @@ void scriptController(LoopbackServer &server) {
 
 }  // namespace
 
-class W05RecoveryTest : public QObject {
+class RecoveryTest : public QObject {
     Q_OBJECT
 
   private slots:
 
     void init() {
-        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("w05"));
+        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("recovery"));
         const QString failure = testsupport::preferenceIsolationFailure(*environment_);
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
     }
@@ -442,8 +441,8 @@ class W05RecoveryTest : public QObject {
 
     static QString skipReason(const wf::ControllerRelay &relay) {
         return QStringLiteral(
-                   "W05 needs the generated controller address 127.0.0.1:%1, which is in use: %2. "
-                   "Not asserted rather than asserted weakly.")
+                   "This journey needs the generated controller address 127.0.0.1:%1, which "
+                   "is in use: %2. Not asserted rather than asserted weakly.")
             .arg(wf::kGeneratedControllerPort)
             .arg(relay.errorString());
     }
@@ -457,5 +456,5 @@ class W05RecoveryTest : public QObject {
     QString enginePath_;
 };
 
-QTEST_GUILESS_MAIN(W05RecoveryTest)
-#include "w05_recovery_test.moc"
+QTEST_GUILESS_MAIN(RecoveryTest)
+#include "recovery_test.moc"

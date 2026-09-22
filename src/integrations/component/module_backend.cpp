@@ -439,9 +439,9 @@ void ModuleBackend::enqueue(std::uint32_t event, const void *data, std::size_t s
         // modules in this tree wrap a backend that already queues its
         // callbacks, so no Notify ever arrives inside a command and the term
         // is never reached. It is defence in depth for a module that delivers
-        // synchronously - which the ABI permits and D8 warns about, since
-        // across a raw boundary the guarantee "would have to be
-        // re-established". Recorded rather than removed: a surviving mutant is
+        // synchronously - which the ABI permits, and across a raw boundary the
+        // non-re-entrancy guarantee has to be re-established rather than
+        // inherited. Recorded rather than removed: a surviving mutant is
         // either a coverage gap or a redundancy, and this one is a redundancy
         // only for the modules that exist today.
         if (commandDepth_ == 0 && !drainScheduled_) {
@@ -791,9 +791,9 @@ com::Result ModuleBackend::handleHostCommand(std::uint32_t command, const void *
                 return com::kInvalidState;
             }
             if (active && listenerActive_) {
-                // ONE connection only. Decision D3 was written because two live
-                // connections to one privileged socket is a correctness hazard;
-                // the boundary does not get to reintroduce it.
+                // ONE connection only. Two live connections to one privileged
+                // socket is a correctness hazard; the boundary does not get to
+                // reintroduce it.
                 return com::kInvalidState;
             }
             if (!active && !listenerActive_) {

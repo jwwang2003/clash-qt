@@ -1,5 +1,5 @@
 {
-  "_about": "Variant of the SEALED-MODULE case in which synth_app declares the sealed module in its 'deps'. This is the exact hole that hid eight clash-qt targets: 'deps' is consulted before exceptions, so the edge becomes permanently allowed -- no owner, no removal phase, invisible to the ratchet -- and, because the allowlist short-circuits before match_edge() runs, the site that WAS tracking it now reads as discharged debt. Expected: ARCH-R4-SEALED-MODULE-DECLARED-DEP and, as a consequence, ARCH-R4-STALE-EXCEPTION.",
+  "_about": "Variant of the SEALED-MODULE case in which synth_app declares the sealed module in its 'deps'. This is the exact hole that hid eight clash-qt targets: 'deps' is consulted before exceptions, so the edge becomes permanently allowed -- no owner, no removal phase, invisible to the ratchet -- and, because the allowlist short-circuits before match_edge() runs, the site that WAS tracking it now reads as discharged debt. Expected: SEALED-MODULE-DECLARED-DEP and, as a consequence, STALE-EXCEPTION.",
   "ignore_external": [
     "Qt6::Platform"
   ],
@@ -78,7 +78,7 @@
       "kind": "target_edge",
       "owner": "SELFTEST",
       "remove_in": "never",
-      "reason": "Stands in for G2-consumers-link-component-private: the targets that still link the component-private module, each with an owner and a removal phase.",
+      "reason": "Stands in for the real ledger of targets that still link the component-private module, each carried as a site with an owner and a removal phase. LOAD-BEARING, as in the real graph: sealed_while above matches exception ids as globs, so this id must keep matching 'SEAL-*' -- rename one without the other and the seal stops applying with nothing failing to say so.",
       "sites": [
         {
           "from": "synth_app",

@@ -189,7 +189,8 @@ private slots:
     // `content-disposition`. core::ProfileStore parses both out of the RAW
     // header text, so the fixture's job is to put the bytes a provider sends on
     // the wire and not to have an opinion about them. These two cases are what
-    // makes the W02 journey's quota assertions meaningful rather than circular:
+    // makes the subscription journey's quota assertions meaningful rather than
+    // circular:
     // without them, a fixture that quietly dropped or rewrote the header would
     // make "the quota did not arrive" indistinguishable from "the store cannot
     // parse it".
@@ -202,7 +203,7 @@ private slots:
         const QByteArray quota =
             QByteArrayLiteral("upload=1024; download= 2048 ;total=10737418240;expire=1794499200");
         const QByteArray disposition =
-            QByteArrayLiteral("attachment; filename=\"w02-fixture.yaml\"");
+            QByteArrayLiteral("attachment; filename=\"subscription-fixture.yaml\"");
         server.route("GET", QStringLiteral("/sub.yaml"),
                      LoopbackServer::Reply::document("text/yaml", QByteArrayLiteral("proxies: []\n"))
                          .withHeader("subscription-userinfo", quota)

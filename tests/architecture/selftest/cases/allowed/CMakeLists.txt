@@ -1,10 +1,11 @@
 # ALLOWED graph: the real architecture in miniature. The checker must pass.
 #
-# It deliberately contains the two patterns DECISION D4 says must NOT be
-# flagged -- a platform adapter with Qt6::Gui in its public interface, and a
-# core library using Qt6::Qml -- plus one baselined exception edge shaped like
-# D2. If a careless rule banned "anything QML-ish" or all of Qt Gui, this case
-# would fail, which is exactly what it is here to prevent.
+# It deliberately contains the two patterns that must NOT be flagged -- a
+# platform adapter with Qt6::Gui in its public interface, and a core library
+# using Qt6::Qml -- plus one baselined exception edge from a component-private
+# implementation onto an OS adapter. If a careless rule banned "anything
+# QML-ish" or all of Qt Gui, this case would fail, which is exactly what it is
+# here to prevent.
 cmake_minimum_required(VERSION 3.21)
 project(arch_selftest_allowed LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
@@ -27,7 +28,7 @@ target_link_libraries(synth_telemetry PUBLIC synth_types)
 add_library(synth_platform STATIC src/platform.cpp)
 target_link_libraries(synth_platform PUBLIC synth_types Qt6::Gui)
 
-# The D2-shaped edge: component-private implementation onto the OS adapter.
+# The baselined edge: component-private implementation onto the OS adapter.
 add_library(synth_impl STATIC src/impl.cpp)
 target_link_libraries(synth_impl PUBLIC synth_types synth_platform PRIVATE Qt6::Network)
 

@@ -1,5 +1,5 @@
 {
-  "_about": "R3 transitive. synth_telemetry declares synth_umbrella as an allowed dep and declares NO forbidden external of its own; only the evaluated closure exposes the creep.",
+  "_about": "Transitive external creep. synth_telemetry declares synth_umbrella as an allowed dep and declares NO forbidden external of its own; only the evaluated closure exposes the creep.",
   "ignore_external": ["Qt6::Platform"],
   "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
   "modules": {

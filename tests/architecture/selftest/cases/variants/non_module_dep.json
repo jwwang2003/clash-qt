@@ -1,5 +1,5 @@
 {
-  "_about": "Variant of the ALLOWED case with synth_telemetry deleted from the declaration. A library nobody declared must not go unchecked. Expected: UNDECLARED-TARGET.",
+  "_about": "Variant of the ALLOWED case in which synth_platform is declared as a consumer rather than a module, so the library synth_impl now depends on a target that is not a module at all. A library must not depend on an application, UI or test target: that inverts the layering, and the plain forbidden-edge rule cannot say so because it only compares modules against modules. The baselined edge is dropped so the rule is reached instead of the ledger. Expected: MODULE-DEPENDS-ON-NON-MODULE.",
   "ignore_external": [
     "Qt6::Platform"
   ],
@@ -43,17 +43,13 @@
         "Qt6::Network"
       ]
     },
-    "synth_platform": {
-      "_note": "Qt6::Gui PUBLIC is allowed for a platform adapter: a public header puts QKeySequence in its signature. Gui is not Widgets.",
+    "synth_telemetry": {
       "deps": [
         "synth_types"
       ],
-      "external": [
-        "Qt6::Gui"
-      ],
+      "external": [],
       "transitive_external": [
-        "Qt6::Core",
-        "Qt6::Gui"
+        "Qt6::Core"
       ]
     },
     "synth_impl": {
@@ -74,21 +70,17 @@
     "synth_app": {
       "deps": [
         "synth_impl",
-        "synth_config"
+        "synth_config",
+        "synth_telemetry"
+      ]
+    },
+    "synth_platform": {
+      "_note": "Deliberately mis-declared: a consumer, not a module.",
+      "deps": [
+        "synth_types"
       ]
     }
   },
   "include_rules": [],
-  "exceptions": [
-    {
-      "id": "SELFTEST-injected-platform-edge",
-      "class": "architecture",
-      "kind": "target_edge",
-      "from": "synth_impl",
-      "to": "synth_platform",
-      "owner": "SELFTEST",
-      "remove_in": "never",
-      "reason": "Stands in for the real baseline in which the component-private implementation links the OS adapter: an edge that exists, is named, owned, and therefore does not fail the check."
-    }
-  ]
+  "exceptions": []
 }

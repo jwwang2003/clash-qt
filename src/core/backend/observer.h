@@ -2,9 +2,10 @@
 #define CLASHQT_CORE_BACKEND_OBSERVER_H
 
 // BackendObserver: the event sink, published instead of Qt signals.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 2, 7, 9,
-// with amendment A2, which is the reason the consumer obligation below is not
-// stated the way r1 stated it.
+// Contract: docs/module-api.md revision backend-r4, sections 2, 7, 9.
+// The consumer obligation below is an explicit Superseded mark rather than a
+// generation comparison; delivery rule 2 says why comparison alone cannot
+// catch what an abort produces.
 //
 // DELIVERY RULES - all four are contract obligations on the BACKEND.
 //
@@ -19,8 +20,8 @@
 //
 // 2. Order is preserved. Events are delivered in the order they were produced.
 //
-//    Note what that means for an abort, because r1 got it backwards and A2
-//    corrected it: the completions an abort produces are queued BEFORE the
+//    Note what that means for an abort, which an earlier draft of this
+//    contract had backwards: the completions an abort produces are queued BEFORE the
 //    event that announces the bump, so they reach the consumer FIRST, while its
 //    last-observed generation is still the pre-bump value. Section 2's ordering
 //    rule (bump, THEN abort) is still observable - but through the completion's
@@ -49,13 +50,14 @@
 //   Every reference and Span parameter is BORROWED for the duration of the
 //   call. An observer that needs the data afterwards copies it.
 //
-// CONSUMER OBLIGATION - TWO CHECKS, NOT ONE (amendment A2)
+// CONSUMER OBLIGATION - TWO CHECKS, NOT ONE
 //   1. Drop any completion whose `status` is CompletionStatus::Superseded. The
 //      BACKEND marks abandoned work; the consumer does not have to deduce it.
 //   2. Reject any event whose generation is older than the newest generation
 //      already observed (contract section 2).
 //
-//   Check 2 alone is NOT sufficient, and r1 wrongly implied it was. Completions
+//   Check 2 alone is NOT sufficient, though it looks as though it should be.
+//   Completions
 //   carry the generation their request was submitted under, but under rule 2
 //   above they are delivered before the event that carries the newer
 //   generation, so at that moment `lastObserved` is still the older value and
@@ -64,8 +66,8 @@
 //   has already seen.
 //
 //   One exemption, and it is deliberate: the managed core's terminal outcomes
-//   (coreReady, coreFailed, stopCompleted) carry the POST-bump generation
-//   (amendment A1, restated by B1), so check 2 never fires on them. Uniform
+//   (coreReady, coreFailed, stopCompleted) carry the POST-bump generation, so
+//   check 2 never fires on them. Uniform
 //   filtering would drop the unconfirmed stop that blocks quit.
 //
 // Every method has an empty default body so a consumer overrides only what it

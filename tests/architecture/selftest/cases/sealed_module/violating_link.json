@@ -1,5 +1,5 @@
 {
-  "_about": "Variant of the SEALED-MODULE case in which synth_tool -- an executable that links the sealed module -- is neither declared as a consumer nor carried by a baselined site. Undeclared executables are skipped by the consumer allowlist, so nothing else in the checker looks at it; this is the shape of the three P3-created targets that linked clash_mihomo_impl without appearing in the ledger. Expected: ARCH-R4-SEALED-MODULE-UNBASELINED-LINK.",
+  "_about": "Variant of the SEALED-MODULE case in which synth_tool -- an executable that links the sealed module -- is neither declared as a consumer nor carried by a baselined site. Undeclared executables are skipped by the consumer allowlist, so nothing else in the checker looks at it; this is the shape of the three newly created targets that once linked clash_mihomo_impl without appearing in the ledger. Expected: SEALED-MODULE-UNBASELINED-LINK.",
   "ignore_external": [
     "Qt6::Platform"
   ],
@@ -72,7 +72,7 @@
       "kind": "target_edge",
       "owner": "SELFTEST",
       "remove_in": "never",
-      "reason": "Stands in for G2-consumers-link-component-private: the targets that still link the component-private module, each with an owner and a removal phase.",
+      "reason": "Stands in for the real ledger of targets that still link the component-private module, each carried as a site with an owner and a removal phase. LOAD-BEARING, as in the real graph: sealed_while above matches exception ids as globs, so this id must keep matching 'SEAL-*' -- rename one without the other and the seal stops applying with nothing failing to say so.",
       "sites": [
         {
           "from": "synth_app",

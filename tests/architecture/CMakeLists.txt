@@ -11,7 +11,8 @@
 set(CLASH_ARCH_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 # ---------------------------------------------------------------------------
-# Public-header compile probe (TEST_STRATEGY 'Architecture checks' item 3).
+# Public-header compile probe: a module's published headers must be usable by
+# a client that has only that module.
 #
 # For every published header of a module, a one-line translation unit that
 # includes it and nothing else is compiled into a consumer that links ONLY that

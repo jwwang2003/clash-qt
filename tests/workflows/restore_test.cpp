@@ -1,6 +1,4 @@
-// W04 - Restore.
-//
-// docs/TEST_STRATEGY.md, "Complete workflows":
+// Restore - a complete journey.
 //
 //   Exercise  Create profiles/enhancements/settings -> backup -> change them ->
 //             restore while app services exist -> reopen
@@ -82,13 +80,13 @@ LoopbackServer::Reply subscription(const QByteArray &body) {
 
 }  // namespace
 
-class W04RestoreTest : public QObject {
+class RestoreTest : public QObject {
     Q_OBJECT
 
   private slots:
 
     void init() {
-        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("w04"));
+        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("restore"));
         const QString failure = testsupport::preferenceIsolationFailure(*environment_);
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
     }
@@ -127,16 +125,17 @@ class W04RestoreTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         // The subscription origin. Local, loopback, and serving a fixture body:
-        // docs/TEST_STRATEGY.md forbids a normal run from contacting a real
-        // subscription, and this journey needs one only as the source of a
-        // reply that must NOT be allowed to land.
+        // a routine run must never contact a real subscription, and this journey
+        // needs one only as the source of a reply that must NOT be allowed to
+        // land.
         controller.route("GET", "/sub", subscription(backedUpSubscriptionBody()));
 
         wf::ControllerRelay relay;
         if (!relay.listen(controller.port())) {
             QSKIP(qPrintable(QStringLiteral(
-                                 "W04 needs the generated controller address 127.0.0.1:%1, which "
-                                 "is in use: %2. Not asserted rather than asserted weakly.")
+                                 "This journey needs the generated controller address "
+                                 "127.0.0.1:%1, which is in use: %2. Not asserted rather than "
+                                 "asserted weakly.")
                                  .arg(wf::kGeneratedControllerPort)
                                  .arg(relay.errorString())));
         }
@@ -411,5 +410,5 @@ class W04RestoreTest : public QObject {
     QString enginePath_;
 };
 
-QTEST_GUILESS_MAIN(W04RestoreTest)
-#include "w04_restore_test.moc"
+QTEST_GUILESS_MAIN(RestoreTest)
+#include "restore_test.moc"

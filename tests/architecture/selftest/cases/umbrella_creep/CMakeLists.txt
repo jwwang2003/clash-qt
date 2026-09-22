@@ -1,4 +1,4 @@
-# FORBIDDEN graph for R3, transitive arm. Nothing here links a forbidden module
+# FORBIDDEN graph for the external-dependency rule, transitive arm. Nothing here links a forbidden module
 # directly: the narrow telemetry leaf links one broad "umbrella" library, and
 # the umbrella re-exports Qt6::Widgets and Qt6::Network PUBLIC. A checker that
 # only read each target's own target_link_libraries would call this clean.

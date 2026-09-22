@@ -18,7 +18,7 @@ namespace ui {
 
 class ComboBox;
 
-/// Edits the preset document the store owns (P4_CONFIG_CONTRACT config-r1): the
+/// Edits the preset document the store owns (contract revision config-r1): the
 /// global chain and one profile's chain, each an ordered list of presets, each
 /// preset an ordered list of operations.
 ///

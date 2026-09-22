@@ -1,15 +1,13 @@
 // The test module: the deterministic FakeBackend behind the SAME export, the
 // same handshake and the same marshalling as the shipping module.
 //
-// D8 left one question open for P4's first worker: "whether the fake backend
-// also becomes module-backed. If it does not, the module path has exactly one
-// implementation and the common-contract claim is weaker than it sounds."
-// This file is the answer. Because the double goes through the production
-// adapter rather than around it, a single suite can hold the in-process fake,
-// the in-process real backend, the module-backed fake and the module-backed
-// real backend to the same statements - which is what backend-r4 section 10
-// asks for and what G2 calls "fake and production modules satisfy common
-// contracts".
+// It exists because a module path with exactly one implementation makes the
+// common-contract claim weaker than it sounds. Because this double goes through
+// the production adapter rather than around it, a single suite can hold the
+// in-process fake, the in-process real backend, the module-backed fake and the
+// module-backed real backend to the same statements - which is what backend-r4
+// section 10 asks for, and what makes "fake and production modules satisfy
+// common contracts" a checked claim rather than an aspiration.
 //
 // It is built for tests only. Its module id is different, so a loader that
 // asked for the shipping module refuses it - and the ABI suite proves that.

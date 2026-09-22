@@ -1,6 +1,6 @@
-# FORBIDDEN graph for R2. CMake happily configures a static-library cycle and
+# FORBIDDEN graph for the acyclicity rule. CMake happily configures a static-library cycle and
 # simply repeats the archives on the link line, so nothing in the build tells
-# you it is there. Both edges ARE declared in architecture.json, so R1 passes
+# you it is there. Both edges ARE declared in architecture.json, so the module-edge rule passes
 # and only the acyclicity rule can fail this case.
 cmake_minimum_required(VERSION 3.21)
 project(arch_selftest_cycle LANGUAGES CXX)

@@ -62,7 +62,7 @@ private slots:
         QCOMPARE(logs.size(), 1);
         QVERIFY(logs.first().first().toStringList().join('\n').contains("sample"));
         // Straddles the config/profiles boundary. The four lines below are a
-        // profiles-persistence assertion (F01): overrides and the current uid
+        // profiles-persistence assertion: overrides and the current uid
         // survive a reopen. They are kept here, in the config suite, rather than
         // rebuilt on top of a duplicated fixture in profile-store -- splitting
         // them would mean re-creating this exact store, enhancer, script and

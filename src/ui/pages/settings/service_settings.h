@@ -9,7 +9,7 @@ class QTimer;
 namespace platform { class PrivilegedServiceInstaller; }
 namespace core::backend { class BackendBridge; }
 namespace ui {
-/// DECISION D3: this section used to open a SECOND platform::PrivilegedServiceClient
+/// This section used to open a SECOND platform::PrivilegedServiceClient
 /// beside the one the backend already owns - two live connections to one
 /// privileged socket. Status now arrives on the published
 /// BackendBridge::privilegedServiceStatus channel, so the component keeps the
@@ -27,7 +27,8 @@ public:
     ///
     /// Public because it is a SAFETY guard, and a guard nothing asserts is a
     /// guard that can go inert unnoticed - which is exactly what happened when
-    /// decision D3 removed the only producer of the running-core flag. A test
+    /// dropping the second client removed the only producer of the
+    /// running-core flag. A test
     /// reads this rather than clicking Remove, because driving the real click
     /// path on a machine with an installed helper would uninstall it.
     bool canChangeInstallation() const;
@@ -55,8 +56,8 @@ private:
     // another app session." Written ONLY from an answered status query, which
     // carries core::backend::PrivilegedServiceStatus::coreRunning - the
     // helper's own report, published on the contract precisely so this page
-    // does not need the second PrivilegedServiceClient that decision D3
-    // removed. An unanswered query leaves it alone: not hearing back is not
+    // does not need a second PrivilegedServiceClient of its own. An
+    // unanswered query leaves it alone: not hearing back is not
     // evidence that nothing is running.
     bool serviceRunning_ = false;
 };

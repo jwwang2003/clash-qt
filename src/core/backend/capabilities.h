@@ -2,14 +2,14 @@
 #define CLASHQT_CORE_BACKEND_CAPABILITIES_H
 
 // BackendCapabilities: what this backend can do, queried rather than assumed.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 3, 4, 8, 9.
+// Contract: docs/module-api.md revision backend-r4, sections 3, 4, 8, 9.
 //
 // Capabilities are INSTANCE methods. CoreProcess::serviceSupported() and
 // serviceAvailable() are static today, and a loaded module gets its own copy of
 // every static (contract section 9). Publishing them here is also what lets
 // ui/service_settings.cpp stop opening a second PrivilegedServiceClient
 // alongside the one the backend owns - two live connections to one privileged
-// socket is a correctness hazard today (decision D3).
+// socket is a correctness hazard.
 
 #include <cstdint>
 
@@ -46,14 +46,13 @@ constexpr FeatureSet operator|(Feature a, Feature b) noexcept {
     return FeatureSet{static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b)};
 }
 
-// Required by the COMPONENT-ABI handshake in P4. `interfaceRevision` is 1 for
-// this interface and is distinct from the module ABI version.
+// Required by the host/module handshake. `interfaceRevision` is 1 for this
+// interface and is distinct from the module ABI version.
 //
-// It is NOT the contract revision number. r1 through r4 are one interface: the
-// A1-A4 and B1-B4 amendments tightened its semantics; C1 added status data.
-// None added or reordered a facet method, so the value remains 1. The shared
-// suite asserts this for all four implementations. It moves when the vtable
-// does - which, per section 9,
+// It is NOT the contract revision number. Every revision of this contract so
+// far has tightened semantics or added status data; none has added or reordered
+// a facet method, so the value remains 1. The shared suite asserts this for all
+// four implementations. It moves when the vtable does - which, per section 9,
 // is a new interface id rather than a mutated one.
 struct BackendIdentity {
     QString name;
@@ -103,9 +102,9 @@ struct PrivilegedServiceStatus {
     // reported and this stays false; a consumer guarding on it must not treat
     // that false as "no core is running".
     //
-    // This is the flag ServiceSettings' uninstall guard reads. Decision D3
-    // removed that page's second PrivilegedServiceClient, which was the only
-    // producer, and the guard went inert until the contract carried it here.
+    // This is the flag ServiceSettings' uninstall guard reads. Dropping that
+    // page's second PrivilegedServiceClient removed the only producer of it,
+    // and the guard was inert until the contract carried it here.
     bool coreRunning = false;
     ErrorInfo error;
 };

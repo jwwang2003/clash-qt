@@ -21,8 +21,8 @@ namespace app {
 /// `client` and `coreProcess` are GONE. core::MihomoBackendImpl owns its client
 /// and its process privately and publishes neither, so there is no pointer to
 /// put here; the UI reaches the engine through core::backend::BackendBridge,
-/// which the composition root injects into the window and the pages directly
-/// (G2). Nothing in src/ui/** read either field by the time they were removed.
+/// which the composition root injects into the window and the pages directly.
+/// Nothing in src/ui/** read either field by the time they were removed.
 struct Context {
     core::ProfileStore *profiles = nullptr;
     core::ConfigEnhancer *enhancer = nullptr;

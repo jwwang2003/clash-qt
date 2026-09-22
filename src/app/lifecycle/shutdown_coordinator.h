@@ -3,8 +3,7 @@
 
 // ShutdownCoordinator: the quit gate, lifted out of src/main.cpp.
 //
-// Inventory: PRE-ARCH section 4b group E (main.cpp:34-47, 177, 183-247, 284-289).
-// Every numbered item of that group's acceptance checklist has a named test in
+// Every behaviour lifted out of main.cpp here has a named test in
 // tests/app/lifecycle/shutdown_coordinator_test.cpp.
 //
 // WHAT IT REPLACES
@@ -27,7 +26,7 @@
 //     -> BackendLifecycle::stop()       STRICTLY AFTER the proxy, main.cpp:225
 //   stopCompleted()
 //     -> confirmed == false raises a warning that blocks the quit; it is NOT
-//        success (backend-r2 section 6)
+//        success
 //   reevaluate()                      the finishQuit gate, main.cpp:183-194
 //     quitting, proxy stopped, core stopped, no warnings
 //     -> every BusyGate, in registration order
@@ -41,7 +40,7 @@
 // COMPOSITION ROOT WIRING - the exact replacement for main.cpp:33-47, 175-254
 // and 284-289. Construction order, because each line needs the one above it:
 //
-//   core::MihomoBackendImpl backend;                    // MOD-CORE
+//   core::MihomoBackendImpl backend;
 //   auto *proxyService = platform::SystemProxyService::instance();
 //   app::lifecycle::QuitGuard quitGuard;
 //   app::lifecycle::FunctionProxyShutdown proxyShutdown(
@@ -61,11 +60,11 @@
 //   shutdown.addBusyGate("enhancer-files",  [enhancer]{ return enhancer->isFileBusy(); });
 //
 // Quit actions, in this order - main.cpp:238-241:
-//   shutdown.addQuitAction("reload-stop", [reload]{ reload->stop(); });   // MOD-RUNTIME
+//   shutdown.addQuitAction("reload-stop", [reload]{ reload->stop(); });
 //   shutdown.addQuitAction("profiles",    [profiles]{ profiles->beginShutdown(); });
 //   shutdown.addQuitAction("enhancer",    [enhancer]{ enhancer->beginShutdown(); });
 //   shutdown.addQuitAction("backups",     [&backups]{ backups.cancel(); });
-//   shutdown.setFinalCleanup([&]{ runtime.pruneSnapshots(true); });       // MOD-RUNTIME
+//   shutdown.setFinalCleanup([&]{ runtime.pruneSnapshots(true); });
 //   shutdown.setQuitGuard(&quitGuard);
 //   app.installEventFilter(&quitGuard);
 //
@@ -146,8 +145,7 @@ class ShutdownCoordinator final : public QObject,
 
     // Run once, in order, at the start of requestQuit(): ProfileStore and
     // ConfigEnhancer beginShutdown(), the backup cancel, the reload timer stop.
-    // They stop new work from starting before anything is awaited (PRE-ARCH
-    // group E item 6).
+    // They stop new work from starting before anything is awaited.
     void addQuitAction(const QString &name, std::function<void()> action);
 
     // The final snapshot prune (main.cpp:187-190), which belongs to
@@ -166,7 +164,7 @@ class ShutdownCoordinator final : public QObject,
     bool isSystemProxyStopped() const noexcept { return proxyStopped_; }
     bool isCoreStopped() const noexcept { return coreStopped_; }
     // False whenever a stop reported confirmed == false. Never collapsed into
-    // "the core stopped": backend-r2 section 6 forbids reporting it as success.
+    // "the core stopped": the contract forbids reporting it as success.
     bool wasLastStopConfirmed() const noexcept { return lastStopConfirmed_; }
     bool isStopRequested() const noexcept { return stopRequested_; }
     int pendingWarnings() const noexcept { return warnings_.size(); }
@@ -201,7 +199,7 @@ class ShutdownCoordinator final : public QObject,
 
   signals:
     // The shell disables the window, greys the tray menu and shows the status
-    // message. The coordinator owns no widgets (PRE-ARCH group E item 7).
+    // message. The coordinator owns no widgets.
     void shutdownStarted(const QString &statusMessage);
 
     // A non-blocking warning the shell must present. The quit stays open until
@@ -209,7 +207,8 @@ class ShutdownCoordinator final : public QObject,
     void warningRaised(quint64 id, const QString &title, const QString &message);
 
     // Emitted from a zero-millisecond timer, never synchronously from inside
-    // the event filter (PRE-ARCH group E item 1). The composition root connects
+    // the event filter, so approval cannot re-enter the QEvent::Quit it is
+    // answering. The composition root connects
     // this to QCoreApplication::quit.
     void quitApproved();
 
@@ -220,8 +219,8 @@ class ShutdownCoordinator final : public QObject,
     void stopCompleted(const core::backend::StopCompleted &result) noexcept override;
 
     // True when `generation` is older than the newest already observed, in
-    // which case the event is dropped (backend-r2 section 2's consumer
-    // obligation). Advances lastObserved_ otherwise.
+    // which case the event is dropped, as the contract's consumer obligation
+    // requires. Advances lastObserved_ otherwise.
     bool admit(core::backend::Generation generation) noexcept;
 
     QString blockingReasonBeforeCleanup() const;

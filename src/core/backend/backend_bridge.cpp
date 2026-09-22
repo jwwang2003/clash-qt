@@ -331,7 +331,7 @@ void BackendBridge::onCoreStopped(Generation generation) noexcept {
 void BackendBridge::onStopCompleted(const StopCompleted &result) noexcept {
     // NEVER filtered. main.cpp blocks quit on this event and raises a shutdown
     // warning when !confirmed; dropping it wedges the quit path. See the
-    // exemption note in the header and backend-r3 B1.
+    // exemption note in the header.
     observeTerminal(result.generation);
     EmitScope scope(this);
     emit stopFinished(result.confirmed, errorText(result.reason));

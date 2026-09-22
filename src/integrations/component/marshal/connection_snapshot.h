@@ -3,13 +3,13 @@
 // The packed connections snapshot: one buffer per snapshot, fixed-layout
 // records indexing a shared UTF-8 blob.
 //
-// WHY THIS IS NOT THE GENERAL ENCODING. Decision D8's second binding
-// constraint: "A connections snapshot can be hundreds of entries; naive
-// per-string allocation is the one plausible regression. One buffer per
-// snapshot with fixed-layout structs indexing into it, and a case in the
-// benchmark lane before the claim is made." Every other payload on this
-// boundary is a handful of fields at human rate; this one is 13 strings times
-// hundreds of rows at the engine's emission rate.
+// WHY THIS IS NOT THE GENERAL ENCODING. A connections snapshot can be hundreds
+// of entries, and naive per-string allocation is the one plausible regression
+// this boundary introduces. So: one buffer per snapshot with fixed-layout
+// structs indexing into it, and a case in the benchmark lane before any
+// performance claim is made. Every other payload on this boundary is a handful
+// of fields at human rate; this one is 13 strings times hundreds of rows at the
+// engine's emission rate.
 //
 // Three things make it cheap, and all three are measured rather than asserted:
 //   1. one allocation for the whole snapshot on each side, not 13 per row;

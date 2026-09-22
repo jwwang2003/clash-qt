@@ -1,5 +1,5 @@
 {
-  "_about": "R2 cycle. Both edges are declared, so only ARCH-R2-CYCLE may fire.",
+  "_about": "Dependency cycle. Both edges are declared, so only DEPENDENCY-CYCLE may fire.",
   "ignore_external": ["Qt6::Platform"],
   "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
   "modules": {

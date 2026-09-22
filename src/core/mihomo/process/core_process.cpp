@@ -71,7 +71,7 @@ CoreProcess::CoreProcess(QObject *parent, PrivilegedCoreService *service)
       servicePoll_(new QTimer(this)), injectedService_(service != nullptr),
       network_(new QNetworkAccessManager(this)) {
     // A plain listener, not signal/slot: signals are what put a platform type on
-    // this class's surface in the first place (DECISION D2).
+    // this class's surface in the first place.
     endpoint_ = noEndpoint();
     service_->setListener(this);
     servicePoll_->setInterval(1000);
@@ -264,7 +264,7 @@ void CoreProcess::start(const QString &configPath, const QString &workDir) {
         stopError_.clear();
         terminateProcess();
     }
-    // G1. The managed engine is the one this project staged, or the local build
+    // The managed engine is the one this project staged, or the local build
     // CLASH_QT_CORE_BINARY names. There is no fallback to PATH and none to
     // another Clash installation: an engine we did not build is an explicit
     // choice the user makes, and it is reported as such.
@@ -514,8 +514,9 @@ void CoreProcess::terminateProcess() {
     // asks QTimer::defaultTypeFor(), which returns Qt::CoarseTimer for any
     // interval of 2 s or more (qtimer.h) - and a coarse timer is allowed to
     // fire EARLY. terminateWaitMs is 3000, so the kill was armed on a coarse
-    // timer that here fires up to 149 ms ahead of its interval; W05 measured a
-    // stubborn child dying 2962 ms into its published 3000 ms grace. A child
+    // timer that here fires up to 149 ms ahead of its interval; the recovery
+    // workflow suite measured a stubborn child dying 2962 ms into its published
+    // 3000 ms grace. A child
     // killed before its grace expires was never given the grace, and the 400 ms
     // this used to be driven with in tests hid it completely: under 2 s the
     // same call picks a precise timer.

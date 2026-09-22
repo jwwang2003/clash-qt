@@ -3,9 +3,8 @@
 
 // RoutingController - one owner for "where does traffic go".
 //
-// Extracted from src/main.cpp group D (lines 248-267) of the PRE-ARCH section
-// 4b inventory, and from the routing intent that was spread across four
-// surfaces with no single owner:
+// Extracted from src/main.cpp, and from the routing intent that was spread
+// across four surfaces with no single owner:
 //
 //   settings  ui/pages/settings/settings_page.cpp:215-251 (the system proxy)
 //   toolbar   ui/shell/routing_controls.cpp                (system proxy, TUN)
@@ -22,12 +21,12 @@
 // read-backs. A change in flight leaves them at the last confirmed value and
 // raises the matching *Pending() flag; the *Confirmed signals fire only when
 // the backend or the OS reported the change actually took. A TUN change whose
-// read-back disagrees with the request is not a success (backend-r2 section on
-// TunChangeCompleted: `actual` is a read-back, never an echo).
+// read-back disagrees with the request is not a success: TunChangeCompleted's
+// `actual` is a read-back of the controller, never an echo of the request.
 //
 // WHAT THIS DOES NOT OWN
 //   * the owned-proxy restore at quit, and SystemProxyService::shutdown().
-//     Those are group E, app/lifecycle. The restores here are the
+//     Those belong to app/lifecycle. The restores here are the
 //     normal-operation ones, and SystemProxyService::restoreOwned() is already
 //     inert once shutdown has begun, so the two cannot race.
 //   * reload scheduling and snapshot retention - RuntimeCoordinator.

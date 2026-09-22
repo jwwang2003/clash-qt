@@ -8,8 +8,8 @@
 // Nothing here knows about QApplication, widgets, ProfileStore, ConfigEnhancer
 // or SystemProxyService: the composition root adapts those. That is what keeps
 // shutdown correctness independent of which objects happen to exist, which is
-// the defect PRE-ARCH section 4c records (main.cpp:182 discovering services by
-// walking the widget tree).
+// the defect this replaced: main.cpp:182 discovered services by walking the
+// widget tree, so a lazily built page meant a silently skipped shutdown step.
 
 #include <functional>
 
@@ -22,10 +22,10 @@ namespace app::lifecycle {
 // One blocking condition of the quit gate.
 //
 // ORDER IS PART OF THE CONTRACT. Gates are evaluated in registration order and
-// the first busy one names the block, which is how the ordering in PRE-ARCH
-// section 4b group E item 8 - backup busy, profile runtime busy, profile file
-// busy, enhancer file busy - stays observable rather than merely implied by a
-// conjunction that short-circuits invisibly.
+// the first busy one names the block, which is how the intended order - backup
+// busy, profile runtime busy, profile file busy, enhancer file busy - stays
+// observable rather than merely implied by a conjunction that short-circuits
+// invisibly.
 class BusyGate {
   public:
     virtual ~BusyGate() = default;
@@ -100,9 +100,9 @@ class GlobalThreadPoolDrain final : public TaskDrain {
 // ------------------------------------------------------------ shutdown state
 
 // The explicit query that replaces the QCoreApplication "shuttingDown" dynamic
-// property (main.cpp:236) which ui/backup_page.cpp:137 reads today. PRE-ARCH
-// section 4b group E item 5 requires that cross-layer contract to be replaced
-// with a query, not silently dropped.
+// property (main.cpp:236) which ui/backup_page.cpp:137 reads today. That
+// cross-layer contract is replaced with an explicit query, not silently
+// dropped.
 class ShutdownState {
   public:
     virtual ~ShutdownState() = default;

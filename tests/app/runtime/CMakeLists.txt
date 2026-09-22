@@ -1,4 +1,4 @@
-# Runtime and routing coordinators (MOD-RUNTIME). Both are QTEST_GUILESS_MAIN,
+# Runtime and routing coordinators. Both are QTEST_GUILESS_MAIN,
 # so neither needs an offscreen platform.
 qt_add_executable(runtime-coordinator-tests runtime_coordinator_test.cpp)
 target_link_libraries(runtime-coordinator-tests PRIVATE

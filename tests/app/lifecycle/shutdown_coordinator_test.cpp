@@ -1,9 +1,9 @@
 // Acceptance suite for app::lifecycle::ShutdownCoordinator.
 //
-// Specification: PRE-ARCH section 4b group E, "Preserve (acceptance checklist
-// for MOD-LIFECYCLE)", items 1-10, plus backend-r2 section 6 for the
-// unconfirmed stop. Every item has a named case below and the mapping is stated
-// in the comment above each one.
+// The ten numbered items below are the shutdown behaviours that had to survive
+// the move out of src/main.cpp; each has one named case, and the comment above
+// it states what that case preserves. backend-r2 section 6 supplies the
+// unconfirmed-stop rule.
 //
 // NOTHING HERE SLEEPS, and no outcome is decided by the 50 ms poll. Every
 // condition is held explicitly, asserted to block, released explicitly, and the

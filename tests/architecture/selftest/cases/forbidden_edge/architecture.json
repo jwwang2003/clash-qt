@@ -1,5 +1,5 @@
 {
-  "_about": "R1 forbidden edge. Expected: ARCH-R1-FORBIDDEN-EDGE for synth_telemetry -> synth_impl.",
+  "_about": "Forbidden module edge. Expected: FORBIDDEN-EDGE for synth_telemetry -> synth_impl.",
   "ignore_external": ["Qt6::Platform"],
   "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
   "modules": {

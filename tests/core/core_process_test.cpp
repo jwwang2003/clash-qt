@@ -86,8 +86,9 @@ private slots:
     // with QTimer::singleShot(terminateWaitMs, child, ...). With no timer type
     // that call asks QTimer::defaultTypeFor(), which answers Qt::CoarseTimer
     // for any interval of 2 s or more - and a coarse timer may fire EARLY. The
-    // published wait is 3000 ms, so the escalation ran ahead of the grace: W05
-    // watched a stubborn child die 2962 ms into it, and a standalone probe on
+    // published wait is 3000 ms, so the escalation ran ahead of the grace: the
+    // recovery journey watched a stubborn child die 2962 ms into it, and a
+    // standalone probe on
     // this machine saw the same call fire at 2851 ms. A child killed before its
     // grace expires was never given the grace.
     //
@@ -149,7 +150,7 @@ private slots:
 #endif
     }
 
-    // REGRESSION. P3 replaced CoreProcess's default-constructed
+    // REGRESSION. An earlier wave replaced CoreProcess's default-constructed
     // platform::PrivilegedServiceClient with NullPrivilegedCoreService, whose
     // isSupported() is false. main.cpp passed no service, so service mode became
     // silently unavailable on macOS: setUseService(true) returned false and the
@@ -263,9 +264,9 @@ private slots:
         };
         ManualDeadline deadline;
         platform::PrivilegedServiceClient client(nullptr, socketPath, &deadline);
-        // DECISION D2: the composition root - here, the test - adapts the
-        // concrete platform client onto the component-owned seam. CoreProcess's
-        // constructor no longer names a platform type.
+        // The composition root - here, the test - adapts the concrete platform
+        // client onto the seam the component owns, which is why CoreProcess's
+        // constructor no longer names a platform type at all.
         core::PrivilegedServiceClientAdapter service(&client, socketPath);
         core::CoreProcess process(nullptr, &service);
         process.setBinaryPath(binary);

@@ -1,9 +1,9 @@
 // RoutingController: proxy restoration during normal operation, and one owner
 // for routing intent.
 //
-// Acceptance source: PRE-ARCH section 4b group D (main.cpp:248-267) plus the
-// "one controller, confirmed state" requirement. Each case names what it
-// protects.
+// Each case pins one proxy-restoration behaviour that used to live inline in
+// src/main.cpp, plus the requirement that a single controller owns routing
+// intent and publishes only confirmed state. Each case names what it protects.
 //
 // The system proxy is a real platform::SystemProxyService with its Operation
 // substituted through the constructor, so no OS proxy call and no preference

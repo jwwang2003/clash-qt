@@ -1,5 +1,5 @@
 {
-  "_about": "FORBIDDEN include scan: one file for each rule. Expected four ARCH-R5-INCLUDE-* violations across IR-NO-UPWARD-INCLUDE, IR-NO-DESKTOP-QT, IR-PLATFORM-NOT-CORE and IR-COMPONENT-PRIVATE.",
+  "_about": "FORBIDDEN include scan: one file for each rule. Expected four INCLUDE-* violations across NO-UPWARD-INCLUDE, NO-DESKTOP-QT, PLATFORM-NOT-CORE and COMPONENT-PRIVATE.",
   "modules": {},
   "consumers": {},
   "forbidden_external": [
@@ -9,7 +9,7 @@
   ],
   "include_rules": [
     {
-      "id": "IR-NO-UPWARD-INCLUDE",
+      "id": "NO-UPWARD-INCLUDE",
       "applies_to": [
         "src/core/**",
         "src/platform/**"
@@ -20,7 +20,7 @@
       "message": "a backend file must not include UI code"
     },
     {
-      "id": "IR-NO-DESKTOP-QT",
+      "id": "NO-DESKTOP-QT",
       "applies_to": [
         "src/core/**",
         "src/platform/**"
@@ -33,7 +33,7 @@
       "message": "backend code must not use Qt Widgets, Quick or Graphs"
     },
     {
-      "id": "IR-PLATFORM-NOT-CORE",
+      "id": "PLATFORM-NOT-CORE",
       "applies_to": [
         "src/platform/**"
       ],
@@ -47,14 +47,14 @@
       "message": "platform adapters must not depend on core services"
     },
     {
-      "id": "IR-COMPONENT-PRIVATE",
+      "id": "COMPONENT-PRIVATE",
       "applies_to": [
         "src/ui/**"
       ],
       "forbid_project_includes": [
         "core/mihomo/**"
       ],
-      "message": "G2: the UI must use the published component contract"
+      "message": "the UI must use the published component contract, not the component-private implementation headers"
     }
   ],
   "exceptions": []

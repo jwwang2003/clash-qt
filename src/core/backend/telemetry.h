@@ -2,10 +2,10 @@
 #define CLASHQT_CORE_BACKEND_TELEMETRY_H
 
 // BackendTelemetry: snapshots, streams and providers.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 2, 7, 9,
-// with r2's answer to the second open question (one global Generation, and the
-// re-issue obligation that comes with it) and B3, which requires the fake to
-// honour that obligation too.
+// Contract: docs/module-api.md revision backend-r4, sections 2, 7, 9.
+// One global Generation, with the snapshot re-issue obligation that comes with
+// it. The fake backend owes that obligation exactly as the real one does, or
+// the two stop satisfying the same contract tests.
 
 #include <QString>
 
@@ -20,7 +20,7 @@ class BackendTelemetry {
     // ---- snapshots. Completion: the matching observer callback, or
     //      observer.errorOccurred() carrying the same RequestId.
     //
-    // THE RE-ISSUE OBLIGATION. r2 settled that ONE global Generation suffices,
+    // THE RE-ISSUE OBLIGATION. ONE global Generation suffices,
     // in place of the four counters the pre-contract code carried, but a single
     // counter means a managed start, stop or failure also invalidates in-flight
     // CONTROLLER replies - which the pre-contract code did not do. /version and
@@ -31,9 +31,9 @@ class BackendTelemetry {
     // In place of a second counter: any generation bump that is NOT an endpoint
     // change must re-issue this snapshot set. An endpoint change discharges it
     // by re-fetching on attach; a disconnect, a managed start, a managed stop
-    // and a managed failure all owe it. backend-r3 B3 makes it binding on the
-    // fake as well as the real backend, because section 10 requires both to
-    // satisfy the same contract tests.
+    // and a managed failure all owe it. It binds the fake as well as the real
+    // backend, because section 10 requires both to satisfy the same contract
+    // tests.
     virtual RequestId refreshVersion() noexcept = 0;
     virtual RequestId refreshProxies() noexcept = 0;
     virtual RequestId refreshRules() noexcept = 0;

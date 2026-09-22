@@ -1,6 +1,7 @@
 // BackendBridge against clash_backend_fake.
 //
-// What this suite has to establish, because the whole G2 migration inherits it:
+// What this suite has to establish, because every consumer of the published
+// backend surface inherits it:
 //   1. Every signal on the published surface fires, with the arguments the
 //      existing UI handler already accepts. A signal nothing proves is a signal
 //      20 include sites will discover is wrong.
@@ -846,7 +847,7 @@ void BackendBridgeTest::republishesPrivilegedServiceStatus() {
     // The helper's running-core report reaches the signal. ServiceSettings'
     // uninstall guard is built on this argument and on nothing else, so a
     // bridge that dropped it - or hard-coded it - would put the guard back in
-    // the permanently-inert state decision D3 left it in.
+    // the permanently-inert state it was in while nothing produced the flag.
     status.clear();
     staged.coreRunning = true;
     backend.setServiceStatus(staged);

@@ -1,5 +1,4 @@
-// Shared machinery for the complete-journey suites (docs/TEST_STRATEGY.md,
-// "Complete workflows").
+// Shared machinery for the complete-journey suites.
 //
 // A workflow suite is not a unit test with more objects in it. It assembles the
 // same graph src/main.cpp assembles, in the same construction order, over a
@@ -14,8 +13,8 @@
 //     coordinator is destroyed before the backend it observes, and the module
 //     the backend lives in is unmapped after everything it produced.
 //   * moduleArtifactPath / moduleRequirementFailure - the one environment input
-//     these journeys REQUIRE. Since decision D8 the engine is a separately
-//     built shared library: the journeys drive it through
+//     these journeys REQUIRE. The engine is a separately built shared library
+//     rather than a linked one: the journeys drive it through
 //     clashqt::integration::ModuleLoader and ModuleBackend, exactly as
 //     src/main.cpp does, and nothing here includes core/mihomo/** any more.
 //     The artifact is never searched for - CLASH_QT_MODULE_PATH names it, the
@@ -312,14 +311,14 @@ inline QString moduleArtifactPath() {
 
 /// Why this process cannot drive a module, or empty when it can. A journey
 /// asserts this rather than skipping: an unregistered module is a build defect,
-/// and the whole point of these suites since D8 is that the engine is reached
-/// across the boundary.
+/// and the whole point of these suites is that the engine is reached across the
+/// module boundary rather than linked in.
 inline QString moduleRequirementFailure() {
     const QString path = moduleArtifactPath();
     if (path.isEmpty()) {
         return QStringLiteral(
-            "CLASH_QT_MODULE_PATH is not set. Since decision D8 the engine lives in a "
-            "separately built shared library and these journeys load it exactly as "
+            "CLASH_QT_MODULE_PATH is not set. The engine lives in a separately built "
+            "shared library and these journeys load it exactly as "
             "src/main.cpp does; there is no source-tree, build-tree or PATH fallback by "
             "design. Register the suite with ENVIRONMENT "
             "\"CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>\".");
@@ -586,9 +585,9 @@ inline QByteArray readTextFile(const QString &path) {
 }
 
 /// A DIRECT-only profile pointed at a loopback controller. No subscription, no
-/// remote node, nothing that could reach the network: docs/TEST_STRATEGY.md
-/// requires synthetic DIRECT-only configuration with TUN off and loopback
-/// ports, and forbids contacting a real subscription.
+/// remote node, nothing that could reach the network. A journey's configuration
+/// is synthetic and DIRECT-only, with TUN off and loopback ports, and a routine
+/// run never contacts a real subscription.
 inline QByteArray directOnlyProfile(quint16 controllerPort, const QString &marker = QString()) {
     QByteArray yaml;
     yaml += "mixed-port: 0\n";
@@ -624,8 +623,8 @@ inline QByteArray directOnlyProfile(quint16 controllerPort, const QString &marke
 /// honours that refusal rather than pulling the mapping out from under a live
 /// vtable.
 ///
-/// TWO DELIBERATE DIFFERENCES FROM main.cpp, both required by the isolation
-/// rules in docs/TEST_STRATEGY.md:
+/// TWO DELIBERATE DIFFERENCES FROM main.cpp, both required because a test may
+/// not touch the developer's machine:
 ///   * the proxy service is a private instance with a substituted OS command,
 ///     not platform::SystemProxyService::instance(). The singleton writes the
 ///     developer's machine.
@@ -798,7 +797,7 @@ class AssembledApp {
         // has to reach the running core the same way a chain change does.
         // main.cpp makes this connection (config-r1); without it a preset the
         // user saved takes effect only at the next profile switch or restart,
-        // and W02 asserts the reload it schedules.
+        // and the subscription-update journey asserts the reload it schedules.
         QObject::connect(profiles.get(), &core::ProfileStore::presetsChanged,
                          runtimeCoordinator.get(),
                          [this] { runtimeCoordinator->scheduleReload(); });

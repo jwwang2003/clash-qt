@@ -1,5 +1,5 @@
 {
-  "_about": "R3 forbidden external. Expected: ARCH-R3-FORBIDDEN-EXTERNAL for synth_core -> Qt6::Widgets, and nothing for Qt6::Gui or Qt6::Qml.",
+  "_about": "Forbidden external dependency. Expected: FORBIDDEN-EXTERNAL for synth_core -> Qt6::Widgets, and nothing for Qt6::Gui or Qt6::Qml.",
   "ignore_external": ["Qt6::Platform"],
   "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
   "modules": {

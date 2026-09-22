@@ -118,7 +118,7 @@ void MihomoBackendImpl::connectCollaborators() {
     // already have accepted the reply the bump was meant to discard.
     QObject::connect(&client_, &MihomoClient::invalidating, context, [this] {
         bumpGeneration();
-        // backend-r3 B2. MihomoClient cancels an outstanding TUN change on
+        // MihomoClient cancels an outstanding TUN change on
         // exactly the three paths that emit this signal - setEndpoint, detach
         // and setConnected(false) - and finishTunChange() follows it
         // synchronously (mihomo_client.cpp:46-47, :78-79, :119-120). Recording
@@ -248,7 +248,7 @@ void MihomoBackendImpl::connectCollaborators() {
                      [this](bool requested, bool actual, const QString &error) {
         cb::TunChangeCompleted result;
         result.request = tunRequest_;
-        // A TUN change bumps nothing of its own, so A1's ordinary rule applies:
+        // A TUN change bumps nothing of its own, so the ordinary rule applies:
         // the generation it was SUBMITTED under. On the superseded path that
         // makes it compare older than the newest observed value, which is the
         // consumer's second line of defence behind the explicit mark below.
@@ -258,7 +258,7 @@ void MihomoBackendImpl::connectCollaborators() {
         // PATCH, including after an HTTP failure.
         result.actual = actual;
         if (tunSuperseded_) {
-            // backend-r3 B2. "Cancelled because the controller changed" is a
+            // "Cancelled because the controller changed" is a
             // SUPERSESSION, not a protocol error: the controller did not answer
             // unusably, it stopped being the controller. Labelling it Protocol
             // told a consumer the engine misbehaved when nothing had.
@@ -359,7 +359,7 @@ void MihomoBackendImpl::connectCollaborators() {
     });
     QObject::connect(&process_, &CoreProcess::ready, context, [this](const Endpoint &endpoint) {
         // The terminal outcome of an operation that bumped the generation
-        // itself carries the POST-bump value (backend-r2 A1).
+        // itself carries the POST-bump value.
         const cb::Completion completion =
             completionFor(startRequest_, startGeneration_, cb::CompletionStatus::Ok, {});
         const cb::Endpoint published = toBackend(endpoint);
@@ -396,8 +396,6 @@ void MihomoBackendImpl::connectCollaborators() {
         if (stopRequest_ == cb::RequestId::Invalid) return;
         cb::StopCompleted result;
         result.request = stopRequest_;
-        // backend-r3 B1, applying A1 to the case that broke it.
-        //
         // A stop's terminal outcome carries the generation current AFTER every
         // bump its own operation caused - not only the bump stop() itself made
         // at submit. On the unconfirmed path CoreProcess emits failed() and THEN
@@ -405,8 +403,8 @@ void MihomoBackendImpl::connectCollaborators() {
         // failed handler above bumps. Stamping stopGeneration_ here therefore
         // delivered coreFailed(N+1) followed by stopCompleted(N), and a consumer
         // applying section 2's MANDATORY rejection rule dropped the unconfirmed
-        // stop - the precise failure A1 was written to prevent, and the one the
-        // application turns into a warning that blocks quit.
+        // stop - the precise failure post-bump stamping exists to prevent, and
+        // the one the application turns into a warning that blocks quit.
         //
         // Re-read at emit rather than reordering CoreProcess's two signals: the
         // re-read absorbs ANY bump between submit and the terminal answer, while
@@ -418,7 +416,7 @@ void MihomoBackendImpl::connectCollaborators() {
         Q_ASSERT(!cb::isSuperseded(generation_, stopGeneration_));
         result.generation = generation_;
         result.confirmed = confirmed;
-        // backend-r3 B2: the outcome is now stated, not inferred from a bool.
+        // The outcome is STATED, not inferred from a bool.
         result.status = confirmed ? cb::CompletionStatus::Ok : cb::CompletionStatus::Failed;
         if (!confirmed) {
             // NOT a success. Lease cleanup was requested and nothing confirmed
@@ -439,7 +437,7 @@ void MihomoBackendImpl::connectCollaborators() {
     });
     QObject::connect(&process_, &CoreProcess::engineResolved, context,
                      [this](const QString &path, const QString &label, const QString &provenance) {
-        // G1: whatever is resolved is reported. It reaches a consumer on the log
+        // Whatever is resolved is reported. It reaches a consumer on the log
         // channel as well as through resolvedEngine(), so provenance is never
         // implied by silence.
         const cb::Generation generation = generation_;
@@ -459,8 +457,8 @@ void MihomoBackendImpl::connectCollaborators() {
         // Verbatim from the helper: its `state` is "running" while a core
         // process lives under it, for ANY app session, since the helper keeps
         // one core and answers every connection from it. Published so the
-        // uninstall guard in the UI has a producer again (decision D3 removed
-        // the second PrivilegedServiceClient that used to read this key).
+        // uninstall guard in the UI has a producer again: dropping that page's
+        // own second client removed the only writer of the flag it reads.
         published.coreRunning =
             status.value(QStringLiteral("state")).toString() == QLatin1String("running");
         const cb::Completion completion = completionFor(
@@ -569,7 +567,7 @@ void MihomoBackendImpl::bumpGeneration() noexcept {
 }
 
 void MihomoBackendImpl::retireTransport(const QString &reason) {
-    // backend-r3 B2 on the silent path. MihomoClient cancels an outstanding TUN
+    // The silent path. MihomoClient cancels an outstanding TUN
     // change inside retireSession() exactly as it does on the three signalling
     // paths, and recording it HERE is what classifies that cancellation as a
     // supersession rather than as a protocol error the engine never committed.
@@ -646,7 +644,7 @@ void MihomoBackendImpl::settleRest(quint64 operation, bool superseded, const QSt
     cb::CompletionStatus status = cb::CompletionStatus::Ok;
     cb::ErrorInfo reported;
     if (superseded) {
-        // backend-r2 A2: an abandoned completion is MARKED, not left for the
+        // An abandoned completion is MARKED, not left for the
         // consumer to infer. With non-re-entrant delivery the completions an
         // abort produces are queued before the invalidating event, so a
         // generation comparison alone could never catch them.
@@ -664,7 +662,8 @@ void MihomoBackendImpl::settleRest(quint64 operation, bool superseded, const QSt
 
 void MihomoBackendImpl::publish(const Pending &request, cb::CompletionStatus requested,
                                 const cb::ErrorInfo &error, const Payload &payload) {
-    // A2, enforced HERE rather than trusted from the collaborator that settled.
+    // The Superseded mark is made HERE rather than trusted from the
+    // collaborator that settled.
     //
     // A completion submitted under a generation this class has since left is
     // superseded by definition (section 2), whatever the collaborator made of
@@ -1100,7 +1099,7 @@ cb::RequestId MihomoBackendImpl::fetchProviders(bool rules) noexcept {
     if (key.isEmpty()) return cb::RequestId::Invalid;
     // (Generation, operation identity) -> coalescing. A duplicate submission
     // returns the OUTSTANDING request's id; minting one per submission would
-    // mint two ids for one issued request (backend-r2, answer 1).
+    // mint two ids for one issued request.
     if (const auto it = providerRequests_.constFind(key); it != providerRequests_.constEnd())
         return it->id;
     Pending request;
@@ -1150,8 +1149,8 @@ bool MihomoBackendImpl::isProviderBusy() const noexcept { return providerBusy_; 
 cb::BackendIdentity MihomoBackendImpl::identity() const noexcept {
     cb::BackendIdentity identity;
     identity.name = QStringLiteral("clash-qt.mihomo");
-    identity.moduleAbiVersion = 0;  // COMPONENT-ABI assigns this in P4
-    identity.interfaceRevision = 1;  // backend-r2 is revision 1 of this interface
+    identity.moduleAbiVersion = 0;  // only a loaded module carries one
+    identity.interfaceRevision = 1;  // no facet method has moved since r1
     return identity;
 }
 

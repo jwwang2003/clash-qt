@@ -2,8 +2,8 @@
 
 // Loading a module and driving the double behind it, for suites.
 //
-// A fixture rather than a helper function, because the acceptance question for
-// P4 is "do the in-process backend and the module-backed one satisfy the SAME
+// A fixture rather than a helper function, because the acceptance question is
+// "do the in-process backend and the module-backed one satisfy the SAME
 // contract tests" - and that is only answerable if a suite can obtain a
 // MihomoBackend without knowing which it is. ModuleFixture::backend() returns
 // one; everything module-specific is on the fixture, not on the backend.

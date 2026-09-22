@@ -1,19 +1,18 @@
 #pragma once
 
 // Composition-root adapter: platform::PrivilegedServiceClient -> the component's
-// core::PrivilegedCoreService seam (DECISION D2).
+// core::PrivilegedCoreService seam.
 //
 // Lives in the composition root, which is the only layer permitted to see both
-// sides: IR-CORE-NOT-PLATFORM keeps the seam out of src/core/**, and
-// IR-PLATFORM-NOT-CORE keeps it out of src/platform/**. The seam interface is
-// published at core/backend/privileged_core_service.h, which src/app/** may
-// include because it is not component-private core/mihomo/** code.
-// include.
+// sides: src/core/** may not include a platform header, and src/platform/** may
+// not include a core one. The seam interface is published at
+// core/backend/privileged_core_service.h, which src/app/** may include because
+// it is not component-private core/mihomo/** code.
 //
 // The adapter is what keeps clash_mihomo_impl free of platform symbols, which
-// is what removes the PUBLIC clash_mihomo_impl -> clash_platform edge
-// (D2-mihomo-impl-links-platform) without absorbing the privileged client into
-// the component: G2 keeps privileged execution a separate, OS-owned service.
+// is what removes the PUBLIC clash_mihomo_impl -> clash_platform edge without
+// absorbing the privileged client into the component: privileged execution
+// stays a separate, OS-owned service.
 //
 // Header-only and deliberately NOT a Q_OBJECT. A Q_OBJECT here would be moc'd
 // into whichever target scans this directory - clash_mihomo_impl - and the

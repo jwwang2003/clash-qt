@@ -1,8 +1,7 @@
 // Acceptance suite for app::backup::BackupCoordinator.
 //
-// Specification: PRE-ARCH section 4c, the table "Behaviour that must move, not
-// be reinvented", plus the shutdown consumption in section 4b group E
-// (main.cpp:185, 228-229, 241).
+// Every case pins behaviour that had to MOVE out of src/main.cpp rather than be
+// reinvented, including the backup gate the shutdown sequence consumes.
 //
 // The point of the package is that the backup store exists because this
 // coordinator exists, not because a page happened to be built - so the first
@@ -126,7 +125,7 @@ class BackupCoordinatorTest : public QObject {
         environment_.reset();
     }
 
-    // --- PRE-ARCH 4c. The store is CONSTRUCTED AND OWNED here, not discovered
+    // The store is CONSTRUCTED AND OWNED here, not discovered
     //     with window.findChildren<core::BackupStore *>(). There is no widget
     //     in this test, and there is still a store.
 

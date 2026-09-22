@@ -70,7 +70,7 @@ void BackupCoordinator::onLocalBusyChanged(bool busy, bool restoring) {
     (void)restoring;  // only the progress dialog, which stays in the page, cares
 
     // backup_page.cpp:138-140, with the QCoreApplication property read replaced
-    // by the explicit query PRE-ARCH group E item 5 asks for. A shutdown forces
+    // by an explicit query. A shutdown forces
     // maintenance mode on even when no backup operation is running, so nothing
     // writes to the profile directory while the process is going away.
     const bool maintenance = busy || (shutdown_ != nullptr && shutdown_->isShuttingDown());
@@ -153,7 +153,8 @@ void BackupCoordinator::coreStateChanged(cb::Generation generation, cb::CoreStat
 }
 
 bool BackupCoordinator::admit(cb::Generation generation) noexcept {
-    // backend-r2 section 2's consumer obligation.
+    // The contract's consumer obligation: an event stamped older than the
+    // newest already observed is rejected.
     if (cb::isSuperseded(generation, lastObserved_)) return false;
     lastObserved_ = generation;
     return true;

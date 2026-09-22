@@ -1,11 +1,11 @@
 // Contract suite for the MihomoBackend facade.
-// Specification: .refactor/BACKEND_CONTRACT.md revision backend-r3, section 10.
+// Specification: docs/module-api.md, revision backend-r3, section 10.
 //
 // Every case here is one the contract names, and every case was validated by
 // temporarily inverting the behaviour it protects and confirming this suite
-// fails. The inversions are listed in the worker report, not re-run here - with
-// two exceptions, both knobs on the fake, because the contract requires the
-// suite itself to tell the two orders apart:
+// fails. Those inversions were run once and are not re-run here - with two
+// exceptions, both knobs on the fake, because the contract requires the suite
+// itself to tell the two orders apart:
 //   * the generation/abort ordering (section 2);
 //   * the unconfirmed stop's stamping (r2 A1, restated by r3 B1) - a real,
 //     delivered defect of the real backend. A double that cannot reproduce a
@@ -13,8 +13,8 @@
 //
 // The suite runs against the fake backend. A passing fake proves the contract
 // is implementable and that a consumer written to it is correct; it proves
-// nothing about the engine. MOD-CORE runs this same suite against the real
-// backend.
+// nothing about the engine. tests/core/mihomo runs this same suite against the
+// real backend.
 //
 // Nothing here sleeps. Time is advanced explicitly, every asynchronous step is
 // released explicitly, and a deadline only bounds a failure.
@@ -938,8 +938,8 @@ class BackendContractTest : public QObject {
         QVERIFY(fake.setExecutionMode(ExecutionMode::PrivilegedService));
     }
 
-    // Section 8, and decision D3: the status is answered by THIS component,
-    // through the connection it already owns. The fake can assert the queried-
+    // Section 8: the status is answered by THIS component, through the single
+    // privileged connection it already owns. The fake can assert the queried-
     // not-assumed half; only the real backend can prove no second
     // PrivilegedServiceClient was opened, because only it has a socket to open.
     void aPrivilegedServiceStatusQueryIsAnsweredByTheBackendInstance() {
@@ -954,8 +954,8 @@ class BackendContractTest : public QObject {
 
         // The published status carries the helper's own running-core report, so
         // a consumer can guard an uninstall without opening a second privileged
-        // connection (decision D3). Captured here because RecordingObserver
-        // does not keep this payload.
+        // connection. Captured here because RecordingObserver does not keep this
+        // payload.
         struct StatusCapture final : core::backend::BackendObserver {
             int answers = 0;
             core::backend::PrivilegedServiceStatus last;

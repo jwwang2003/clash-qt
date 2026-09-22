@@ -1,12 +1,10 @@
 // The executable smoke harness.
 //
-// docs/TEST_STRATEGY.md, "Complete workflows":
-//
-//   "The executable smoke harness launches the actual installed app with
-//    --data-dir and --no-autostart, drives its supported single-instance/quit
-//    behaviour, and checks process exit and isolated artifacts. ... If
-//    cross-process UI automation needs a harness, build it separately rather
-//    than exposing an unrestricted test-control API in releases."
+// The rule this harness exists to satisfy: launch the actual installed app with
+// --data-dir and --no-autostart, drive its supported single-instance and quit
+// behaviour, and check process exit and isolated artifacts - and if
+// cross-process UI automation ever needs a harness, build it separately rather
+// than exposing an unrestricted test-control API in releases.
 //
 // WHAT THIS IS FOR. Every other suite in the tree links the application's
 // libraries and assembles the objects itself. That is why a defect can ship in
@@ -322,8 +320,8 @@ class AppSmokeTest : public QObject {
         QVERIFY2(serviceSocket_ !=
                      platform::PrivilegedServiceClient::defaultSocketPath(),
                  "this harness must never point a child at the installed helper");
-        // Every case launches the shipped binary, and since decision D8 that
-        // binary loads its engine from a separately built shared library. The
+        // Every case launches the shipped binary, and that binary loads its
+        // engine from a separately built shared library. The
         // registration stages it; without the variable the application exits 2
         // before it does anything this suite could observe, so the requirement
         // is stated here once rather than diagnosed five times.
@@ -410,8 +408,8 @@ class AppSmokeTest : public QObject {
 
     // --- the engine component the shipped binary actually loaded ---------------
     //
-    // Decision D8 moved the supervisor into a separately built shared library,
-    // and src/main.cpp is the only place that chooses which one: an explicit
+    // The supervisor lives in a separately built shared library, and
+    // src/main.cpp is the only place that chooses which one: an explicit
     // CLASH_QT_MODULE_PATH, otherwise the installation-relative artifact. That
     // choice is invisible to every in-process suite - they construct the loader
     // themselves - and it is the exact shape of defect this lane exists for: a

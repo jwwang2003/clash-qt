@@ -3,7 +3,7 @@
 
 // The two vtables that carry backend-r4 across a module boundary, plus the
 // lifetime interface that makes unloading a module safe rather than forbidden.
-// Contract: .refactor/P4_ABI_CONTRACT.md revision module-r1, decision D8.
+// Contract: docs/module-api.md revision module-r1.
 //
 // No Qt type, no standard-library container and no exception crosses anything
 // declared here. Payloads are raw bytes in the encoding of wire.h; results the
@@ -11,11 +11,12 @@
 // and frees the storage).
 //
 // WHAT CROSSES, AND WHAT DELIBERATELY DOES NOT
-//   D8's first binding constraint: the module is a thin supervisor over the
-//   existing process edge and must NEVER marshal proxy traffic. What crosses is
-//   lifecycle (a few calls per session), control (human-rate) and telemetry
-//   (bounded by mihomo's emission rate). The data plane stays where it already
-//   is - between the engine child process and the network.
+//   The first binding constraint of this boundary: the module is a thin
+//   supervisor over the existing process edge and must NEVER marshal proxy
+//   traffic. What crosses is lifecycle (a few calls per session), control
+//   (human-rate) and telemetry (bounded by mihomo's emission rate). The data
+//   plane stays where it already is - between the engine child process and the
+//   network.
 //
 // THREAD AFFINITY
 //   IBackendSession and IBackendHost belong to the thread that created the
@@ -27,8 +28,10 @@
 //
 // RE-ENTRANCY
 //   backend-r4 section 7 forbids an observer callback from inside a mutating
-//   call, and D8 records that this guarantee is currently owned by the Qt event
-//   loop. It survives here because it is not re-implemented: the module's
+//   call. In process that guarantee is owned by the Qt event loop rather than
+//   by any code written for it, so across a raw ABI it would have to be
+//   re-established. It survives here because it is not re-implemented: the
+//   module's
 //   wrapped backend still queues its events, and the host shim additionally
 //   defers any Notify that arrives while it is inside a command. Both halves
 //   are asserted by the contract suite.

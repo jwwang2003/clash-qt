@@ -1,10 +1,10 @@
 // Contract suite for the portable component object model.
-// Specification: .refactor/COMPONENT_CONTRACT.md revision component-r1,
-// section "Acceptance for COMPONENT-BASE".
+// Specification: docs/module-api.md, revision component-r1, acceptance for the
+// portable component base.
 //
 // Every case here is one the contract names. Each was validated by temporarily
-// inverting the behaviour it protects and confirming this suite fails; the
-// inversions are listed in the worker report, not re-run here.
+// inverting the behaviour it protects and confirming this suite fails. Those
+// inversions were run once and are not re-run here.
 //
 // Qt appears in the TEST only. Nothing in src/core/component/ includes or links
 // Qt, and tests/architecture proves that separately once the target is
@@ -121,7 +121,7 @@ class ComponentContractTest : public QObject {
     // ----------------------------------------------------------- InterfaceId
 
     void publishedIdsMatchTheContractTableAndAreDistinct() {
-        // Written out from .refactor/COMPONENT_CONTRACT.md, including the two
+        // Written out from the published contract table, including the two
         // reserved ids that r1 does not implement, so a collision cannot be
         // introduced later without this failing.
         const QVector<QPair<const char*, InterfaceId>> table = {

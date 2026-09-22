@@ -14,9 +14,9 @@
 // subject.
 //
 //   platform::PrivilegedServiceClient      the privileged seam's transport
-//   core::PrivilegedServiceClientAdapter   -> core::PrivilegedCoreService (D2)
+//   core::PrivilegedServiceClientAdapter   adapts it to the component's seam
 //   component::ModuleLoader / ModuleBackend  module lifetime and host facade
-//   core::backend::BackendBridge           the Qt view of the backend (G2)
+//   core::backend::BackendBridge           the Qt view of the backend
 //   app::runtime::ProfileStoreConfigSource
 //   app::runtime::RuntimeCoordinator       reload gate, snapshot retention
 //   app::runtime::RoutingController        system proxy, TUN, mode
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 
     // ------------------------------------------------------------ the engine
     // The composition root owns the privileged client and adapts it to the seam
-    // the backend publishes (D2). Without this injection the backend falls back
+    // the backend publishes. Without this injection the backend falls back
     // to NullPrivilegedCoreService, whose isSupported() is false, and service
     // mode is silently unavailable: setExecutionMode(PrivilegedService) returns
     // false and the user's saved core/useService preference is discarded
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
     // clash_profiles link the component-private engine library, and because
     // link edges propagate, every consumer of clash_profiles -- this
     // application included -- reached the private implementation and was handed
-    // Qt WebSockets with it (PRE-ARCH edge 1 / E1-profiles-links-mihomo-impl).
+    // Qt WebSockets with it.
     // The knowledge belongs here: the composition root is already the one place
     // that knows which engine this process is managing.
     //

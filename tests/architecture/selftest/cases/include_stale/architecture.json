@@ -1,14 +1,14 @@
 {
-  "_about": "A baselined include site that no longer exists. Expected: ARCH-R5-STALE-INCLUDE-EXCEPTION. A baseline that is allowed to rot stops being a ratchet.",
+  "_about": "A baselined include site that no longer exists. Expected: STALE-INCLUDE-EXCEPTION. A baseline that is allowed to rot stops being a ratchet.",
   "modules": {},
   "consumers": {},
   "forbidden_external": [],
   "include_rules": [
     {
-      "id": "IR-COMPONENT-PRIVATE",
+      "id": "COMPONENT-PRIVATE",
       "applies_to": ["src/ui/**"],
       "forbid_project_includes": ["core/mihomo/**"],
-      "message": "G2: the UI must use the published component contract"
+      "message": "the UI must use the published component contract, not the component-private implementation headers"
     }
   ],
   "exceptions": [
@@ -16,7 +16,7 @@
       "id": "SELFTEST-stale-include",
       "class": "migration-baseline",
       "kind": "include",
-      "rule": "IR-COMPONENT-PRIVATE",
+      "rule": "COMPONENT-PRIVATE",
       "owner": "SELFTEST",
       "remove_in": "never",
       "reason": "The file was cleaned up but the baseline still names it.",

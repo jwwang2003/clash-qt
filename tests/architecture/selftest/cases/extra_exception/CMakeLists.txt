@@ -1,4 +1,4 @@
-# FORBIDDEN graph for R4, the ratchet. The baselined D2-shaped edge
+# FORBIDDEN graph for the ratchet. The baselined implementation-to-adapter edge
 # (synth_impl -> synth_platform) is still here and still named in
 # architecture.json. A SECOND, undeclared edge of the same shape has appeared:
 # synth_yaml -> synth_platform. Baselining one edge must not make the next one

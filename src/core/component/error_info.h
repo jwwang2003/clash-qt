@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_COMPONENT_ERROR_INFO_H
 
 // IErrorInfo: an optional diagnostic that accompanies a failure Result.
-// Contract: .refactor/COMPONENT_CONTRACT.md revision component-r1.
+// Contract: docs/module-api.md revision component-r1.
 
 #include "core/component/buffer.h"
 #include "core/component/object.h"

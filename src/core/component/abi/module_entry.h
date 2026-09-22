@@ -3,7 +3,7 @@
 
 // The one exported C symbol of a backend module, and the handshake it performs
 // before anything else happens.
-// Contract: .refactor/P4_ABI_CONTRACT.md revision module-r1.
+// Contract: docs/module-api.md revision module-r1.
 //
 // WHY THE HANDSHAKE IS A C FUNCTION WITH POD ARGUMENTS
 //   It is the only thing in the boundary that runs before the two sides have

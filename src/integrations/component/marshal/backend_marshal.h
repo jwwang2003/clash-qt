@@ -100,9 +100,10 @@ cb::Provider readProvider(ByteReader &in);
 void writeLogEntry(ByteWriter &out, const cb::LogEntry &entry);
 
 /// Field-by-field, for the general encoding. Telemetry snapshots do NOT use
-/// this - they use the packed layout in connection_snapshot.h, which is the
-/// whole point of D8's second constraint. This exists so a single connection
-/// can be described in an ordinary argument block.
+/// this - they use the packed layout in connection_snapshot.h, which is what
+/// keeps a hundreds-of-entries snapshot off the per-string allocation path.
+/// This exists so a single connection can be described in an ordinary argument
+/// block.
 void writeConnection(ByteWriter &out, const cb::Connection &connection);
 cb::LogEntry readLogEntry(ByteReader &in);
 cb::Connection readConnection(ByteReader &in);

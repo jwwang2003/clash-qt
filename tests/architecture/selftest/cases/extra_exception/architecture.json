@@ -1,5 +1,5 @@
 {
-  "_about": "R4 ratchet. The named exception still matches and must NOT fail; the second edge must fail with ARCH-R1-FORBIDDEN-EDGE for synth_yaml -> synth_platform.",
+  "_about": "The ratchet. The named exception still matches and must NOT fail; the second edge must fail with FORBIDDEN-EDGE for synth_yaml -> synth_platform.",
   "ignore_external": ["Qt6::Platform"],
   "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
   "modules": {
@@ -12,7 +12,7 @@
   "include_rules": [],
   "exceptions": [
     {
-      "id": "SELFTEST-D2-shaped-edge",
+      "id": "SELFTEST-injected-platform-edge",
       "class": "architecture",
       "kind": "target_edge",
       "from": "synth_impl",

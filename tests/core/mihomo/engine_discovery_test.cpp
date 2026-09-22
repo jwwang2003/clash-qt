@@ -1,5 +1,5 @@
-// G1 resolution: which ENGINE this process supervises, and which CONTROLLER it
-// attaches to. One file, because they are the same defect twice.
+// Which ENGINE this process supervises, and which CONTROLLER it attaches to.
+// One file, because they are the same defect twice.
 //
 // THE ENGINE HALF. CoreProcess::discoverBinary() used to fall through from the
 // staged path to QStandardPaths::findExecutable("mihomo") and then to a
@@ -128,7 +128,8 @@ class EngineDiscoveryTest : public QObject {
         QVERIFY(reported.contains(sha256Of(engine).left(12)));
 
         // A manifest that describes a DIFFERENT artifact must not lend it its
-        // provenance: that is precisely the claim G1 forbids implying.
+        // provenance: reporting a provenance the binary does not have is exactly
+        // the claim this project may not imply.
         writeProvenance(engine, QString(64, QLatin1Char('a')));
         const QString mismatched = core::engineProvenance(engine);
         QVERIFY2(!mismatched.contains(QStringLiteral("v1.19.31")),

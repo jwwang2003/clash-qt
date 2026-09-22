@@ -2,7 +2,7 @@
 // last-good recovery, and the fact that presets reach the generated runtime
 // configuration through the same composer the preview uses.
 //
-// Contract: config-r1, .refactor/P4_CONFIG_CONTRACT.md.
+// Contract: config-r1.
 #include <QtTest>
 #include <QDir>
 #include <QFile>

@@ -1,4 +1,4 @@
-# Acceptance suite for app/backup (MOD-LIFECYCLE).
+# Acceptance suite for app/backup.
 #
 # Registration: tests/CMakeLists.txt adds
 #   add_subdirectory(app/backup)

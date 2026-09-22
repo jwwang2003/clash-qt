@@ -3,10 +3,10 @@
 
 // The configuration side of a reload, as RuntimeCoordinator needs it.
 //
-// PRE-ARCH section 4b group B is a conversation between three parties: the
-// backend (what the managed core is doing), the profile store (what the user
-// selected and where its runtime configuration lands) and a timer. Only the
-// first is published as a contract. This port is the second, reduced to the
+// A reload is a conversation between three parties: the backend (what the
+// managed core is doing), the profile store (what the user selected and where
+// its runtime configuration lands) and a timer. Only the first is published as
+// a contract. This port is the second, reduced to the
 // three questions main.cpp actually asks of core::ProfileStore:
 //
 //   main.cpp:144  profiles->currentUid().isEmpty()   -> currentSelection()
@@ -16,8 +16,7 @@
 // It is a port, not a second contract: ProfileStoreConfigSource is the only
 // production implementation and it forwards verbatim. It exists so that the
 // reload gate, the debounce and the snapshot retention rules can be tested
-// without a real profile store generating real YAML on a real thread pool -
-// CFG-CORE owns that object and is reshaping it in parallel.
+// without a real profile store generating real YAML on a real thread pool.
 //
 // The runtime configuration itself is delivered back asynchronously, through
 // RuntimeCoordinator::onRuntimeConfigReady(): a ProfileStore signal in

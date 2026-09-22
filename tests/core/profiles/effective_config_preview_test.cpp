@@ -3,7 +3,7 @@
 //
 // Three properties, and they are the whole feature: it writes nothing, it
 // blocks nothing, and a superseded answer is never delivered. Contract:
-// config-r1, .refactor/P4_CONFIG_CONTRACT.md.
+// config-r1.
 #include <QtTest>
 #include <QDir>
 #include <QDirIterator>

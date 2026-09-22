@@ -3,9 +3,8 @@
 
 // The SHARED MihomoBackend contract: one set of assertions, four
 // implementations.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4 section 10,
-// amendments A1-A4 and B1-B4; .refactor/P4_ABI_CONTRACT.md revision module-r1;
-// decision D8.
+// Contract: docs/module-api.md, revision backend-r4 section 10, amendments
+// A1-A4 and B1-B4, and revision module-r1.
 //
 // Every function below takes a BackendDriver & and reaches the implementation
 // only through core::backend::MihomoBackend &. None of them names

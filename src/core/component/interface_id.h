@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_COMPONENT_INTERFACE_ID_H
 
 // The 128-bit identifier that names an interface, a class or a module.
-// Contract: .refactor/COMPONENT_CONTRACT.md revision component-r1.
+// Contract: docs/module-api.md revision component-r1.
 //
 // An id names an IMMUTABLE vtable: once published, method order and signatures
 // never change. An incompatible interface gets a new id; both may be exposed

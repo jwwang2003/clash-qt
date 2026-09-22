@@ -2,20 +2,19 @@
 
 // The privileged-execution reverse seam, module side.
 //
-// DECISION D2 AND module-r1, TOGETHER. D2 made privileged execution an
-// interface the component publishes and the composition root implements, so
-// that no platform type appears on the component's surface. module-r1 keeps
-// that arrangement across the binary boundary: "Privileged execution stays
-// host-owned. Marshal the existing injected service through an ABI-safe reverse
-// interface; one connection only, no default real helper construction in
-// module."
+// Privileged execution is an interface the component publishes and the
+// composition root implements, so that no platform type appears on the
+// component's surface. module-r1 keeps that arrangement across the binary
+// boundary: privileged execution stays host-owned, the injected service is
+// marshalled through this ABI-safe reverse interface, exactly one connection
+// exists, and the module never constructs a real helper of its own.
 //
 // So this class is a core::PrivilegedCoreService that owns NOTHING. Every query
 // and every command becomes one IBackendHost::Invoke; the real
 // PrivilegedServiceClient, its socket and its lease stay in the host process's
 // composition root, exactly where they are today. A module that constructed its
-// own client would be the second live connection to one privileged socket that
-// decision D3 was written to remove.
+// own client would be a second live connection to one privileged socket, which
+// is the correctness hazard this arrangement exists to prevent.
 
 #include <QJsonObject>
 #include <QString>

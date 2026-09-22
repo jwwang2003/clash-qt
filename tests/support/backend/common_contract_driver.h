@@ -2,8 +2,7 @@
 #define CLASHQT_TESTS_SUPPORT_BACKEND_COMMON_CONTRACT_DRIVER_H
 
 // Fixture adapters for the SHARED backend contract suite.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4 section 10,
-// .refactor/P4_ABI_CONTRACT.md revision module-r1, decision D8.
+// Contract: docs/module-api.md, revisions backend-r4 section 10 and module-r1.
 //
 // WHY THIS EXISTS
 //   backend-r4 section 10 and module-r1 both require ONE set of assertions to

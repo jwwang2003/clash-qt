@@ -1,8 +1,7 @@
 // RuntimeCoordinator: reload scheduling and snapshot retention.
 //
-// Acceptance source: PRE-ARCH section 4b, groups B and C, which lists with
-// file:line every behaviour that had to survive the move out of src/main.cpp.
-// Each case below names the inventory point it protects.
+// Every case below pins one reload-scheduling or snapshot-retention behaviour
+// that had to survive the move out of src/main.cpp, and names it.
 //
 // Nothing here sleeps. The backend is the deterministic fake: every
 // asynchronous step is a gate that is held, observed, then released, and the

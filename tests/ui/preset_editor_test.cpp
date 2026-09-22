@@ -2,7 +2,7 @@
 // controls a user actually operates and asserted against what the store
 // persists -- never against the widget's own copy of the document.
 //
-// Two properties the suite exists for, both from P4_CONFIG_CONTRACT config-r1:
+// Two properties the suite exists for, both stated by config-r1:
 //
 //  * A preview is a pure read. Composing must not write a runtime file, seed
 //    anything or launch the engine, so every preview case ends by asserting

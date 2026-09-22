@@ -5,7 +5,7 @@
 // to live in ui/backup_page.cpp, so that shutdown no longer depends on a page
 // existing.
 //
-// Inventory: PRE-ARCH section 4c. What moved here, and nothing else:
+// What moved here, and nothing else:
 //   backup_page.cpp:28       construction with ProfileStore::dataDir()
 //   backup_page.cpp:30       requirePreparation(true)
 //   backup_page.cpp:137-140  the maintenance gate, including the "shuttingDown"

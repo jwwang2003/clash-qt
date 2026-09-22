@@ -1,6 +1,4 @@
-// W01 - First launch.
-//
-// docs/TEST_STRATEGY.md, "Complete workflows":
+// First launch - a complete journey.
 //
 //   Exercise  Isolated empty workspace -> import local profile -> start ->
 //             inspect status -> stop -> quit -> reopen
@@ -36,10 +34,11 @@
 //   "the application remains usable"  the reopened graph starts a core again
 //       and quits again, and the quit gate reports no blocking reason.
 //
-// THE ENGINE IS LOADED, NOT LINKED. Since decision D8 this journey drives
-// clashqt::integration::ModuleBackend over a session
-// clashqt::integration::ModuleLoader created from CLASH_QT_MODULE_PATH - the
-// same two classes src/main.cpp uses, against the same shipping module id.
+// THE ENGINE IS LOADED, NOT LINKED. The supervisor ships as a separately built
+// shared library, so this journey drives clashqt::integration::ModuleBackend
+// over a session clashqt::integration::ModuleLoader created from
+// CLASH_QT_MODULE_PATH - the same two classes src/main.cpp uses, against the
+// same shipping module id.
 // Nothing in this file names core/mihomo/** any more, and there is no
 // setTimings(): the readiness deadline this journey waits out below is the 10
 // seconds the module PUBLISHES through timings(), not a shrunken test value.
@@ -89,13 +88,13 @@ void scriptController(LoopbackServer &server) {
 
 }  // namespace
 
-class W01FirstLaunchTest : public QObject {
+class FirstLaunchTest : public QObject {
     Q_OBJECT
 
   private slots:
 
     void init() {
-        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("w01"));
+        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("first-launch"));
         const QString failure = testsupport::preferenceIsolationFailure(*environment_);
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
     }
@@ -147,9 +146,11 @@ class W01FirstLaunchTest : public QObject {
         wf::ControllerRelay relay;
         if (!relay.listen(controller.port())) {
             QSKIP(qPrintable(QStringLiteral(
-                "W01 needs the generated controller address 127.0.0.1:%1, which is in use: %2. "
-                "A running clash-qt core is the usual reason. Not asserted rather than asserted "
-                "weakly.").arg(wf::kGeneratedControllerPort).arg(relay.errorString())));
+                "This journey needs the generated controller address 127.0.0.1:%1, which is in "
+                "use: %2. A running clash-qt core is the usual reason. Not asserted rather "
+                "than asserted weakly.")
+                             .arg(wf::kGeneratedControllerPort)
+                             .arg(relay.errorString())));
         }
 
         // Held from the start, because the readiness claim below needs the FIRST
@@ -392,7 +393,7 @@ class W01FirstLaunchTest : public QObject {
 
         wf::ControllerRelay relay;
         if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral("W01 control needs 127.0.0.1:%1: %2")
+            QSKIP(qPrintable(QStringLiteral("The control case needs 127.0.0.1:%1: %2")
                                  .arg(wf::kGeneratedControllerPort)
                                  .arg(relay.errorString())));
         }
@@ -468,7 +469,7 @@ class W01FirstLaunchTest : public QObject {
 
   private:
     static QByteArray profileBody() {
-        return wf::directOnlyProfile(0, QStringLiteral("w01-home"));
+        return wf::directOnlyProfile(0, QStringLiteral("first-launch-home"));
     }
 
     static QStringList snapshotsIn(const QString &dataDir) {
@@ -481,5 +482,5 @@ class W01FirstLaunchTest : public QObject {
     QString profileUid_;
 };
 
-QTEST_GUILESS_MAIN(W01FirstLaunchTest)
-#include "w01_first_launch_test.moc"
+QTEST_GUILESS_MAIN(FirstLaunchTest)
+#include "first_launch_test.moc"

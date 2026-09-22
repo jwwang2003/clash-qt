@@ -11,7 +11,7 @@
 // which found the store only because ui/backup_page.cpp:28 parents it to a page
 // that MainWindow happens to build eagerly. A lazily constructed BackupPage
 // would have returned an empty list and shutdown would have silently skipped
-// both the backup cancel and the backup busy gate (PRE-ARCH section 4c). Here
+// both the backup cancel and the backup busy gate. Here
 // the store exists because this object exists, and the page is handed one.
 
 #include <QObject>

@@ -1,5 +1,5 @@
 {
-  "_about": "Variant of the ALLOWED case with synth_telemetry deleted from the declaration. A library nobody declared must not go unchecked. Expected: UNDECLARED-TARGET.",
+  "_about": "Variant of the ALLOWED case with Qt6::Qml removed from synth_config's 'external' allowlist while the target still links it. An external dependency that is not forbidden is still not free: it has to be declared, or the allowlist only ever documents what someone remembered. Expected: UNDECLARED-EXTERNAL.",
   "ignore_external": [
     "Qt6::Platform"
   ],
@@ -33,14 +33,21 @@
         "synth_types",
         "synth_yaml"
       ],
-      "external": [
-        "Qt6::Qml"
-      ],
+      "external": [],
       "transitive_external": [
         "Qt6::Core",
         "Qt6::Qml",
         "Qt6::QmlIntegration",
         "Qt6::Network"
+      ]
+    },
+    "synth_telemetry": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
       ]
     },
     "synth_platform": {
@@ -74,7 +81,8 @@
     "synth_app": {
       "deps": [
         "synth_impl",
-        "synth_config"
+        "synth_config",
+        "synth_telemetry"
       ]
     }
   },

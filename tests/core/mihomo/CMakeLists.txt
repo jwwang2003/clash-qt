@@ -1,4 +1,4 @@
-# The real MihomoBackend (MOD-CORE).
+# The real MihomoBackend.
 #
 # backend-real-contract runs the backend-r3 acceptance set against the real
 # backend adapter, with real child processes and a real loopback controller but a

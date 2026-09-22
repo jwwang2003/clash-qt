@@ -1,4 +1,4 @@
-# FORBIDDEN graph for R3. A backend module links Qt6::Widgets directly.
+# FORBIDDEN graph for the external-dependency rule. A backend module links Qt6::Widgets directly.
 # The same project ALSO contains the two allowed near-misses -- Qt6::Gui in a
 # platform adapter and Qt6::Qml in a core library -- so this case fails on
 # exactly one module and proves the rule is not "anything GUI-ish".

@@ -2,11 +2,11 @@
 #define CLASHQT_CORE_COMPONENT_COMPONENT_MODULE_H
 
 // IComponentModule: the queryable root a loaded module hands back.
-// Contract: .refactor/COMPONENT_CONTRACT.md revision component-r1.
+// Contract: docs/module-api.md revision component-r1.
 //
-// The exported C factory entry and the host/module handshake belong to
-// COMPONENT-ABI. r1 defines only the interface that entry will return; nothing
-// here loads, unloads or looks up a shared library.
+// The exported C factory entry and the host/module handshake belong to the
+// module ABI layer. component-r1 defines only the interface that entry will
+// return; nothing here loads, unloads or looks up a shared library.
 
 #include <cstdint>
 

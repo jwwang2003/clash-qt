@@ -8,7 +8,10 @@ arch_check.py from quietly degrading into a checker that passes because it
 looks at nothing.
 
 Each case declares the exact violation codes it expects, so a case cannot pass
-by failing for the wrong reason.
+by failing for the wrong reason.  Those codes are the ones arch_check.py emits:
+rename a code there without renaming it here and the case stops asserting
+anything about the rule it is named for, which is the one failure mode these
+self-tests exist to rule out.
 
     python3 run_selftests.py [--work-dir DIR] [--filter NAME] [--verbose]
 """
@@ -31,93 +34,124 @@ CHECKER = HERE.parent / "arch_check.py"
 # --------------------------------------------------------------------------
 GRAPH_CASES = [
     {
-        "name": "R0-allowed-graph",
+        "name": "allowed-graph",
         "project": "allowed",
         "graph": "allowed/architecture.json",
         "expect": [],
-        "why": "The reference shape, including Qt Gui in a platform adapter and "
-               "Qt Qml in a core library (D4). Must pass.",
+        "why": "The reference shape. Qt Gui in a platform adapter and Qt Qml in "
+               "a core library are both allowed -- only Widgets, Quick and "
+               "Graphs are desktop UI. Must pass.",
     },
     {
-        "name": "R1-forbidden-edge",
+        "name": "forbidden-edge",
         "project": "forbidden_edge",
         "graph": "forbidden_edge/architecture.json",
-        "expect": ["ARCH-R1-FORBIDDEN-EDGE"],
+        "expect": ["FORBIDDEN-EDGE"],
         "expect_subject": "synth_telemetry -> synth_impl",
         "why": "A leaf module linking up into an implementation library.",
     },
     {
-        "name": "R2-cycle",
+        "name": "dependency-cycle",
         "project": "cycle",
         "graph": "cycle/architecture.json",
-        "expect": ["ARCH-R2-CYCLE"],
+        "expect": ["DEPENDENCY-CYCLE"],
         "why": "CMake configures a static-library cycle without complaint.",
     },
     {
-        "name": "R3-forbidden-external",
+        "name": "forbidden-external",
         "project": "forbidden_qt",
         "graph": "forbidden_qt/architecture.json",
-        "expect": ["ARCH-R3-FORBIDDEN-EXTERNAL"],
+        "expect": ["FORBIDDEN-EXTERNAL"],
         "expect_subject": "synth_core -> Qt6::Widgets",
         "forbid_subject": ["synth_platform", "synth_config"],
         "why": "Widgets in a backend module fails; Gui and Qml in the same "
                "project do not.",
     },
     {
-        "name": "R3-transitive-creep",
+        "name": "transitive-external-creep",
         "project": "umbrella_creep",
         "graph": "umbrella_creep/architecture.json",
-        "expect": ["ARCH-R3-FORBIDDEN-EXTERNAL", "ARCH-R3-TRANSITIVE-EXTERNAL-CREEP"],
+        "expect": ["FORBIDDEN-EXTERNAL", "TRANSITIVE-EXTERNAL-CREEP"],
         "expect_subject": "synth_telemetry ~> Qt6::Widgets",
         "why": "Nothing links Widgets directly; it arrives through an umbrella "
                "target. Only the evaluated closure shows it.",
     },
     {
-        "name": "R4-additional-exception",
+        "name": "additional-exception-not-free",
         "project": "extra_exception",
         "graph": "extra_exception/architecture.json",
-        "expect": ["ARCH-R1-FORBIDDEN-EDGE"],
+        "expect": ["FORBIDDEN-EDGE"],
         "expect_subject": "synth_yaml -> synth_platform",
         "forbid_subject": ["synth_impl -> synth_platform"],
         "why": "One baselined edge must not make the next one free.",
     },
     {
-        "name": "R4-stale-exception",
+        "name": "undeclared-external",
+        "project": "allowed",
+        "graph": "variants/undeclared_external.json",
+        "expect": ["UNDECLARED-EXTERNAL"],
+        "expect_subject": "synth_config -> Qt6::Qml",
+        "why": "An external that is not forbidden is still not free. Only the "
+               "forbidden ones have a case of their own, so without this one the "
+               "allowlist half of the rule could stop working unnoticed.",
+    },
+    {
+        "name": "module-depends-on-non-module",
+        "project": "allowed",
+        "graph": "variants/non_module_dep.json",
+        "expect": ["MODULE-DEPENDS-ON-NON-MODULE"],
+        "expect_subject": "synth_impl -> synth_platform",
+        "why": "A library depending on a target that is not a module inverts the "
+               "layering. The forbidden-edge rule cannot report it, because that "
+               "arm only compares modules against modules.",
+    },
+    {
+        "name": "undeclared-consumer",
+        "project": "allowed",
+        "graph": "variants/undeclared_consumer.json",
+        "expect": ["UNDECLARED-CONSUMER"],
+        "expect_subject": "synth_app -> synth_impl",
+        "why": "The consumer allowlist is all that stands between a "
+               "component-private module and anything that links it, so a "
+               "consumer reaching past its own declaration must fail.",
+    },
+    {
+        "name": "stale-exception",
         "project": "allowed",
         "graph": "variants/stale_exception.json",
-        "expect": ["ARCH-R4-STALE-EXCEPTION"],
+        "expect": ["STALE-EXCEPTION"],
         "why": "A baseline entry that matches nothing must fail, not linger.",
     },
     {
-        "name": "R4-missing-target",
+        "name": "missing-target",
         "project": "allowed",
         "graph": "variants/missing_target.json",
-        "expect": ["ARCH-R4-DECLARED-TARGET-MISSING"],
+        "expect": ["DECLARED-TARGET-MISSING"],
         "why": "A declared module that is absent must fail by default, so the "
                "checker cannot be green because nothing exists yet.",
     },
     {
-        "name": "R4-missing-target-allowed",
+        "name": "missing-target-allowed",
         "project": "allowed",
         "graph": "variants/missing_target.json",
         "args": ["--allow-missing-targets"],
         "expect": [],
-        "expect_stdout": "SKIPPED  ARCH-R4-DECLARED-TARGET-MISSING",
+        "expect_stdout": "SKIPPED  DECLARED-TARGET-MISSING",
         "why": "With the migration flag it passes, but says out loud what it "
                "did not check.",
     },
     {
-        "name": "R4-undeclared-target",
+        "name": "undeclared-target",
         "project": "allowed",
         "graph": "variants/undeclared_target.json",
-        "expect": ["ARCH-R4-UNDECLARED-TARGET"],
+        "expect": ["UNDECLARED-TARGET"],
         "why": "A library nobody declared must not slip through unchecked.",
     },
     {
-        "name": "R4-zombie-exception-site",
+        "name": "zombie-exception-site",
         "project": "allowed",
         "graph": "variants/zombie_site.json",
-        "expect": ["ARCH-R4-EXCEPTION-SITE-TARGET-MISSING"],
+        "expect": ["EXCEPTION-SITE-TARGET-MISSING"],
         "expect_subject": "synth_ghost",
         "why": "A dead site inside a LIVE exception must fail. The stale rule "
                "cannot see it, because it excuses any subject missing from the "
@@ -125,7 +159,7 @@ GRAPH_CASES = [
                "from discharged debt and silently understates the ledger.",
     },
     {
-        "name": "R4-site-target-unbuilt",
+        "name": "site-target-unbuilt",
         "project": "allowed",
         "graph": "variants/site_target_unbuilt.json",
         "expect": [],
@@ -134,7 +168,7 @@ GRAPH_CASES = [
                "not a zombie. Deleted and not-built-here must stay distinct.",
     },
     {
-        "name": "R4-sealed-module-honoured",
+        "name": "sealed-module-honoured",
         "project": "sealed_module",
         "graph": "sealed_module/architecture.json",
         "expect": [],
@@ -143,11 +177,11 @@ GRAPH_CASES = [
                "seal would just be a ban on the module existing.",
     },
     {
-        "name": "R4-sealed-module-declared-dep",
+        "name": "sealed-module-declared-dep",
         "project": "sealed_module",
         "graph": "sealed_module/violating_dep.json",
-        "expect": ["ARCH-R4-SEALED-MODULE-DECLARED-DEP",
-                   "ARCH-R4-STALE-EXCEPTION"],
+        "expect": ["SEALED-MODULE-DECLARED-DEP",
+                   "STALE-EXCEPTION"],
         "expect_subject": "synth_app -> synth_impl",
         "why": "The escape hatch: deps is consulted BEFORE exceptions, so one "
                "line of JSON converts tracked debt into permanent "
@@ -155,10 +189,10 @@ GRAPH_CASES = [
                "as discharged. Both halves of that signature must fire.",
     },
     {
-        "name": "R4-sealed-module-unbaselined-link",
+        "name": "sealed-module-unbaselined-link",
         "project": "sealed_module",
         "graph": "sealed_module/violating_link.json",
-        "expect": ["ARCH-R4-SEALED-MODULE-UNBASELINED-LINK"],
+        "expect": ["SEALED-MODULE-UNBASELINED-LINK"],
         "expect_subject": "synth_tool -> synth_impl",
         "forbid_subject": ["synth_probe", "synth_app"],
         "why": "An undeclared executable is invisible to the consumer "
@@ -170,30 +204,32 @@ GRAPH_CASES = [
 
 INCLUDE_CASES = [
     {
-        "name": "R5-includes-allowed",
+        "name": "includes-allowed",
         "src": "include_allowed",
         "graph": "include_allowed/architecture.json",
         "expect": [],
-        "why": "DECISION D4 false-positive guard: QJSEngine/QQmlEngine in core, "
-               "QKeySequence/QGuiApplication in platform, core/types.h shared.",
+        "why": "False-positive guard for the Qt rule: QJSEngine/QQmlEngine in "
+               "core, QKeySequence/QGuiApplication in platform, core/types.h "
+               "shared. Qml is not Quick and Gui is not Widgets; a rule written "
+               "as 'ban anything QML-ish' or 'ban all of Qt Gui' fails here.",
     },
     {
-        "name": "R5-includes-forbidden",
+        "name": "includes-forbidden",
         "src": "include_forbidden",
         "graph": "include_forbidden/architecture.json",
         "expect": [
-            "ARCH-R5-INCLUDE-IR-NO-UPWARD-INCLUDE",
-            "ARCH-R5-INCLUDE-IR-NO-DESKTOP-QT",
-            "ARCH-R5-INCLUDE-IR-PLATFORM-NOT-CORE",
-            "ARCH-R5-INCLUDE-IR-COMPONENT-PRIVATE",
+            "INCLUDE-NO-UPWARD-INCLUDE",
+            "INCLUDE-NO-DESKTOP-QT",
+            "INCLUDE-PLATFORM-NOT-CORE",
+            "INCLUDE-COMPONENT-PRIVATE",
         ],
         "why": "One file per rule.",
     },
     {
-        "name": "R5-stale-include-baseline",
+        "name": "stale-include-baseline",
         "src": "include_stale",
         "graph": "include_stale/architecture.json",
-        "expect": ["ARCH-R5-STALE-INCLUDE-EXCEPTION"],
+        "expect": ["STALE-INCLUDE-EXCEPTION"],
         "why": "A baselined include site that no longer exists must fail.",
     },
 ]
@@ -349,7 +385,7 @@ def main(argv=None):
     for case in INCLUDE_CASES:
         plan.append((case["name"], case.get("why", ""),
                      lambda c=case: run_include_case(c, work, args.verbose)))
-    plan.append(("R6-public-header-probe",
+    plan.append(("public-header-probe",
                  "A published header must compile alone against only its "
                  "module's declared dependencies.",
                  lambda: run_probe_case(work, args.verbose)))

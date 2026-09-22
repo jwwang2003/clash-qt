@@ -1,5 +1,6 @@
-# Test registration. CTest names are preserved exactly from the pre-refactor
-# build; renames are a separate, recorded change.
+# Test registration. A registered name is how a lane is selected, so renaming a
+# test is a change to the suite: tests/README.md's map is updated in the same
+# commit, and the per-suite case counts are compared across it.
 find_package(Qt6 6.9 REQUIRED COMPONENTS Test)
 
 # Helpers shared with the test subdirectories. Defined before any
@@ -75,9 +76,10 @@ if(CLASH_QT_BUILD_APP)
     add_test(NAME routing-controls COMMAND routing-controls-tests)
 
     # The privileged uninstall guard. It was inert for an entire wave -- read in
-    # three places, written nowhere -- after D3 removed its only producer, which
-    # meant the helper could be uninstalled while another session's core ran
-    # under it. These cases fail if it goes inert again.
+    # three places, written nowhere -- after the page's second privileged-service
+    # client was removed as a correctness fix and took the flag's only producer
+    # with it. The helper could then be uninstalled while another session's core
+    # ran under it. These cases fail if the flag goes inert again.
     qt_add_executable(service-settings-tests ui/service_settings_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/pages/settings/service_settings.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/widgets/settings_section.cpp"
@@ -90,8 +92,8 @@ if(CLASH_QT_BUILD_APP)
 
     # Injects BrowserOperations through DashboardButton's constructor, so it links
     # the real platform library. clash_platform is named explicitly rather than
-    # relied on transitively. It used to arrive through clash_mihomo_impl's
-    # PUBLIC D2 edge, which P3 discharged.
+    # relied on transitively: it used to arrive through a public dependency of
+    # clash_mihomo_impl that no longer exists.
     qt_add_executable(dashboard-async-tests ui/dashboard_async_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/shell/dashboard_button.cpp")
     target_link_libraries(dashboard-async-tests PRIVATE Qt6::Test Qt6::Widgets
@@ -119,7 +121,7 @@ target_link_libraries(preferences-tests PRIVATE Qt6::Test clash_preferences clas
 target_compile_definitions(preferences-tests PRIVATE CLASH_QT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_test(NAME preferences COMMAND preferences-tests)
 
-# Shared test infrastructure (BASE-FIXTURE). The fake core is a compiled helper,
+# Shared test infrastructure. The fake core is a compiled helper,
 # not a shell script or an interpreter invocation, so the process tests are not
 # POSIX-only and cannot silently skip on Windows.
 add_executable(clash-qt-fake-core fixtures/fake_core_main.cpp)
@@ -356,7 +358,7 @@ clash_qt_label(backend-contract    unit contract backend)
 # CLASH_QT_DATA_DIR is unset -- correct for a real user, dangerous for a test.
 # Isolation was previously opt-in per test via ScopedEnvironment, so any new
 # suite that forgot it wrote into ~/Library/Preferences. That happened: a new
-# app-layer suite modified the real store during P3.
+# app-layer suite modified the real store.
 #
 # Every registered test now gets its own data directory by default. A suite that
 # also uses ScopedEnvironment simply overrides this with something narrower. The
@@ -419,7 +421,7 @@ foreach(name home-page traffic-graph)
 endforeach()
 clash_qt_label(service-settings    ui pages service)
 
-# P4 composition, persistence and side-effect-free preview.
+# Composition, persistence and side-effect-free preview.
 add_subdirectory(core/config)
 add_subdirectory(core/profiles)
 

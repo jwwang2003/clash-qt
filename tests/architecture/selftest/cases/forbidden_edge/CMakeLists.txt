@@ -1,4 +1,4 @@
-# FORBIDDEN graph for R1: a low-level module links a higher-level one.
+# FORBIDDEN graph for the module-edge rule: a low-level module links a higher-level one.
 # Identical to the allowed case except for the one extra edge below.
 cmake_minimum_required(VERSION 3.21)
 project(arch_selftest_forbidden_edge LANGUAGES CXX)

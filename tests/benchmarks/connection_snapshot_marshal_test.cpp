@@ -1,9 +1,10 @@
-// The measurement decision D8 made a precondition of its own claim.
+// The measurement that the packed telemetry layout was made conditional on.
 //
-//   "Telemetry marshalling is measured, not assumed. A connections snapshot can
-//    be hundreds of entries; naive per-string allocation is the one plausible
-//    regression. One buffer per snapshot with fixed-layout structs indexing into
-//    it, and a case in the benchmark lane before the claim is made."
+// Telemetry marshalling is measured, not assumed. A connections snapshot can be
+// hundreds of entries, and naive per-string allocation is the one plausible
+// regression the module boundary could introduce; the design answer is one
+// buffer per snapshot with fixed-layout structs indexing into it, and that
+// answer does not get claimed until the benchmark lane has a number for it.
 //
 // So this suite does two things, and the second is the one that matters:
 //
@@ -91,8 +92,8 @@ QVector<cb::Connection> makeSnapshot(int count) {
 /// The alternative the packed layout exists instead of: every field its own
 /// length-prefixed string, decoded into a fresh QString each time. This is not
 /// a straw man - it is exactly what backend_marshal.h does for every other
-/// payload, and it is what a snapshot would use if D8's second constraint had
-/// not been written.
+/// payload, and it is what a snapshot would use if the packed layout had not
+/// been required.
 std::vector<std::uint8_t> packNaively(cb::Span<cb::Connection> connections, quint64 uploadTotal,
                                       quint64 downloadTotal) {
     marshal::ByteWriter out;
@@ -288,8 +289,9 @@ void ConnectionSnapshotMarshalTest::comparePackedAndNaiveAtSnapshotScale() {
     qInfo("500-row snapshot, %d round trips: packed %.2f ms (%zu B), naive %.2f ms (%zu B)",
           kRounds, packedNs / 1e6, packedBytes / kRounds, naiveNs / 1e6, naiveBytes / kRounds);
 
-    // D8 requires a measured cost, not a universal speedup over this particular
-    // comparator. Debug and Release have different ratios; record both honestly.
+    // What was promised is a MEASURED cost, not a universal speedup over this
+    // particular comparator. Debug and Release have different ratios; record
+    // both honestly.
     // Correctness and buffer bounds are hard assertions in the routine lane.
 #ifdef NDEBUG
     constexpr auto buildMode = "Release";

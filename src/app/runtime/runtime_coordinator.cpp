@@ -122,7 +122,7 @@ void RuntimeCoordinator::prune(bool final) {
     // validating candidate's, a pending launch's, and the configuration of
     // every cancelled validation child that has not exited yet. Caching it, or
     // reconstructing it from state the coordinator can see, reintroduces the
-    // file-deletion race backend-r2 section 5.1 names.
+    // file-deletion race the contract's section 5.1 names.
     const QStringList active = backend_.activeConfigPaths();
     QStringList obsolete;
     for (auto it = snapshots_.begin(); it != snapshots_.end();) {
@@ -175,9 +175,9 @@ void RuntimeCoordinator::endpointChanged(cb::Generation generation, const cb::En
 }
 
 bool RuntimeCoordinator::admit(const cb::Completion &completion) noexcept {
-    // backend-r2 amendment A2: the backend marks what an abort invalidated,
-    // because a completion queued before the invalidating event cannot be
-    // recognised from its generation alone.
+    // The backend MARKS what an abort invalidated, because a completion queued
+    // before the invalidating event cannot be recognised from its generation
+    // alone.
     if (completion.status == cb::CompletionStatus::Superseded) return false;
     if (cb::isSuperseded(completion.generation, lastObserved_)) return false;
     observe(completion.generation);

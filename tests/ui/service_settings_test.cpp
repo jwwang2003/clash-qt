@@ -6,10 +6,11 @@
 // gates the uninstall, the `available` predicate behind Install/Repair, Remove
 // and the mode checkbox, and the notice that explains why they are inert.
 //
-// Decision D3 removed this page's second platform::PrivilegedServiceClient,
-// which was the ONLY producer of that flag, and left all three consumers in
-// place. The flag was initialised false and written nowhere, so the guard was
-// permanently open: the privileged helper could be uninstalled out from under a
+// This page's second platform::PrivilegedServiceClient was removed as a
+// correctness fix - two live connections to one privileged socket - but it was
+// the ONLY producer of that flag, and all three consumers stayed in place. The
+// flag was initialised false and written nowhere, so the guard was permanently
+// open: the privileged helper could be uninstalled out from under a
 // core another session was running. Nothing failed, because nothing asserted it.
 //
 // So these cases assert the flag's EFFECT at each of the three sites, driven

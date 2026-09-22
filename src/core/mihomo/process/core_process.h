@@ -42,7 +42,7 @@ enum class CoreFailure : quint8 {
 };
 
 /// Readiness and termination budget. The values are the backend contract's
-/// (BACKEND_CONTRACT.md section 3) and are what the defaults below hold; they are
+/// (docs/module-api.md section 3) and are what the defaults below hold; they are
 /// instance state rather than file-scope constants so that a test can observe a
 /// silence-based deadline being refreshed without waiting ten real seconds, and
 /// so that BackendCapabilities::timings() can report the backend's REAL budget
@@ -65,7 +65,8 @@ class CoreProcess : public QObject, private PrivilegedCoreServiceListener {
     Q_OBJECT
 
 public:
-    /// `service` is the privileged-execution seam (DECISION D2). Null means this
+    /// `service` is the privileged-execution seam, an interface this component
+    /// owns rather than a platform type. Null means this
     /// component was given no privileged service, and service mode is then
     /// REFUSED rather than silently selected. The composition root adapts
     /// platform::PrivilegedServiceClient onto the interface; the platform type is
@@ -73,7 +74,7 @@ public:
     explicit CoreProcess(QObject *parent = nullptr, PrivilegedCoreService *service = nullptr);
     ~CoreProcess() override;
 
-    /// The MANAGED engine path, or empty. G1: the staged engine (or the local
+    /// The MANAGED engine path, or empty: the staged engine (or the local
     /// build $CLASH_QT_CORE_BINARY names) and nothing else. It never returns an
     /// executable found on PATH or belonging to another Clash installation -
     /// those are offered by core::externalEngineCandidates() as an explicit,
@@ -113,8 +114,8 @@ public:
     CoreFailure lastFailure() const;
     /// Asks the privileged service for its status. The answer arrives on
     /// serviceStatusReceived(). Published so a consumer does not open a SECOND
-    /// connection to the one privileged socket (DECISION D3): two live
-    /// connections to it is a correctness hazard, not a layering complaint.
+    /// connection to the one privileged socket: two live connections to it is a
+    /// correctness hazard, not a layering complaint.
     void requestServiceStatus();
     /// Controller the running core listens on, parsed from the config it was
     /// launched with.
@@ -124,14 +125,14 @@ public:
     /// How many readiness-probe completions reached this object AFTER the probe
     /// that produced them was cancelled.
     ///
-    /// BACKEND_CONTRACT.md section 5.2 requires the probe to disconnect its
+    /// docs/module-api.md section 5.2 requires the probe to disconnect its
     /// signals BEFORE aborting, precisely so an abort cannot deliver a
     /// completion into a torn-down handler - QNetworkReply::abort() emits
     /// finished() synchronously. Without this counter that ordering is
     /// unobservable from outside: the handler's own `probeReply_ != reply` guard
     /// swallows the late completion, so inverting the two statements changes
-    /// nothing a test can see and the acceptance bullet passes vacuously
-    /// (backend-r3, "known weak coverage"). It must always read 0.
+    /// nothing a test can see and the acceptance bullet passes vacuously.
+    /// It must always read 0.
     int probeCompletionsAfterCancel() const;
 
     /// Runnables this object has SUBMITTED to the pool it owns and has not yet
@@ -159,10 +160,11 @@ signals:
     /// Terminal response to stop(): false means lease cleanup was requested but
     /// service disconnect prevented confirmation that the privileged child exited.
     void stopFinished(bool confirmed, const QString &error);
-    /// G1: whatever engine a launch resolved is reported, so provenance can never
+    /// Whatever engine a launch resolved is reported, so provenance can never
     /// be implied. Emitted once per start(), before the child is launched.
     void engineResolved(const QString &path, const QString &label, const QString &provenance);
-    /// Re-published from the injected privileged service (DECISION D3).
+    /// Re-published from the injected privileged service, so no consumer has to
+    /// open a second connection of its own.
     void serviceStatusReceived(const QJsonObject &status);
     void serviceConnectedChanged(bool connected);
 

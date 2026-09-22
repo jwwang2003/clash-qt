@@ -399,9 +399,9 @@ cb::BackendTimings readTimings(ByteReader &in) {
 void writePrivilegedServiceStatus(ByteWriter &out, const cb::PrivilegedServiceStatus &status) {
     out.u8(static_cast<std::uint8_t>(status.state));
     out.text(status.version);
-    // backend-r4 C1. The field whose absence left an uninstall guard inert for
-    // a whole wave; it crosses the boundary like any other, and the ABI suite
-    // asserts it does.
+    // The field whose absence once left the helper's uninstall guard inert -
+    // read in three places and written by nothing. It crosses the boundary like
+    // any other value, and the ABI suite asserts that it does.
     out.boolean(status.coreRunning);
     writeErrorInfo(out, status.error);
 }

@@ -6,10 +6,9 @@
 // behaviour; the std::function callback became a signal so the coordinator can
 // be connected rather than assigned into.
 //
-// Inventory: PRE-ARCH section 4b group E, lines 34-47 and 177.
-//   "the app must not quit until `approved`, and approval is granted exactly
-//    once, through singleShot(0, quit) (not a direct quit() from inside the
-//    filter)."
+// The rule it enforces: the app must not quit until `approved`, and approval
+// is granted exactly once, through singleShot(0, quit) rather than a direct
+// quit() from inside the filter.
 // The deferral itself lives in ShutdownCoordinator; this class only holds the
 // door shut and reports that someone tried to open it.
 

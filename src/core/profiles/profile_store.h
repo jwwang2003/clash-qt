@@ -63,7 +63,7 @@ public:
     /// the directory itself by calling core::vergeConfigPath(), which made
     /// clash_profiles -- and everything that links it, up to and including the
     /// application -- depend on the component-private engine library for one
-    /// path string (PRE-ARCH edge 1). The composition root already knows where
+    /// path string. The composition root already knows where
     /// the engine keeps its configuration; it says so here.
     ///
     /// Empty is the default and means "do not seed": no file is read, and no
@@ -100,8 +100,8 @@ public:
 
     // -------------------------------------------------------------- presets
     //
-    // Contract revision config-r1, .refactor/P4_CONFIG_CONTRACT.md. The document
-    // shape is {"version":1,"global":[Preset],"profiles":{"uid":[Preset]}}; the
+    // Contract revision config-r1. The document shape is
+    // {"version":1,"global":[Preset],"profiles":{"uid":[Preset]}}; the
     // composer owns its meaning (core/config/config_composer.h) and this owns
     // its persistence.
 

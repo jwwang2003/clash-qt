@@ -2,18 +2,17 @@
 
 // The privileged-execution seam, owned by clash_mihomo_impl.
 //
-// DECISION D2. platform::PrivilegedServiceClient used to appear in CoreProcess's
-// constructor signature, which put a platform type on the component's public
-// surface and forced a PUBLIC clash_mihomo_impl -> clash_platform edge
-// (baselined exception D2-mihomo-impl-links-platform). The client is NOT
-// absorbed into the component: G2 keeps privileged execution a separate,
-// OS-owned service. Instead the component publishes this abstract interface and
-// the composition root adapts the concrete client onto it. That adapter cannot
-// live beside this file: IR-CORE-NOT-PLATFORM forbids src/core/** from
-// including a platform header, and IR-COMPONENT-PRIVATE forbids src/main.cpp
-// from including core/mihomo/**, so the seam needs a published home before the
-// composition root can see it. Until it has one the adapter lives at
-// tests/app/composition/privileged_service_adapter.h - see the worker report.
+// platform::PrivilegedServiceClient used to appear in CoreProcess's constructor
+// signature, which put a platform type on the component's public surface and
+// forced a PUBLIC clash_mihomo_impl -> clash_platform edge. The client is NOT
+// absorbed into the component: privileged execution stays a separate, OS-owned
+// service, so the shipped component is never made responsible for privileged
+// IPC. Instead the component publishes this abstract interface and the
+// composition root adapts the concrete client onto it. That adapter cannot live
+// beside this file, because src/core/** may not include a platform header and
+// src/main.cpp may not include the component-private core/mihomo/** headers;
+// this published seam is what lets the composition root see both sides. The
+// adapter lives at src/app/composition/privileged_service_adapter.h.
 //
 // Deliberately not a QObject: signals are what dragged platform in. Delivery is
 // a plain listener interface, invoked on the owning thread.

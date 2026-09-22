@@ -1,6 +1,4 @@
-// W02 - Subscription update.
-//
-// docs/TEST_STRATEGY.md, "Complete workflows":
+// Subscription update - a complete journey.
 //
 //   Exercise  Import remote subscription (local fixture) -> apply preset and
 //             overrides -> start -> refresh -> reject an invalid refresh ->
@@ -20,8 +18,8 @@
 // LoopbackServer answers the subscription, and an unscripted request is a 501
 // the fixture records as unexpected rather than an invented reply.
 //
-// THE ENGINE IS LOADED, NOT LINKED. Decision D8: the supervisor lives in a
-// separately built shared library, and this journey reaches it through
+// THE ENGINE IS LOADED, NOT LINKED. The supervisor lives in a separately built
+// shared library, and this journey reaches it through
 // clashqt::integration::ModuleLoader and ModuleBackend from
 // CLASH_QT_MODULE_PATH, exactly as src/main.cpp does. Nothing here names
 // core/mihomo/**.
@@ -57,13 +55,14 @@
 // is what the assertions read. Deleting the connection makes the preset take
 // effect only at the next restart, and this case is what notices.
 //
-// THE TWO ARMS. CLASH_QT_W02_REAL_CORE selects between them and they never run
+// THE TWO ARMS. CLASH_QT_SUBSCRIPTION_REAL_CORE selects between them and they
+// never run
 // together, because the fake-core cases need CLASH_QT_FAKE_CORE and the
 // real-core case needs a pinned, source-built engine and the freedom to bind
 // real ports:
-//   * unset (test `w02-subscription-update`): the fixture journeys below, with
+//   * unset (test `subscription-update`): the fixture journeys below, with
 //     the compiled fake core. The real-core case skips and says so.
-//   * =1 (test `w02-real-core`): the pinned engine case only, and it does NOT
+//   * =1 (test `subscription-update-real-core`): the pinned engine case only, and it does NOT
 //     degrade. An absent binary, an absent or unpinned provenance manifest, a
 //     checksum that does not match the executable, or a controller port that is
 //     already taken is a FAILURE that names the gate it leaves open - a
@@ -106,23 +105,26 @@ namespace {
 
 // ---------------------------------------------------------------- the arms
 
-bool realCoreArm() { return qEnvironmentVariable("CLASH_QT_W02_REAL_CORE") == QLatin1String("1"); }
+bool realCoreArm() {
+    return qEnvironmentVariable("CLASH_QT_SUBSCRIPTION_REAL_CORE") == QLatin1String("1");
+}
 
 constexpr auto kFixtureArmSkip =
-    "CLASH_QT_W02_REAL_CORE=1: this run is the pinned-engine arm, which needs real ports and no "
-    "fake core. The fixture journeys run in the `w02-subscription-update` test, and the two are "
+    "CLASH_QT_SUBSCRIPTION_REAL_CORE=1: this run is the pinned-engine arm, which needs real "
+    "ports and no fake core. The fixture journeys run in the `subscription-update` test, and "
+    "the two are "
     "registered separately so neither is silently traded for the other.";
 
-/// The submodule commit the engine MUST be built from
-/// (.refactor/PROGRESS_LEDGER.md, "Recorded source provenance"). Written down
-/// here on purpose: an arm that read the expected commit out of the same
-/// manifest it is checking would accept any engine at all.
+/// The submodule commit the engine MUST be built from. Written down here on
+/// purpose rather than read from the manifest under test: an arm that took the
+/// expected commit out of the same manifest it is checking would accept any
+/// engine at all.
 constexpr auto kPinnedCoreCommit = "ab405bad5beeeac8b003bb01f60f134f6df54471";
 
 // -------------------------------------------------------- the subscription
 
-constexpr auto kSubscriptionPath = "/w02/office.yaml";
-constexpr auto kEditedSubscriptionPath = "/w02/office-moved.yaml";
+constexpr auto kSubscriptionPath = "/subscriptions/office.yaml";
+constexpr auto kEditedSubscriptionPath = "/subscriptions/office-moved.yaml";
 
 /// A `subscription-userinfo` line, spaced the way a provider's is rather than
 /// the way a parser would like it.
@@ -132,7 +134,7 @@ QByteArray quotaHeader(quint64 upload, quint64 download, quint64 total, qint64 e
 }
 
 LoopbackServer::Reply subscriptionReply(const QByteArray &body, const QByteArray &quota,
-                                        const QByteArray &filename = "w02-office") {
+                                        const QByteArray &filename = "office") {
     return LoopbackServer::Reply::document("text/yaml", body)
         .withHeader("subscription-userinfo", quota)
         .withHeader("content-disposition", "attachment; filename=\"" + filename + "\"");
@@ -207,11 +209,11 @@ QJsonObject preset(const char *id, const char *name, const QJsonArray &operation
 /// observable: both write log-level, and the profile-scoped one has to win.
 QJsonObject presetDocumentFor(const QString &uid) {
     const QJsonArray global{
-        preset("w02-global", "House style",
+        preset("house-style", "House style",
                QJsonArray{operation("replace", "/allow-lan", true),
                           operation("replace", "/log-level", QStringLiteral("warning"))})};
     const QJsonArray scoped{
-        preset("w02-office", "Office profile",
+        preset("office", "Office profile",
                QJsonArray{operation("replace", "/log-level", QStringLiteral("debug"))})};
     return QJsonObject{{QStringLiteral("version"), 1},
                        {QStringLiteral("global"), global},
@@ -296,13 +298,13 @@ class ReadyLedger final : public cb::BackendObserver {
 
 }  // namespace
 
-class W02SubscriptionUpdateTest : public QObject {
+class SubscriptionUpdateTest : public QObject {
     Q_OBJECT
 
   private slots:
 
     void init() {
-        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("w02"));
+        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("subscription-update"));
         const QString failure = testsupport::preferenceIsolationFailure(*environment_);
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
     }
@@ -342,7 +344,7 @@ class W02SubscriptionUpdateTest : public QObject {
         const qint64 expireV1 = 2000000000;
         const qint64 expireV2 = 2100000000;
         subscription.route("GET", kSubscriptionPath,
-                           subscriptionReply(body(QStringLiteral("w02-v1")),
+                           subscriptionReply(body(QStringLiteral("office-v1")),
                                              quotaHeader(1024, 2048, 10737418240ULL, expireV1)));
         const QString url = subscription.httpBase() + QLatin1String(kSubscriptionPath);
 
@@ -356,7 +358,7 @@ class W02SubscriptionUpdateTest : public QObject {
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
         enginePath_ = engine.binaryPath();
         QVERIFY(engine.validationSucceeds()
-                    .printsLine(QStringLiteral("[INFO] w02 core up"))
+                    .printsLine(QStringLiteral("[INFO] subscription core up"))
                     .runsForever()
                     .commit());
 
@@ -390,14 +392,14 @@ class W02SubscriptionUpdateTest : public QObject {
                                       "could never be refreshed");
             QCOMPARE(imported.url, url);
             // The name came out of the response header, not the URL.
-            QCOMPARE(imported.name, QStringLiteral("w02-office"));
+            QCOMPARE(imported.name, QStringLiteral("office"));
             // The quota and the expiry came out of `subscription-userinfo`.
             QCOMPARE(imported.subscription.upload, 1024ULL);
             QCOMPARE(imported.subscription.download, 2048ULL);
             QCOMPARE(imported.subscription.total, 10737418240ULL);
             QCOMPARE(imported.subscription.expire, QDateTime::fromSecsSinceEpoch(expireV1));
             // The bytes on disk are the bytes served.
-            QCOMPARE(wf::readTextFile(imported.filePath), body(QStringLiteral("w02-v1")));
+            QCOMPARE(wf::readTextFile(imported.filePath), body(QStringLiteral("office-v1")));
             QCOMPARE(subscription.requestCount("GET", QLatin1String(kSubscriptionPath)), 1);
 
             // ---- 2. the user's own overrides ------------------------------
@@ -424,7 +426,7 @@ class W02SubscriptionUpdateTest : public QObject {
             QCOMPARE(wf::controllerPortOf(launched.last()), wf::kGeneratedControllerPort);
             QCOMPARE(nestedScalar(first, "tun", "enable"), QByteArrayLiteral("false"));
             // ...the subscription's own content came through...
-            QVERIFY2(first.contains("w02-v1"), "the running core was not launched from the "
+            QVERIFY2(first.contains("office-v1"), "the running core was not launched from the "
                                                "subscription that was downloaded");
             // ...and NOTHING preset-shaped has happened yet, because no preset
             // has been saved. This is the control for step 4.
@@ -458,7 +460,7 @@ class W02SubscriptionUpdateTest : public QObject {
             QCOMPARE(topLevelScalar(composed, "mode"), QByteArrayLiteral("global"));
             QCOMPARE(topLevelScalar(composed, "mixed-port"), QByteArrayLiteral("27891"));
             QCOMPARE(wf::controllerPortOf(launched.last()), wf::kGeneratedControllerPort);
-            QVERIFY(composed.contains("w02-v1"));
+            QVERIFY(composed.contains("office-v1"));
             // The configuration the BACKEND says it is running is the one just
             // asserted, not merely the one the coordinator generated.
             QVERIFY2(app->backend->activeConfigPaths().contains(launched.last()),
@@ -484,7 +486,7 @@ class W02SubscriptionUpdateTest : public QObject {
 
             // ---- 5. the subscription changes underneath -------------------
             subscription.route("GET", kSubscriptionPath,
-                               subscriptionReply(body(QStringLiteral("w02-v2")),
+                               subscriptionReply(body(QStringLiteral("office-v2")),
                                                  quotaHeader(4096, 8192, 21474836480ULL, expireV2)));
             QSignalSpy updated(app->profiles.get(), &core::ProfileStore::profileUpdated);
             app->profiles->updateProfile(uid);
@@ -498,7 +500,7 @@ class W02SubscriptionUpdateTest : public QObject {
             QCOMPARE(subscription.requestCount("GET", QLatin1String(kSubscriptionPath)), 2);
 
             const core::Profile refreshed = app->profiles->profiles().first();
-            cachedV2 = body(QStringLiteral("w02-v2"));
+            cachedV2 = body(QStringLiteral("office-v2"));
             QCOMPARE(wf::readTextFile(refreshed.filePath), cachedV2);
             // The new quota replaced the old one rather than being merged with it.
             QCOMPARE(refreshed.subscription.total, 21474836480ULL);
@@ -513,9 +515,9 @@ class W02SubscriptionUpdateTest : public QObject {
             QVERIFY2(wf::waitFor([&app] { return app->backend->state() == cb::CoreState::Running; }),
                      qPrintable(report(*app, controller)));
             const QByteArray afterRefresh = wf::readTextFile(launched.last());
-            QVERIFY2(afterRefresh.contains("w02-v2"),
+            QVERIFY2(afterRefresh.contains("office-v2"),
                      "the refreshed subscription never reached the engine");
-            QVERIFY2(!afterRefresh.contains("w02-v1"),
+            QVERIFY2(!afterRefresh.contains("office-v1"),
                      "the engine is still running the superseded subscription body");
             QCOMPARE(topLevelScalar(afterRefresh, "log-level"), QByteArrayLiteral("debug"));
             QCOMPARE(topLevelScalar(afterRefresh, "allow-lan"), QByteArrayLiteral("true"));
@@ -567,7 +569,7 @@ class W02SubscriptionUpdateTest : public QObject {
             QCOMPARE(reloaded.value(QStringLiteral("global")).toArray().size(), 1);
             QCOMPARE(reloaded.value(QStringLiteral("global")).toArray().at(0).toObject()
                          .value(QStringLiteral("id")).toString(),
-                     QStringLiteral("w02-global"));
+                     QStringLiteral("house-style"));
             const QJsonObject scoped =
                 reloaded.value(QStringLiteral("profiles")).toObject();
             QVERIFY2(scoped.contains(uid), qPrintable(QStringLiteral(
@@ -575,7 +577,7 @@ class W02SubscriptionUpdateTest : public QObject {
                              .arg(QString::fromUtf8(QJsonDocument(reloaded).toJson()))));
             QCOMPARE(scoped.value(uid).toArray().at(0).toObject()
                          .value(QStringLiteral("id")).toString(),
-                     QStringLiteral("w02-office"));
+                     QStringLiteral("office"));
             QVERIFY2(app->profiles->lastPresetDiagnostics().isEmpty(),
                      "a clean preset document was reloaded with diagnostics");
             // And the overrides, which are a separate file.
@@ -606,7 +608,7 @@ class W02SubscriptionUpdateTest : public QObject {
         QVERIFY(subscription.listen(QString()));
         const qint64 expire = 2000000000;
         subscription.route("GET", kSubscriptionPath,
-                           subscriptionReply(body(QStringLiteral("w02-good")),
+                           subscriptionReply(body(QStringLiteral("office-good")),
                                              quotaHeader(1, 2, 3000, expire)));
         const QString url = subscription.httpBase() + QLatin1String(kSubscriptionPath);
 
@@ -620,7 +622,7 @@ class W02SubscriptionUpdateTest : public QObject {
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
         enginePath_ = engine.binaryPath();
         QVERIFY(engine.validationSucceeds()
-                    .printsLine(QStringLiteral("[INFO] w02 core up"))
+                    .printsLine(QStringLiteral("[INFO] subscription core up"))
                     .runsForever()
                     .commit());
 
@@ -636,7 +638,7 @@ class W02SubscriptionUpdateTest : public QObject {
         const core::Profile profile = app.profiles->profiles().first();
         const QString uid = profile.uid;
         const QByteArray cached = wf::readTextFile(profile.filePath);
-        QCOMPARE(cached, body(QStringLiteral("w02-good")));
+        QCOMPARE(cached, body(QStringLiteral("office-good")));
 
         QStringList launched;
         QObject::connect(app.runtimeCoordinator.get(),
@@ -717,9 +719,9 @@ class W02SubscriptionUpdateTest : public QObject {
 
         LoopbackServer subscription;
         QVERIFY(subscription.listen(QString()));
-        const QByteArray original = body(QStringLiteral("w02-original"));
-        const QByteArray stale = body(QStringLiteral("w02-stale"));
-        const QByteArray moved = body(QStringLiteral("w02-moved"));
+        const QByteArray original = body(QStringLiteral("office-original"));
+        const QByteArray stale = body(QStringLiteral("office-stale"));
+        const QByteArray moved = body(QStringLiteral("office-moved"));
         subscription.route("GET", kSubscriptionPath,
                            subscriptionReply(original, quotaHeader(1, 1, 100, 2000000000)));
         subscription.route("GET", kEditedSubscriptionPath,
@@ -794,8 +796,9 @@ class W02SubscriptionUpdateTest : public QObject {
 
     void theRealSourceBuiltCoreRefreshesAndRejectsAnInvalidUpdate() {
         if (!realCoreArm()) {
-            QSKIP("Opt-in: the pinned-engine arm runs as the `w02-real-core` test, which sets "
-                  "CLASH_QT_W02_REAL_CORE=1, CLASH_QT_CORE_BINARY and CLASH_QT_CORE_PROVENANCE. "
+            QSKIP("Opt-in: the pinned-engine arm runs as the `subscription-update-real-core` "
+                  "test, which sets CLASH_QT_SUBSCRIPTION_REAL_CORE=1, CLASH_QT_CORE_BINARY and "
+                  "CLASH_QT_CORE_PROVENANCE. "
                   "It is a separate registration rather than a conditional inside this run "
                   "because it needs a built engine and real ports.");
         }
@@ -804,16 +807,17 @@ class W02SubscriptionUpdateTest : public QObject {
         const QString binary = qEnvironmentVariable("CLASH_QT_CORE_BINARY");
         const QString manifestPath = qEnvironmentVariable("CLASH_QT_CORE_PROVENANCE");
         QVERIFY2(!binary.isEmpty(),
-                 "CLASH_QT_W02_REAL_CORE=1 but CLASH_QT_CORE_BINARY is unset. This is a FAILURE "
-                 "and not a skip: the arm was asked for, and an arm that quietly does nothing is "
-                 "how a real-core claim stops being one. Build the engine with `make core`.");
+                 "CLASH_QT_SUBSCRIPTION_REAL_CORE=1 but CLASH_QT_CORE_BINARY is unset. This is "
+                 "a FAILURE and not a skip: the arm was asked for, and an arm that quietly "
+                 "does nothing is how a real-core claim stops being one. Build the engine with "
+                 "`make core`.");
         QVERIFY2(QFileInfo(binary).isExecutable(),
                  qPrintable(QStringLiteral("CLASH_QT_CORE_BINARY names %1, which is not an "
                                            "executable file").arg(binary)));
         QVERIFY2(!manifestPath.isEmpty(),
-                 "CLASH_QT_W02_REAL_CORE=1 but CLASH_QT_CORE_PROVENANCE is unset, so the engine's "
-                 "origin cannot be established and running it would prove nothing about the "
-                 "pinned source.");
+                 "CLASH_QT_SUBSCRIPTION_REAL_CORE=1 but CLASH_QT_CORE_PROVENANCE is unset, so "
+                 "the engine's origin cannot be established and running it would prove nothing "
+                 "about the pinned source.");
         QFile manifestFile(manifestPath);
         QVERIFY2(manifestFile.open(QIODevice::ReadOnly),
                  qPrintable(QStringLiteral("cannot read %1: %2")
@@ -872,7 +876,7 @@ class W02SubscriptionUpdateTest : public QObject {
                                     "configuration it generates, so the pinned engine cannot be "
                                     "reached on it. A running clash-qt core is the usual reason. "
                                     "This arm does not assert something weaker in its place: stop "
-                                    "the other core and re-run w02-real-core.")
+                                    "the other core and re-run subscription-update-real-core.")
                                     .arg(wf::kGeneratedControllerPort)
                                     .arg(probe.errorString())));
             probe.close();
@@ -883,7 +887,7 @@ class W02SubscriptionUpdateTest : public QObject {
         LoopbackServer subscription;
         QVERIFY(subscription.listen(QString()));
         subscription.route("GET", kSubscriptionPath,
-                           subscriptionReply(body(QStringLiteral("w02-real-v1")),
+                           subscriptionReply(body(QStringLiteral("office-real-v1")),
                                              quotaHeader(10, 20, 30000, 2000000000)));
         const QString url = subscription.httpBase() + QLatin1String(kSubscriptionPath);
 
@@ -920,8 +924,8 @@ class W02SubscriptionUpdateTest : public QObject {
         // evidence rather than an intention.
         const QString uiDir = app.profiles->dataDir() + QStringLiteral("/ui");
         QVERIFY(wf::writeTextFile(uiDir + QStringLiteral("/index.html"),
-                                  QByteArrayLiteral("<!-- w02 fixture: the engine must not "
-                                                    "download a dashboard -->\n")));
+                                  QByteArrayLiteral("<!-- subscription fixture: the engine "
+                                                    "must not download a dashboard -->\n")));
 
         app.profiles->importFromUrl(url);
         QVERIFY2(wf::waitFor([&app] { return !app.profiles->profiles().isEmpty(); }),
@@ -985,7 +989,7 @@ class W02SubscriptionUpdateTest : public QObject {
                                 .arg(report(app, subscription))));
 
         subscription.route("GET", kSubscriptionPath,
-                           subscriptionReply(body(QStringLiteral("w02-real-v2")),
+                           subscriptionReply(body(QStringLiteral("office-real-v2")),
                                              quotaHeader(11, 21, 30000, 2100000000)));
         QSignalSpy updated(app.profiles.get(), &core::ProfileStore::profileUpdated);
         app.profiles->updateProfile(uid);
@@ -1032,10 +1036,9 @@ class W02SubscriptionUpdateTest : public QObject {
         //     own. It was right about the generation - an earlier version
         //     captured the outgoing one and the incoming engine's
         //     managed-to-attached handoff (backend-r3 B2) then bumped it under
-        //     the rejected-update assertion; the observed run is in
-        //     /tmp/.../w02/logs/w02-real-diag.log, `states 1,2,3,1,2`,
-        //     generation 4 where 3 was captured - but it ran AFTER the
-        //     assertions that needed it.
+        //     the rejected-update assertion; a diagnostic run recorded states
+        //     1,2,3,1,2 and generation 4 where 3 was captured - but it ran AFTER
+        //     the assertions that needed it.
         //
         // A refresh that never produced a new engine fails here, and it fails
         // naming the clause that stayed open.
@@ -1061,7 +1064,7 @@ class W02SubscriptionUpdateTest : public QObject {
 
         // Now the file the REFRESHED engine was launched from, and the count.
         const QByteArray refreshedConfig = wf::readTextFile(launched.last());
-        QVERIFY(refreshedConfig.contains("w02-real-v2"));
+        QVERIFY(refreshedConfig.contains("office-real-v2"));
         QCOMPARE(topLevelScalar(refreshedConfig, "mixed-port"), QByteArray::number(mixedPort));
         QVERIFY2(app.backend->activeConfigPaths().contains(launched.last()),
                  qPrintable(QStringLiteral("the engine is running %1, not the refreshed %2")
@@ -1179,15 +1182,15 @@ class W02SubscriptionUpdateTest : public QObject {
     /// WHY IT POLLS. Each round performs the liveness probe src/main.cpp's
     /// five-second QTimer performs (`poll.timeout -> bridge.refreshVersion()`),
     /// because wf::AssembledApp has no shell to perform it and, against a REAL
-    /// engine, the host needs it after a reload. Observed, not assumed
-    /// (/tmp/.../w02-fix/logs/w02-real-probe3.log): a reload replaces the
+    /// engine, the host needs it after a reload. Observed against the pinned
+    /// engine, not assumed: a reload replaces the
     /// engine at the SAME controller address, so
     /// core::MihomoClient::setEndpoint() takes its identical-endpoint branch
     /// and does NOT bump endpointEpoch_ - which leaves the requests already in
     /// flight to the replaced process "current". They then fail with
     /// "Connection refused" AFTER the replacement has answered, and each
     /// failure calls setConnected(false). The application recovers on its next
-    /// poll; that log shows an explicit refreshVersion() clearing it at once,
+    /// poll; the probe showed an explicit refreshVersion() clearing it at once,
     /// with the generation unchanged. Without the probe this wait is a coin
     /// toss (three of seven pinned-engine runs hit it), and a retry loop that
     /// merely waited longer would never clear it at all.
@@ -1299,7 +1302,8 @@ class W02SubscriptionUpdateTest : public QObject {
 
     static QString portSkipReason(const wf::ControllerRelay &relay) {
         return QStringLiteral(
-                   "W02 needs the generated controller address 127.0.0.1:%1, which is in use: %2. "
+                   "This journey needs the generated controller address 127.0.0.1:%1, which is in "
+                   "use: %2. "
                    "A running clash-qt core is the usual reason. Not asserted rather than "
                    "asserted weakly.")
             .arg(wf::kGeneratedControllerPort)
@@ -1310,5 +1314,5 @@ class W02SubscriptionUpdateTest : public QObject {
     QString enginePath_;
 };
 
-QTEST_GUILESS_MAIN(W02SubscriptionUpdateTest)
-#include "w02_subscription_update_test.moc"
+QTEST_GUILESS_MAIN(SubscriptionUpdateTest)
+#include "subscription_update_test.moc"

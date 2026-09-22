@@ -84,7 +84,7 @@ ServiceSettings::ServiceSettings(const app::Context &context, cb::BackendBridge 
         }
         refresh();
     });
-    // D3: the component owns the single privileged connection; this is the
+    // The component owns the single privileged connection; this is the
     // published answer coming back, not a second socket of our own.
     connect(backend_, &cb::BackendBridge::privilegedServiceStatus, this,
             [this](cb::ServiceState state, const QString &, const QString &error,

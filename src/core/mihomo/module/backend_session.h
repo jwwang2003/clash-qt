@@ -11,7 +11,7 @@
 // same contract suite can run against the in-process backend and the
 // module-backed one and hold both to the same statements.
 //
-// NON-RE-ENTRANT DELIVERY SURVIVES BECAUSE IT IS NOT RE-IMPLEMENTED (D8).
+// NON-RE-ENTRANT DELIVERY SURVIVES BECAUSE IT IS NOT RE-IMPLEMENTED.
 // The wrapped backend already queues each observer callback and delivers it
 // from the event loop after the mutating call returns. This class forwards on
 // that same thread, inside that same delivery, so the guarantee is inherited
@@ -334,8 +334,8 @@ class BackendSession final : public abi::IBackendSession, private cb::BackendObs
 
     /// One reusable buffer for the envelope plus payload, so stamping an event
     /// costs a copy rather than an allocation. It matters for exactly one
-    /// event: a connections snapshot is the packed buffer D8 asked for, it
-    /// arrives at the engine's emission rate, and allocating a fresh envelope
+    /// event: a connections snapshot crosses as one packed buffer, it arrives
+    /// at the engine's emission rate, and allocating a fresh envelope
     /// for each one would put the allocation back that the packing removed.
     std::vector<std::uint8_t> envelope_;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-// G1 engine resolution. The MANAGED engine is the one this application built and
+// Engine resolution. The MANAGED engine is the one this application built and
 // staged; it is never PATH, never another Clash installation and never a
 // download. Anything else is an explicit, separately labelled user choice, and
 // whatever is resolved is reported so provenance can never be implied.

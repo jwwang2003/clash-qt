@@ -1,6 +1,4 @@
-// W03 - Routing controls.
-//
-// docs/TEST_STRATEGY.md, "Complete workflows":
+// Routing controls - a complete journey.
 //
 //   Exercise  Start managed backend -> toggle from settings/toolbar/tray ->
 //             reject one change -> quit
@@ -23,8 +21,9 @@
 // line - it takes no service parameter - so the process-global singleton exists
 // in this test whether or not it is wanted. Its state is therefore asserted to
 // be untouched at both ends of the journey: a default-constructed
-// SystemProxyState means no OS operation ever completed on it. See the worker
-// report; the page should take the service the controller was built with.
+// SystemProxyState means no OS operation ever completed on it. The page should
+// take the service the controller was built with; until it does, this assertion
+// is what keeps the singleton's silence honest.
 //
 // TWO DIFFERENT TUN REFUSALS, AND THEY ARE NOT THE SAME THING. This header used
 // to claim the managed journey drove "a TUN enable whose read-back disagrees".
@@ -115,7 +114,7 @@ QAction *actionNamed(QMenu *menu, const QString &text) {
 
 }  // namespace
 
-class W03RoutingControlsTest : public QObject {
+class RoutingControlsJourneyTest : public QObject {
     Q_OBJECT
 
   private slots:
@@ -129,7 +128,7 @@ class W03RoutingControlsTest : public QObject {
     }
 
     void init() {
-        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("w03"));
+        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("routing-controls"));
         const QString failure = testsupport::preferenceIsolationFailure(*environment_);
         QVERIFY2(failure.isEmpty(), qPrintable(failure));
     }
@@ -175,8 +174,9 @@ class W03RoutingControlsTest : public QObject {
         wf::ControllerRelay relay;
         if (!relay.listen(controller.port())) {
             QSKIP(qPrintable(QStringLiteral(
-                                 "W03 needs the generated controller address 127.0.0.1:%1, which "
-                                 "is in use: %2. Not asserted rather than asserted weakly.")
+                                 "This journey needs the generated controller address "
+                                 "127.0.0.1:%1, which is in use: %2. Not asserted rather than "
+                                 "asserted weakly.")
                                  .arg(wf::kGeneratedControllerPort)
                                  .arg(relay.errorString())));
         }
@@ -214,8 +214,8 @@ class W03RoutingControlsTest : public QObject {
         QAction *trayTun = actionNamed(trayMenu, QStringLiteral("TUN Mode"));
         QVERIFY2(trayProxy && trayTun, "the tray menu has no routing entries");
         // The settings checkbox carries no object name, so it is located by its
-        // label. That is a weakness in the page, not in the journey - see the
-        // worker report.
+        // label. That is a weakness in the page, not in the journey: a renamed
+        // label breaks this lookup and the page should carry an object name.
         QCheckBox *settingsProxy = checkBoxLabelled(
             settings, QStringLiteral("Use the connected core as the system proxy"));
         QVERIFY2(settingsProxy, "the settings page has no system-proxy checkbox");
@@ -496,7 +496,7 @@ class W03RoutingControlsTest : public QObject {
         scriptController(controller);
         wf::ControllerRelay relay;
         if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral("W03 needs 127.0.0.1:%1: %2")
+            QSKIP(qPrintable(QStringLiteral("This journey needs 127.0.0.1:%1: %2")
                                  .arg(wf::kGeneratedControllerPort)
                                  .arg(relay.errorString())));
         }
@@ -603,5 +603,5 @@ class W03RoutingControlsTest : public QObject {
     QString enginePath_;
 };
 
-QTEST_MAIN(W03RoutingControlsTest)
-#include "w03_routing_controls_test.moc"
+QTEST_MAIN(RoutingControlsJourneyTest)
+#include "routing_controls_journey_test.moc"

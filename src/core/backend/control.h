@@ -3,9 +3,9 @@
 
 // BackendControl: the mutating operations the application performs against the
 // attached controller.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, section 2, with
-// amendments A4 and B2 (TunChangeCompleted carries a Generation and a
-// CompletionStatus, and a supersession is never reported as a protocol error).
+// Contract: docs/module-api.md revision backend-r4, section 2.
+// TunChangeCompleted carries both a Generation and a CompletionStatus, so a
+// supersession can be marked as one and is never reported as a protocol error.
 //
 // Every method here is a mutating call and returns a RequestId synchronously.
 // Every one of them can fail; none of them reports failure by throwing.
@@ -34,7 +34,7 @@ class BackendControl {
     // Completion: observer.tunChangeCompleted().
     // Further calls are rejected (RequestId::Invalid) while one is pending.
     //
-    // backend-r3 B2. A change abandoned because the controller changed or
+    // A change abandoned because the controller changed or
     // disconnected completes with CompletionStatus::Superseded and
     // ErrorCode::Superseded. It is NOT ErrorCode::Protocol: the controller
     // never answered unusably, it stopped being the controller, and labelling

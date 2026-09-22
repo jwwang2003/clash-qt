@@ -1,4 +1,4 @@
-# Acceptance suite for app/lifecycle (MOD-LIFECYCLE).
+# Acceptance suite for app/lifecycle.
 #
 # Registration: tests/CMakeLists.txt adds
 #   add_subdirectory(app/lifecycle)
