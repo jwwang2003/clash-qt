@@ -767,9 +767,28 @@ QWebSocket *MihomoClient::openStream(const QString &path,
                 emit errorOccurred(tr("Stream %1 failed: %2").arg(path, socket->errorString()));
                 reconnect();
             });
-    connect(retry, &QTimer::timeout, this, [socket, request] { socket->open(request); });
+    // NOT DIALLED WHILE THE ENDPOINT IS INVALID, AND NOT DROPPED EITHER.
+    //
+    // An invalid endpoint is not an address. endpoint_.wsBase() builds it from
+    // an empty host and port 0, so QUrl resolves "ws:///traffic" - a request
+    // against whatever the default authority turns out to be - and the error
+    // handler above then retries it for the life of the process, reporting a
+    // stream failure every time. The composition root subscribes to traffic
+    // before a managed core exists, and detach() leaves a client on exactly
+    // this endpoint, so "no address yet" is a normal state, not a defect.
+    //
+    // The socket is still constructed, still wired and still returned. That is
+    // deliberate: setEndpoint() re-opens every stream whose pointer is
+    // non-null, so the pointer IS the subscription. Returning nullptr here
+    // would make the intent evaporate, and the traffic producer would stay shut
+    // for the whole session once a managed core finally came up.
+    const auto dialWhenAddressed = [this, socket, request] {
+        if (!endpoint_.isValid()) return;
+        socket->open(request);
+    };
+    connect(retry, &QTimer::timeout, this, dialWhenAddressed);
 
-    socket->open(request);
+    dialWhenAddressed();
     return socket;
 }
 

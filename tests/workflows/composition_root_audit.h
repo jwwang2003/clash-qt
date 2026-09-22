@@ -23,7 +23,12 @@
 //     must appear in both, by name;
 //   * every SHELL-ONLY statement listed below must still be present in
 //     src/main.cpp, with the user-visible consequence of its loss written down
-//     beside it.
+//     beside it;
+//   * every SOURCE REQUIREMENT listed below must still be present in
+//     src/main.cpp. These are the decisions the composition root makes before
+//     any object exists - today, which privileged helper socket the process
+//     will use - which a parallel graph cannot mirror and whose loss is a
+//     safety regression rather than a drift.
 //
 // WHAT THIS IS NOT. It is not a behavioural test, and it does not pretend to
 // be. Where a connection can be driven through the shipping binary from outside
@@ -188,14 +193,77 @@ inline QVector<ShellOnly> shellOnlyStatements() {
          "structural only: the quit path is unreachable from outside the process"},
         {"bridge.attach()",
          "the process never attaches to an already-running controller, so an external core "
-         "is invisible until one is launched",
+         "is invisible until one is launched. Matched by PREFIX, so the guard the statement "
+         "now carries - attach only when cb::isValid() accepts the discovered endpoint - is "
+         "required separately, as a SOURCE REQUIREMENT below",
          "app-smoke: theCompositionRootAttachesToADiscoveredControllerAndKeepsPollingIt"},
         {"bridge.openTrafficStream()",
-         "no throughput anywhere: the tray tooltip and the overview graph stay empty",
-         "app-smoke: theCompositionRootAttachesToADiscoveredControllerAndKeepsPollingIt"},
+         "no throughput anywhere: the tray tooltip and the overview graph stay empty. It is "
+         "UNCONDITIONAL on purpose and must stay so: the subscription has to outlive a "
+         "startup that had no address yet, because nothing opens it a second time when a "
+         "managed core finally comes up. core::MihomoClient is what declines to dial an "
+         "invalid endpoint while keeping the stream subscribed",
+         "app-smoke: theCompositionRootAttachesToADiscoveredControllerAndKeepsPollingIt, and "
+         "engine-discovery: aClientWithNoAddressDoesNotDialAndKeepsItsSubscription"},
         {"poll.start()",
          "the liveness probe never runs; see the timeout connection above",
          "app-smoke: theCompositionRootAttachesToADiscoveredControllerAndKeepsPollingIt"},
+    };
+}
+
+/// A statement in src/main.cpp that is neither a connection nor a
+/// registration, and whose disappearance is a SAFETY regression rather than a
+/// drift between two graphs.
+///
+/// WHY THIS CATEGORY EXISTS. The composition root decides which privileged
+/// helper socket the process will use, before any object that could be asked
+/// about it exists. wf::AssembledApp cannot mirror that decision - it injects
+/// core::NullPrivilegedCoreService precisely so that no journey goes near a
+/// helper - so the edge/statement comparison above is structurally blind to it.
+/// It is still the difference between a test run that talks to a socket in a
+/// temporary directory and one that opens a connection to a root daemon on the
+/// developer's machine, which is the incident that put this list here.
+struct SourceRequirement {
+    const char *needle;
+    const char *consequence;
+    const char *covered;
+};
+
+inline QVector<SourceRequirement> compositionRootRequirements() {
+    return {
+        {"qEnvironmentVariable(\"CLASH_QT_SERVICE_SOCKET\")",
+         "the host can no longer choose its privileged helper socket, so every launch - "
+         "including every one this test suite makes - queries the machine-wide root helper "
+         "at PrivilegedServiceClient::defaultSocketPath()",
+         "app-smoke: theStartupServiceStatusGoesToTheSocketTheHostSelected"},
+        {"absoluteFilePath(\"helper.socket\")",
+         "a launch into an isolated data directory that names no socket falls back to the "
+         "installed helper again: --data-dir on its own cannot redirect machine-wide IPC, "
+         "and this fallback is what makes it enough",
+         "app-smoke: theStartupServiceStatusGoesToTheSocketTheHostSelected, which leaves the "
+         "variable set; the fallback itself is structural here"},
+        {"PrivilegedServiceClient privilegedClient(nullptr, serviceSocket)",
+         "the selected socket never reaches the client that actually connects, so the "
+         "selection is computed and then ignored",
+         "app-smoke: theStartupServiceStatusGoesToTheSocketTheHostSelected"},
+        {"PrivilegedServiceClientAdapter privilegedService(&privilegedClient, serviceSocket)",
+         "the adapter reports the platform default's supportedness instead of the selected "
+         "endpoint's, so an explicitly named helper is treated as no helper",
+         "app-smoke: theCompositionRootSelectsServiceModeWhenTheUserSavedIt"},
+        // The second half of the same safety category: which CONTROLLER the
+        // process attaches to, decided before any object that could be asked
+        // about it exists. wf::AssembledApp is given an endpoint by the journey
+        // that built it and never calls discovery, so the edge/statement
+        // comparison is structurally blind here too.
+        {"cb::isValid(startupEndpoint)",
+         "an unconditional attach takes whatever discovery returned. core::Endpoint's default "
+         "is the conventional 127.0.0.1:9090 and isValid() accepts it, so every isolated "
+         "launch - --data-dir, every workflow suite, every smoke child - attaches to, polls "
+         "and can drive a core belonging to a different installation. Removing the guard is "
+         "not a drift between two graphs; it is this suite touching somebody else's engine",
+         "app-smoke: theIsolatedLaunchAttachesToNoControllerItWasNotGiven, and engine-discovery: "
+         "anIsolatedProcessWithNoExplicitControllerAttachesToNothing, which is where the "
+         "discovery half is proven against the function itself"},
     };
 }
 
@@ -625,6 +693,21 @@ inline QString compositionRootDrift() {
                                        "Covered by: %3.")
                             .arg(key, QString::fromLatin1(entry.consequence),
                                  QString::fromLatin1(entry.covered));
+    }
+
+    // ---- the statements whose loss is a safety regression -------------------
+    // Checked against the comment-stripped source, so prose that quotes the
+    // statement cannot satisfy the requirement the statement carries.
+    {
+        const QString code = stripComments(mainSource);
+        for (const SourceRequirement &entry : compositionRootRequirements()) {
+            if (code.contains(QString::fromLatin1(entry.needle))) continue;
+            problems << QStringLiteral("src/main.cpp no longer contains `%1`. Consequence: %2. "
+                                       "Covered by: %3.")
+                            .arg(QString::fromLatin1(entry.needle),
+                                 QString::fromLatin1(entry.consequence),
+                                 QString::fromLatin1(entry.covered));
+        }
     }
 
     if (problems.isEmpty()) return QString();
