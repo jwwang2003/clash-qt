@@ -1,10 +1,12 @@
 #include <QtTest>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMap>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <memory>
@@ -13,6 +15,7 @@
 #include <QTimer>
 
 #include "core/backups/backup_store.h"
+#include "core/config/config_composer.h"
 #include "core/preferences/preferences.h"
 #include "support/scoped_environment.h"
 
@@ -24,6 +27,78 @@ bool write(const QString &path, const QByteArray &bytes) {
 QByteArray read(const QString &path) {
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
+
+// A non-empty preset document, valid by the composer's rules, distinguishable
+// by `mode` so a round trip can tell two of them apart.
+QByteArray presets(const QString &mode) {
+    const QJsonObject global{
+        {"id", "global-mode"}, {"name", "Force a mode"}, {"enabled", true},
+        {"operations", QJsonArray{QJsonObject{{"op", "merge"}, {"path", "/mode"}, {"value", mode}}}}};
+    const QJsonObject perProfile{
+        {"id", "one-log"}, {"name", "Loud logs"}, {"enabled", false},
+        {"operations", QJsonArray{QJsonObject{{"op", "replace"}, {"path", "/log-level"},
+                                              {"value", "debug"}}}}};
+    return QJsonDocument(QJsonObject{{"version", 1},
+                                     {"global", QJsonArray{global}},
+                                     {"profiles", QJsonObject{{"one", QJsonArray{perProfile}}}}})
+        .toJson(QJsonDocument::Compact);
+}
+
+QByteArray emptyPresets() {
+    return QJsonDocument(core::config::emptyPresetDocument()).toJson(QJsonDocument::Compact);
+}
+
+// True when `bytes` is something ProfileStore could load: the point of
+// validating the pair inside the archive is that neither file can come back as
+// something the next launch has to recover from.
+bool loadable(const QByteArray &bytes) {
+    core::config::PresetDocument parsed;
+    QVector<core::config::Diagnostic> diagnostics;
+    const auto document = QJsonDocument::fromJson(bytes);
+    return document.isObject() &&
+           core::config::parsePresetDocument(document.object(), &parsed, &diagnostics);
+}
+
+// The archive's `files` array, keyed by path, so a test can assert on one entry
+// without walking the array each time.
+QMap<QString, QByteArray> archiveFiles(const QByteArray &archive) {
+    QMap<QString, QByteArray> result;
+    for (const auto &entry : QJsonDocument::fromJson(archive).object().value("files").toArray()) {
+        const auto item = entry.toObject();
+        result.insert(item.value("path").toString(),
+                      QByteArray::fromBase64(item.value("data").toString().toLatin1()));
+    }
+    return result;
+}
+
+// Replaces one file entry's contents, keeping the checksum honest, so what the
+// archive fails on is the preset document itself and not the hash check the
+// tampering tests already cover.
+QByteArray withFile(const QByteArray &archive, const QString &path, const QByteArray &contents) {
+    auto document = QJsonDocument::fromJson(archive).object();
+    QJsonArray entries;
+    for (const auto &entry : document.value("files").toArray()) {
+        auto item = entry.toObject();
+        if (item.value("path").toString() == path) {
+            item["data"] = QString::fromLatin1(contents.toBase64());
+            item["sha256"] = QString::fromLatin1(
+                QCryptographicHash::hash(contents, QCryptographicHash::Sha256).toHex());
+        }
+        entries.append(item);
+    }
+    document["files"] = entries;
+    return QJsonDocument(document).toJson();
+}
+
+// An archive as it was written before presets existed: the pair simply absent.
+QByteArray withoutFiles(const QByteArray &archive, const QStringList &paths) {
+    auto document = QJsonDocument::fromJson(archive).object();
+    QJsonArray entries;
+    for (const auto &entry : document.value("files").toArray())
+        if (!paths.contains(entry.toObject().value("path").toString())) entries.append(entry);
+    document["files"] = entries;
+    return QJsonDocument(document).toJson();
 }
 bool seed(const QString &directory) {
     return QDir().mkpath(directory + "/profiles") && QDir().mkpath(directory + "/chain") &&
@@ -243,6 +318,137 @@ private slots:
         QCOMPARE(read(directory.path() + "/profiles.json"), currentIndex);
         QCOMPARE(read(directory.path() + "/profiles/one.yaml"), QByteArray("mode: direct\nproxies: []\n"));
         QVERIFY(QFileInfo::exists(directory.path() + "/chain/script.js"));
+    }
+
+    // ------------------------------------------------------------- presets
+    //
+    // presets.json and presets.last-good.json are newer than this archive
+    // format. The four functions below fix what that costs: a backup that
+    // carries them, an old archive that still restores and clears them, an
+    // archive whose preset document this build cannot load being refused
+    // before anything is touched, and a corrupt preset file on disk not being
+    // able to stop a backup or to reach one.
+
+    void presetsRoundTripThroughBackupAndRestore() {
+        QTemporaryDir directory;
+        QVERIFY(seed(directory.path()));
+        QVERIFY(write(directory.path() + "/presets.json", presets("global")));
+        QVERIFY(write(directory.path() + "/presets.last-good.json", presets("rule")));
+        core::BackupStore store(directory.path());
+        QVERIFY(store.createLocal());
+        const auto archive = store.localBackups().first();
+        const auto files = archiveFiles(read(archive));
+        QCOMPARE(files.value("presets.json"), presets("global"));
+        QCOMPARE(files.value("presets.last-good.json"), presets("rule"));
+
+        // Both a changed document and a missing one come back.
+        QVERIFY(write(directory.path() + "/presets.json", presets("direct")));
+        QVERIFY(QFile::remove(directory.path() + "/presets.last-good.json"));
+        QVERIFY(store.restoreLocal(archive));
+        QCOMPARE(read(directory.path() + "/presets.json"), presets("global"));
+        QCOMPARE(read(directory.path() + "/presets.last-good.json"), presets("rule"));
+        QCOMPARE(read(directory.path() + "/profiles/one.yaml"), QByteArray("proxies: []\nmode: rule\n"));
+    }
+
+    void archiveWithoutPresetsRestoresTheEmptyDocument() {
+        QTemporaryDir directory;
+        QVERIFY(seed(directory.path()));  // no preset files: a data directory that predates them
+        core::BackupStore store(directory.path());
+        QVERIFY(store.createLocal());
+        const auto complete = read(store.localBackups().first());
+        QCOMPARE(archiveFiles(complete).value("presets.json"), emptyPresets());
+        QCOMPARE(archiveFiles(complete).value("presets.last-good.json"), emptyPresets());
+
+        const auto legacy = directory.path() + "/legacy.cqtbackup";
+        QVERIFY(write(legacy, withoutFiles(complete, {"presets.json", "presets.last-good.json"})));
+        // Presets written after that archive was taken. They belong to profiles
+        // the archive is about to replace, so keeping them would be wrong.
+        QVERIFY(write(directory.path() + "/presets.json", presets("global")));
+        QVERIFY(write(directory.path() + "/presets.last-good.json", presets("global")));
+        QSignalSpy restored(&store, &core::BackupStore::restored);
+        QVERIFY(store.restoreLocal(legacy));
+        QCOMPARE(restored.size(), 1);
+        QCOMPARE(read(directory.path() + "/presets.json"), emptyPresets());
+        QCOMPARE(read(directory.path() + "/presets.last-good.json"), emptyPresets());
+        QVERIFY(loadable(read(directory.path() + "/presets.json")));
+        QCOMPARE(read(directory.path() + "/profiles/one.yaml"), QByteArray("proxies: []\nmode: rule\n"));
+    }
+
+    void rejectsUnloadablePresetDocumentsBeforeTouchingAnyFile() {
+        QTemporaryDir directory;
+        QVERIFY(seed(directory.path()));
+        QVERIFY(write(directory.path() + "/presets.json", presets("global")));
+        QVERIFY(write(directory.path() + "/presets.last-good.json", presets("rule")));
+        core::BackupStore store(directory.path());
+        QVERIFY(store.createLocal());
+        const auto original = read(store.localBackups().first());
+        QSignalSpy before(&store, &core::BackupStore::aboutToRestore);
+        QSignalSpy errors(&store, &core::BackupStore::errorOccurred);
+        const QList<QByteArray> unusable{
+            "{ half written",
+            R"(["not","an","object"])",
+            R"({"global":[],"profiles":{}})",
+            R"({"version":2,"global":[],"profiles":{}})",
+            R"({"version":1,"global":[{"id":"a"},{"id":"a"}],"profiles":{}})",
+            R"({"version":1,"global":[{"id":"a","operations":[{"op":"merge","path":"/secret","value":"x"}]}],"profiles":{}})",
+            R"({"version":1,"global":[{"id":"a","operations":[{"op":"blend","path":"/mode","value":"x"}]}],"profiles":{}})",
+        };
+        const auto invalid = directory.path() + "/invalid.cqtbackup";
+        for (const auto &payload : unusable) {
+            for (const auto &path : {QStringLiteral("presets.json"),
+                                     QStringLiteral("presets.last-good.json")}) {
+                QVERIFY(write(invalid, withFile(original, path, payload)));
+                QVERIFY2(!store.restoreLocal(invalid),
+                         qPrintable(path + ' ' + QString::fromLatin1(payload)));
+                QCOMPARE(before.size(), 0);
+                QCOMPARE(read(directory.path() + "/presets.json"), presets("global"));
+                QCOMPARE(read(directory.path() + "/presets.last-good.json"), presets("rule"));
+                QCOMPARE(read(directory.path() + "/profiles/one.yaml"),
+                         QByteArray("proxies: []\nmode: rule\n"));
+                QCOMPARE(store.localBackups().size(), 1);
+            }
+        }
+        QCOMPARE(errors.size(), unusable.size() * 2);
+        // The same document is refused on the way in, so it never becomes a
+        // local backup that looks restorable.
+        QVERIFY(!store.importArchive(invalid));
+        QCOMPARE(store.localBackups().size(), 1);
+    }
+
+    void snapshotSubstitutesForAnUnusablePresetFile() {
+        QTemporaryDir directory;
+        QVERIFY(seed(directory.path()));
+        QVERIFY(write(directory.path() + "/presets.json", "{ half written"));
+        QVERIFY(write(directory.path() + "/presets.last-good.json", presets("rule")));
+        core::BackupStore store(directory.path());
+        QSignalSpy errors(&store, &core::BackupStore::errorOccurred);
+        QVERIFY(store.createLocal());
+        QCOMPARE(errors.size(), 0);
+        auto files = archiveFiles(read(store.localBackups().first()));
+        QCOMPARE(files.value("presets.json"), presets("rule"));
+        QCOMPARE(files.value("presets.last-good.json"), presets("rule"));
+        // Read, not repaired: the evidence of what went wrong stays on disk.
+        QCOMPARE(read(directory.path() + "/presets.json"), QByteArray("{ half written"));
+
+        // A missing last-good copy is filled from the document it would recover.
+        QTest::qWait(5);
+        QVERIFY(write(directory.path() + "/presets.json", presets("global")));
+        QVERIFY(QFile::remove(directory.path() + "/presets.last-good.json"));
+        QVERIFY(store.createLocal());
+        files = archiveFiles(read(store.localBackups().first()));
+        QCOMPARE(files.value("presets.json"), presets("global"));
+        QCOMPARE(files.value("presets.last-good.json"), presets("global"));
+
+        // Neither usable: the empty document, and still a backup.
+        QTest::qWait(5);
+        QVERIFY(write(directory.path() + "/presets.json", "{ half written"));
+        QVERIFY(write(directory.path() + "/presets.last-good.json", "also broken"));
+        QVERIFY(store.createLocal());
+        files = archiveFiles(read(store.localBackups().first()));
+        QCOMPARE(files.value("presets.json"), emptyPresets());
+        QCOMPARE(files.value("presets.last-good.json"), emptyPresets());
+        QCOMPARE(errors.size(), 0);
+        QCOMPARE(store.localBackups().size(), 3);
     }
 
     void webDavRoundTripAndRedirectRejection() {

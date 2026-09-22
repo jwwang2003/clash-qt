@@ -1,5 +1,6 @@
 #include "core/profiles/profile_store.h"
 
+#include "core/config/config_composer.h"
 #include "core/config/yaml_util.h"
 #include "core/config/enhance/config_enhancer.h"
 
@@ -34,6 +35,11 @@ namespace {
 constexpr auto kUserAgent = "clash-verge/v2.4.2";
 constexpr auto kIndexFile = "profiles.json";
 constexpr auto kRuntimeFile = "runtime.yaml";
+constexpr auto kPresetsFile = "presets.json";
+// The recovery copy. Written from the same bytes, immediately after the primary
+// save succeeds, so it is not "the previous document" but "this document, in a
+// second place" -- which is what a corrupted or half-written presets.json needs.
+constexpr auto kPresetsLastGoodFile = "presets.last-good.json";
 constexpr auto kController = "127.0.0.1:29097";
 constexpr auto kDashboardUrl =
     "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip";
@@ -149,10 +155,28 @@ Profile fromJson(const QJsonObject &entry, const QString &dir) {
     return profile;
 }
 
+/// The error-severity messages, one per line. Empty when there were none, which
+/// is how callers tell "rejected" from "accepted with remarks".
+QString errorText(const QVector<config::Diagnostic> &diagnostics) {
+    QStringList messages;
+    for (const config::Diagnostic &diagnostic : diagnostics)
+        if (diagnostic.severity == QLatin1String("error")) messages.append(diagnostic.message);
+    return messages.join('\n');
+}
+
+QString warningText(const QVector<config::Diagnostic> &diagnostics) {
+    QStringList messages;
+    for (const config::Diagnostic &diagnostic : diagnostics)
+        if (diagnostic.severity == QLatin1String("warning")) messages.append(diagnostic.message);
+    return messages.join('\n');
+}
+
 }  // namespace
 
 ProfileStore::ProfileStore(QObject *parent)
     : QObject(parent), network_(new QNetworkAccessManager(this)), autoUpdate_(new QTimer(this)) {
+    config::registerMetaTypes();
+    presetDocument_ = config::emptyPresetDocument();
     connect(autoUpdate_, &QTimer::timeout, this, &ProfileStore::refreshDueProfiles);
     autoUpdate_->start(kAutoUpdateTickMs);
     connect(this, &ProfileStore::runtimeBusyChanged, this, [this] { emit fileBusyChanged(isFileBusy()); });
@@ -246,6 +270,7 @@ void ProfileStore::load() {
     if (overridesFile.open(QIODevice::ReadOnly)) {
         runtimeOverrides_ = QJsonDocument::fromJson(overridesFile.readAll()).object();
     }
+    loadPresets();
     profiles_.clear();
     currentUid_.clear();
     secret_.clear();
@@ -693,13 +718,128 @@ bool ProfileStore::setRuntimeOverrides(const QJsonObject &overrides) {
     return true;
 }
 
+// ------------------------------------------------------------------- presets
+
+QJsonObject ProfileStore::presetDocument() const { return presetDocument_; }
+
+QVector<config::Diagnostic> ProfileStore::lastPresetDiagnostics() const {
+    return presetDiagnostics_;
+}
+
+void ProfileStore::loadPresets() {
+    presetDocument_ = config::emptyPresetDocument();
+    presets_ = {};
+    presetDiagnostics_.clear();
+
+    QFile file(dataDir() + '/' + kPresetsFile);
+    if (!file.open(QIODevice::ReadOnly)) return;  // a first run has no presets, and that is fine
+
+    QVector<config::Diagnostic> diagnostics;
+    QJsonParseError parse{};
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parse);
+    config::PresetDocument parsed;
+    if (document.isObject() &&
+        config::parsePresetDocument(document.object(), &parsed, &diagnostics)) {
+        presetDocument_ = document.object();
+        presets_ = parsed;
+        presetDiagnostics_ = diagnostics;
+        return;
+    }
+    if (!document.isObject()) {
+        diagnostics.append({QStringLiteral("error"), QStringLiteral("presets"), {},
+                            tr("%1 is not a JSON object: %2")
+                                .arg(QLatin1String(kPresetsFile), parse.errorString())});
+    }
+
+    // The stored document is unusable. The last-good copy is tried in its place
+    // and the bad file is left exactly where it is: overwriting it here would
+    // destroy the only evidence of what went wrong, and the user has not asked
+    // for anything to be saved.
+    QFile lastGood(dataDir() + '/' + kPresetsLastGoodFile);
+    if (lastGood.open(QIODevice::ReadOnly)) {
+        const QJsonDocument recovered = QJsonDocument::fromJson(lastGood.readAll());
+        config::PresetDocument recoveredPresets;
+        QVector<config::Diagnostic> ignored;
+        if (recovered.isObject() &&
+            config::parsePresetDocument(recovered.object(), &recoveredPresets, &ignored)) {
+            presetDocument_ = recovered.object();
+            presets_ = recoveredPresets;
+            diagnostics.append({QStringLiteral("warning"), QStringLiteral("presets"), {},
+                                tr("Recovered the last good preset document; %1 is unusable.")
+                                    .arg(QLatin1String(kPresetsFile))});
+            presetDiagnostics_ = diagnostics;
+            emit errorOccurred(warningText(diagnostics));
+            return;
+        }
+    }
+    diagnostics.append({QStringLiteral("warning"), QStringLiteral("presets"), {},
+                        tr("No usable preset document was found; no presets are applied.")});
+    presetDiagnostics_ = diagnostics;
+    emit errorOccurred(QStringList{errorText(diagnostics), warningText(diagnostics)}
+                           .join('\n')
+                           .trimmed());
+}
+
+bool ProfileStore::setPresetDocument(const QJsonObject &document) {
+    if (!acceptsChanges()) return false;
+
+    QVector<config::Diagnostic> diagnostics;
+    config::PresetDocument parsed;
+    if (!config::parsePresetDocument(document, &parsed, &diagnostics)) {
+        // Nothing has been touched: not presets_, not presetDocument_, not the
+        // file, not the last-good copy. Rejecting a document must not be a way
+        // to lose the one already stored.
+        presetDiagnostics_ = diagnostics;
+        emit errorOccurred(tr("The presets were not saved: %1").arg(errorText(diagnostics)));
+        return false;
+    }
+
+    // Persist what was parsed, not what was handed in: the two differ only in
+    // normalisation, and storing the parsed form is what makes presetDocument()
+    // a fixed point.
+    const QJsonObject normalised = config::presetDocumentToJson(parsed);
+    const QByteArray bytes = QJsonDocument(normalised).toJson(QJsonDocument::Indented);
+    QString reason;
+    if (!writeFile(dataDir() + '/' + kPresetsFile, bytes, &reason)) {
+        emit errorOccurred(tr("Could not save the presets: %1").arg(reason));
+        return false;
+    }
+    // Best effort, and deliberately unchecked: the primary save has already
+    // succeeded, so a failure here costs the next recovery, not this save.
+    QString backupReason;
+    writeFile(dataDir() + '/' + kPresetsLastGoodFile, bytes, &backupReason);
+
+    presetDocument_ = normalised;
+    presets_ = parsed;
+    presetDiagnostics_ = diagnostics;
+    cancelRuntimeGeneration();
+    emit presetsChanged();
+    return true;
+}
+
 struct ProfileStore::RuntimeRequest {
     Profile profile;
     QJsonObject overrides;
-    QVector<ChainItem> chain;
+    ChainSnapshot chain;
     bool hasEnhancer = false;
-    QString secret, dataDir, seedDir, configPath;
+    config::PresetDocument presets;
+    config::ControllerFields controller;
+    QString dataDir, seedDir, configPath;
     std::shared_ptr<std::atomic_bool> cancelled;
+};
+
+struct ProfileStore::PreviewRequest {
+    Profile profile;
+    bool hasProfile = false;
+    bool blocked = false;
+    QByteArray source;
+    QString readError;
+    ChainSnapshot chain;
+    bool hasEnhancer = false;
+    config::PresetDocument presets;
+    QJsonObject overrides;
+    config::ControllerFields controller;
+    bool secretIsProvisional = false;
 };
 
 struct ProfileStore::RuntimeResult {
@@ -718,13 +858,130 @@ ProfileStore::RuntimeRequest ProfileStore::prepareRuntime() {
     request.profile = profiles_[index];
     request.overrides = runtimeOverrides_;
     request.hasEnhancer = !enhancer_.isNull();
-    if (enhancer_) request.chain = enhancer_->chain();
-    request.secret = secret_;
+    // Snapshotted here, on the owning thread, so the worker enhances one
+    // instant of the chain rather than whatever each file happens to contain
+    // when its step is reached.
+    if (enhancer_) request.chain = enhancer_->snapshot();
+    request.presets = presets_;
     request.dataDir = dataDir();
     request.seedDir = seedDir_;
+    request.controller = controllerFieldsFor(request.dataDir);
     request.configPath = request.dataDir + "/.runtime-" + QUuid::createUuid().toString(QUuid::Id128) + ".yaml";
     request.cancelled = std::make_shared<std::atomic_bool>(false);
     return request;
+}
+
+config::ControllerFields ProfileStore::controllerFieldsFor(const QString &dataDir) const {
+    config::ControllerFields controller;
+    controller.externalController = QLatin1String(kController);
+    controller.secret = secret_;
+    controller.mixedPort = runtimeOverrides_.value("mixed-port").toInt(kMixedPort);
+    controller.externalUi = dataDir + "/ui";
+    controller.externalUiUrl = QLatin1String(kDashboardUrl);
+    controller.storeSelected = true;
+    return controller;
+}
+
+ProfileStore::PreviewRequest ProfileStore::preparePreview(const QString &profileUid) const {
+    PreviewRequest request;
+    if (maintenance_) {
+        request.blocked = true;
+        return request;
+    }
+    const int index = indexOf(profileUid.isEmpty() ? currentUid_ : profileUid);
+    if (index < 0) return request;
+    request.profile = profiles_[index];
+    request.hasProfile = true;
+
+    QFile source(request.profile.filePath);
+    if (!source.open(QIODevice::ReadOnly)) {
+        request.readError = source.errorString();
+    } else {
+        request.source = source.read(kMaxProfileBytes + 1);
+        if (request.source.size() > kMaxProfileBytes)
+            request.readError = tr("Profile exceeds the 16 MiB limit.");
+        else if (source.error() != QFileDevice::NoError)
+            request.readError = source.errorString();
+    }
+
+    request.hasEnhancer = !enhancer_.isNull();
+    if (enhancer_) request.chain = enhancer_->snapshot();
+    request.presets = presets_;
+    request.overrides = runtimeOverrides_;
+    request.controller = controllerFieldsFor(dataDir());
+    // prepareRuntime() mints and SAVES a secret when there is none. A preview
+    // must not: it would be a write, and the contract says a preview writes
+    // nothing. The preview reports the absence instead of inventing a value.
+    request.secretIsProvisional = secret_.isEmpty();
+    return request;
+}
+
+void ProfileStore::requestEffectiveConfigPreview(const QString &profileUid) {
+    if (shuttingDown_) return;
+    // Supersede in-flight requests. The counter is the only thing that decides
+    // which answer is delivered; a late worker still finishes, its result is
+    // simply dropped.
+    const quint64 generation = ++previewGeneration_;
+    const PreviewRequest request = preparePreview(profileUid);
+    auto *watcher = new QFutureWatcher<config::ComposeResult>(this);
+    connect(watcher, &QFutureWatcher<config::ComposeResult>::finished, this,
+            [this, watcher, generation] {
+                const config::ComposeResult result = watcher->result();
+                watcher->deleteLater();
+                if (generation != previewGeneration_ || shuttingDown_) return;
+                emit effectiveConfigPreviewReady(result);
+            });
+    watcher->setFuture(QtConcurrent::run([request] { return buildPreview(request); }));
+}
+
+config::ComposeResult ProfileStore::buildPreview(const PreviewRequest &request) {
+    config::ComposeResult result;
+    const auto reject = [&result](const QString &message) {
+        result.ok = false;
+        result.yaml.clear();
+        result.diagnostics.append(
+            {QStringLiteral("error"), QStringLiteral("source"), {}, message});
+        return result;
+    };
+    if (request.blocked)
+        return reject(tr("Previews are paused while a backup operation is in progress."));
+    if (!request.hasProfile) return reject(tr("There is no profile to preview."));
+    if (!request.readError.isEmpty())
+        return reject(tr("Could not read %1: %2").arg(request.profile.name, request.readError));
+
+    config::ComposeInput input;
+    input.profileUid = request.profile.uid;
+    input.profileName = request.profile.name;
+    input.presets = request.presets;
+    input.overrides = request.overrides;
+    input.controller = request.controller;
+    input.sourceYaml = QString::fromUtf8(request.source);
+
+    if (request.hasEnhancer) {
+        const EnhanceResult enhanced =
+            ConfigEnhancer::applyChain(input.sourceYaml, request.profile.name, request.chain);
+        input.logs = enhanced.logs;
+        input.sourceYaml = enhanced.yaml;
+        input.sourceLabel = QStringLiteral("legacy-chain");
+        if (!enhanced.error.isEmpty())
+            result.diagnostics.append({QStringLiteral("warning"), QStringLiteral("legacy-chain"),
+                                       {}, enhanced.error});
+    }
+
+    const config::ComposeResult composed = config::compose(input);
+    result.ok = composed.ok;
+    result.yaml = composed.yaml;
+    result.logs = composed.logs;
+    result.provenance = composed.provenance;
+    result.diagnostics += composed.diagnostics;
+    // Only worth saying about a composition that succeeded: on a failure the
+    // diagnostics are about the failure, and a note about the secret would
+    // just be noise between the reader and the reason.
+    if (request.secretIsProvisional && result.ok)
+        result.diagnostics.append(
+            {QStringLiteral("info"), QStringLiteral("controller"), QStringLiteral("/secret"),
+             tr("The controller secret is assigned when the core is first launched.")});
+    return result;
 }
 
 void ProfileStore::cancelRuntimeGeneration() {
@@ -786,113 +1043,102 @@ QString ProfileStore::generateRuntimeConfig() {
     return result.path;
 }
 
+// Reads the profile, runs the legacy chain, hands the rest to the pure
+// composer, and writes what comes back. Everything between "already-enhanced
+// YAML" and "rendered document" -- presets, overrides, TUN defaults, the
+// controller-owned fields -- now lives in core/config/config_composer.cpp and
+// is reachable without a filesystem. What is left here is the I/O and only the
+// I/O, which is the whole reason for the split.
 ProfileStore::RuntimeResult ProfileStore::buildRuntime(const RuntimeRequest &request) {
     RuntimeResult result;
     const Profile &profile = request.profile;
     if (request.cancelled->load()) return result;
+
+    config::ComposeInput input;
+    input.profileUid = profile.uid;
+    input.profileName = profile.name;
+    input.presets = request.presets;
+    input.overrides = request.overrides;
+    input.controller = request.controller;
+
     try {
-        YAML::Node root = YAML::LoadFile(profile.filePath.toStdString());
+        const YAML::Node root = YAML::LoadFile(profile.filePath.toStdString());
         if (!root.IsMap()) {
             result.error = tr("%1 is not a YAML mapping").arg(profile.name);
             return result;
         }
-        if (request.hasEnhancer) {
-            const EnhanceResult enhanced = ConfigEnhancer::applyChain(
-                QString::fromStdString(yamlutil::dump(root)), profile.name, request.chain, request.cancelled);
-            if (request.cancelled->load()) return {};
-            result.logs = enhanced.logs;
-            result.warning = enhanced.error;
-            root = YAML::Load(enhanced.yaml.toStdString());
-            if (!root.IsMap()) {
-                result.error = tr("The enhanced profile is not a YAML mapping");
-                return result;
-            }
-        }
-        const YAML::Node overrides = YAML::Load(
-            QJsonDocument(request.overrides).toJson(QJsonDocument::Compact).toStdString());
-        for (const auto &entry : overrides) {
-            const std::string key = entry.first.as<std::string>();
-            if (entry.second.IsMap() && root[key].IsMap()) {
-                for (const auto &field : entry.second) {
-                    root[key][field.first.as<std::string>()] = YAML::Clone(field.second);
-                }
-            } else {
-                root[key] = YAML::Clone(entry.second);
-            }
-        }
-        YAML::Node tun = root["tun"];
-        if (!tun) {
-            root["tun"] = YAML::Node(YAML::NodeType::Map);
-            tun = root["tun"];
-        } else if (!tun.IsMap()) {
-            result.error = tr("The TUN configuration must be a YAML mapping.");
-            return result;
-        }
-        if (!tun["enable"]) tun["enable"] = false;
-        if (!tun["stack"]) tun["stack"] = "mixed";
-        if (!tun["auto-route"]) tun["auto-route"] = true;
-        if (!tun["auto-detect-interface"]) tun["auto-detect-interface"] = true;
-        const YAML::Node effective = root;
-        const YAML::Node dns = effective["dns"];
-        // DNS interception requires an enabled internal resolver. Preserve
-        // explicit interception settings, including an intentionally empty list.
-        if (!tun["dns-hijack"] && dns && dns.IsMap() && dns["enable"] &&
-            dns["enable"].as<bool>(false)) {
-            tun["dns-hijack"] = YAML::Node(YAML::NodeType::Sequence);
-            tun["dns-hijack"].push_back("any:53");
-            tun["dns-hijack"].push_back("tcp://any:53");
-        }
-        root["external-controller"] = kController;
-        root["secret"] = request.secret.toStdString();
-        root["mixed-port"] = request.overrides.value("mixed-port").toInt(kMixedPort);
-        root.remove("port");
-        root.remove("socks-port");
-        if (!root["profile"].IsMap()) root["profile"] = YAML::Node(YAML::NodeType::Map);
-        root["profile"]["store-selected"] = true;
-        if (request.cancelled->load()) return {};
-        // Geo data is seeded, never overwritten: an engine that has already
-        // refreshed Country.mmdb in dataDir keeps its copy. The directory comes
-        // from the caller (ProfileStore::setSeedDir); empty means no seeding at
-        // all, rather than probing the filesystem root for "/Country.mmdb".
-        if (!request.seedDir.isEmpty()) {
-            for (const char *name : {"Country.mmdb", "geoip.dat", "geosite.dat"}) {
-                const QString target = request.dataDir + '/' + name;
-                const QString source = request.seedDir + '/' + name;
-                if (!QFileInfo::exists(target) && QFileInfo(source).isReadable())
-                    QFile::copy(source, target);
-            }
-        }
-        QDir().mkpath(request.dataDir + "/ui");
-        root["external-ui"] = (request.dataDir + "/ui").toStdString();
-        root["external-ui-url"] = kDashboardUrl;
-
-        const std::string rendered = yamlutil::dump(root);
-        if (rendered.empty()) {
+        const std::string source = yamlutil::dump(root);
+        if (source.empty()) {
+            // A profile that cannot be serialised -- a cyclic alias, say -- is
+            // reported as unrenderable, the same answer the single-pass version
+            // reached at its final dump.
             result.error = tr("Could not render %1").arg(profile.name);
             return result;
         }
-        const QString path = request.configPath;
-        QString reason;
-        if (request.cancelled->load()) return {};
-        if (!writeFile(path, QByteArray::fromStdString(rendered), &reason, request.cancelled)) {
-            if (request.cancelled->load()) return {};
-            result.error = tr("Could not write the runtime config: %1").arg(reason);
-            return result;
-        }
-        // Keep a conventional preview path; launches use the immutable path.
-        if (!writeFile(request.dataDir + '/' + kRuntimeFile, QByteArray::fromStdString(rendered), &reason, request.cancelled)) {
-            QFile::remove(path);
-            if (request.cancelled->load()) return {};
-            result.error = tr("Could not write the runtime preview: %1").arg(reason);
-            return result;
-        }
-        result.path = path;
-        return result;
+        input.sourceYaml = QString::fromStdString(source);
     } catch (const YAML::Exception &error) {
         result.error = tr("Could not generate %1: %2")
                            .arg(profile.name, QString::fromStdString(error.what()));
         return result;
     }
+
+    if (request.hasEnhancer) {
+        const EnhanceResult enhanced = ConfigEnhancer::applyChain(
+            input.sourceYaml, profile.name, request.chain, request.cancelled);
+        if (request.cancelled->load()) return {};
+        result.logs = enhanced.logs;
+        result.warning = enhanced.error;
+        input.logs = enhanced.logs;
+        input.sourceYaml = enhanced.yaml;
+        input.sourceLabel = QStringLiteral("legacy-chain");
+    }
+
+    const config::ComposeResult composed = config::compose(input);
+    if (const QString warning = warningText(composed.diagnostics); !warning.isEmpty())
+        result.warning = QStringList{result.warning, warning}.join('\n').trimmed();
+    if (!composed.ok) {
+        // No candidate exists. Returning with an empty path is what keeps the
+        // previous runtime file, and the running core, exactly as they were.
+        result.error = errorText(composed.diagnostics);
+        if (result.error.isEmpty()) result.error = tr("Could not compose %1").arg(profile.name);
+        return result;
+    }
+    if (request.cancelled->load()) return {};
+
+    // Geo data is seeded, never overwritten: an engine that has already
+    // refreshed Country.mmdb in dataDir keeps its copy. The directory comes
+    // from the caller (ProfileStore::setSeedDir); empty means no seeding at
+    // all, rather than probing the filesystem root for "/Country.mmdb".
+    if (!request.seedDir.isEmpty()) {
+        for (const char *name : {"Country.mmdb", "geoip.dat", "geosite.dat"}) {
+            const QString target = request.dataDir + '/' + name;
+            const QString source = request.seedDir + '/' + name;
+            if (!QFileInfo::exists(target) && QFileInfo(source).isReadable())
+                QFile::copy(source, target);
+        }
+    }
+    // The composer has already written this path into external-ui; the
+    // directory itself is this side's job.
+    QDir().mkpath(request.controller.externalUi);
+
+    const QByteArray rendered = composed.yaml.toUtf8();
+    const QString path = request.configPath;
+    QString reason;
+    if (request.cancelled->load()) return {};
+    if (!writeFile(path, rendered, &reason, request.cancelled)) {
+        if (request.cancelled->load()) return {};
+        result.error = tr("Could not write the runtime config: %1").arg(reason);
+        return result;
+    }
+    // Keep a conventional preview path; launches use the immutable path.
+    if (!writeFile(request.dataDir + '/' + kRuntimeFile, rendered, &reason, request.cancelled)) {
+        QFile::remove(path);
+        if (request.cancelled->load()) return {};
+        result.error = tr("Could not write the runtime preview: %1").arg(reason);
+        return result;
+    }
+    result.path = path;
+    return result;
 }
 
 }  // namespace core

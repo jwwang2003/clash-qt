@@ -644,8 +644,34 @@ EnhanceResult ConfigEnhancer::apply(const QString &baseYaml, const QString &prof
     return applyChain(baseYaml, profileName, chain_);
 }
 
+ChainSnapshot ConfigEnhancer::snapshotChain(const QVector<ChainItem> &chain) {
+    ChainSnapshot snapshot;
+    snapshot.reserve(chain.size());
+    for (const ChainItem &item : chain) {
+        ChainStep step;
+        step.item = item;
+        if (item.enabled && !readFile(item.filePath, &step.contents, &step.readError) &&
+            step.readError.isEmpty()) {
+            // A step that failed to read but named no reason would be reported
+            // as a success with empty contents, which is a silently different
+            // configuration. Never let the error be empty.
+            step.readError = tr("could not be read");
+        }
+        snapshot.append(step);
+    }
+    return snapshot;
+}
+
+ChainSnapshot ConfigEnhancer::snapshot() const { return snapshotChain(chain_); }
+
 EnhanceResult ConfigEnhancer::applyChain(const QString &baseYaml, const QString &profileName,
                                         const QVector<ChainItem> &chain,
+                                        const std::shared_ptr<std::atomic_bool> &cancelled) {
+    return applyChain(baseYaml, profileName, snapshotChain(chain), cancelled);
+}
+
+EnhanceResult ConfigEnhancer::applyChain(const QString &baseYaml, const QString &profileName,
+                                        const ChainSnapshot &snapshot,
                                         const std::shared_ptr<std::atomic_bool> &cancelled) {
     EnhanceResult result;
     result.yaml = baseYaml;
@@ -669,14 +695,14 @@ EnhanceResult ConfigEnhancer::applyChain(const QString &baseYaml, const QString 
         result.logs.append(QString("exception: %1: %2").arg(item.name, reason));
     };
 
-    for (const ChainItem &item : chain) {
+    for (const ChainStep &step : snapshot) {
+        const ChainItem &item = step.item;
         if (cancelled && cancelled->load()) return result;
         if (!item.enabled) continue;
 
-        QByteArray source;
-        QString reason;
-        if (!readFile(item.filePath, &source, &reason)) {
-            fail(item, reason);
+        const QByteArray &source = step.contents;
+        if (!step.readError.isEmpty()) {
+            fail(item, step.readError);
             continue;
         }
 

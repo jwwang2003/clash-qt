@@ -10,6 +10,8 @@
 #include <atomic>
 #include <memory>
 
+#include "core/config/config_composer.h"
+#include "core/config/enhance/config_enhancer.h"
 #include "core/types.h"
 
 class QNetworkAccessManager;
@@ -17,8 +19,6 @@ class QNetworkReply;
 class QTimer;
 
 namespace core {
-
-class ConfigEnhancer;
 
 /// Traffic allowance reported by a subscription's `subscription-userinfo` header.
 struct SubscriptionInfo {
@@ -98,6 +98,38 @@ public:
     void renameProfile(const QString &uid, const QString &name);
     void setUpdateInterval(const QString &uid, int minutes);
 
+    // -------------------------------------------------------------- presets
+    //
+    // Contract revision config-r1, .refactor/P4_CONFIG_CONTRACT.md. The document
+    // shape is {"version":1,"global":[Preset],"profiles":{"uid":[Preset]}}; the
+    // composer owns its meaning (core/config/config_composer.h) and this owns
+    // its persistence.
+
+    /// The document as persisted: normalised, so two saves of equivalent input
+    /// produce equal objects. Never invalid -- an unreadable document on disk is
+    /// recovered or replaced before it is ever returned from here.
+    QJsonObject presetDocument() const;
+
+    /// Validates, then persists atomically. Returns false and changes NOTHING --
+    /// not the in-memory document, not the file, not the last-good copy -- when
+    /// the document is rejected; the reasons are on lastPresetDiagnostics() and
+    /// summarised through errorOccurred(). Emits presetsChanged() on success.
+    bool setPresetDocument(const QJsonObject &document);
+
+    /// Composes the configuration the selected profile (or `profileUid`, when
+    /// given) WOULD produce, on a worker, and answers with
+    /// effectiveConfigPreviewReady.
+    ///
+    /// Deliberately inert: it writes no file, seeds nothing, cancels no runtime
+    /// generation and starts no backend. The input is snapshotted here, on the
+    /// owning thread, so the answer belongs to one instant. Results from
+    /// superseded requests are dropped rather than delivered out of order.
+    void requestEffectiveConfigPreview(const QString &profileUid = {});
+
+    /// Why the last load or setPresetDocument() said what it said. Empty when
+    /// the last one was clean.
+    QVector<config::Diagnostic> lastPresetDiagnostics() const;
+
     /// Synchronous compatibility API for non-UI callers and deterministic tests.
     QString generateRuntimeConfig();
     /// Generates an immutable launch config on a worker and emits runtimeConfigReady.
@@ -117,6 +149,8 @@ signals:
     void profileCreated(const QString &uid);
     void profileContentSaved(const QString &uid, bool success);
     void errorOccurred(const QString &message);
+    void presetsChanged();
+    void effectiveConfigPreviewReady(const core::config::ComposeResult &result);
 
 private:
     enum class WriteKind { Import, Create, Save, Refresh };
@@ -126,8 +160,13 @@ private:
     void cancelFileOperations();
     struct RuntimeRequest;
     struct RuntimeResult;
+    struct PreviewRequest;
     RuntimeRequest prepareRuntime();
+    PreviewRequest preparePreview(const QString &profileUid) const;
+    config::ControllerFields controllerFieldsFor(const QString &dataDir) const;
     static RuntimeResult buildRuntime(const RuntimeRequest &request);
+    static config::ComposeResult buildPreview(const PreviewRequest &request);
+    void loadPresets();
     void startPendingRuntime();
     void cancelDownloads();
     bool acceptsChanges();
@@ -145,6 +184,10 @@ private:
     QString seedDir_;
     QPointer<ConfigEnhancer> enhancer_;
     QJsonObject runtimeOverrides_;
+    QJsonObject presetDocument_;
+    config::PresetDocument presets_;
+    QVector<config::Diagnostic> presetDiagnostics_;
+    quint64 previewGeneration_ = 0;
     QHash<QString, QNetworkReply *> updating_;
     QQueue<ProfileWrite> fileQueue_;
     bool fileRunning_ = false;

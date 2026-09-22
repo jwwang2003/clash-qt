@@ -24,6 +24,7 @@
 #include <memory>
 #include <atomic>
 
+#include "core/config/config_composer.h"
 #include "core/preferences/preferences.h"
 
 #include <yaml-cpp/yaml.h>
@@ -81,7 +82,18 @@ namespace {
 
 constexpr qsizetype kMaxArchive = 32 * 1024 * 1024;
 constexpr qsizetype kMaxFile = 16 * 1024 * 1024;
-const QStringList roots{"profiles.json", "chain.json", "runtime-overrides.json", "profiles", "chain"};
+
+// Whole files, copied as they are. The three required ones predate presets and
+// every archive has them; the preset pair is newer, so an archive written before
+// it existed is still a valid archive -- see validate().
+const QStringList requiredFiles{"profiles.json", "chain.json", "runtime-overrides.json"};
+const QStringList presetFiles{"presets.json", "presets.last-good.json"};
+const QStringList fileRoots = requiredFiles + presetFiles;
+// Directories, walked one level deep. Kept last: restoreLocal installs roots in
+// order, and moving the indexes before the payload they name reads better in the
+// rollback log.
+const QStringList directoryRoots{"profiles", "chain"};
+const QStringList roots = fileRoots + directoryRoots;
 
 bool safeName(const QString &name) {
     if (name.isEmpty() || name == "." || name == ".." || name.endsWith('.') || name.endsWith(' ')) return false;
@@ -101,10 +113,9 @@ QString normalizedPath(const QString &path) {
 }
 
 bool safePath(const QString &path) {
-    if (path == "profiles.json" || path == "chain.json" || path == "runtime-overrides.json") return true;
+    if (fileRoots.contains(path)) return true;
     const auto pieces = path.split('/');
-    return pieces.size() == 2 && (pieces.first() == "profiles" || pieces.first() == "chain") &&
-           safeName(pieces.last());
+    return pieces.size() == 2 && directoryRoots.contains(pieces.first()) && safeName(pieces.last());
 }
 
 bool settingAllowed(const QString &key) {
@@ -140,6 +151,38 @@ QJsonObject jsonObject(const QByteArray &bytes, bool *ok) {
     const auto document = QJsonDocument::fromJson(bytes, &error);
     *ok = error.error == QJsonParseError::NoError && document.isObject();
     return document.object();
+}
+
+// What a data directory with no presets means, spelled out. The document is
+// versioned, so this is also what an archive from before presets existed has to
+// restore: absent and "no presets" must land on the same bytes, or a restore
+// would leave today's presets standing over yesterday's profiles.
+QByteArray emptyPresets() {
+    return QJsonDocument(config::emptyPresetDocument()).toJson(QJsonDocument::Compact);
+}
+
+// Preset validity is the composer's definition of it, reused rather than
+// restated: this must accept exactly what ProfileStore will accept when it
+// loads the restored file, and version support is part of that.
+bool validPresetDocument(const QByteArray &bytes, QString *error) {
+    bool ok = false;
+    const auto document = jsonObject(bytes, &ok);
+    if (!ok) {
+        if (error) *error = BackupStore::tr("not a JSON object");
+        return false;
+    }
+    config::PresetDocument parsed;
+    QVector<config::Diagnostic> diagnostics;
+    if (config::parsePresetDocument(document, &parsed, &diagnostics)) return true;
+    if (error) {
+        *error = BackupStore::tr("rejected by the preset parser");
+        for (const auto &diagnostic : diagnostics) {
+            if (diagnostic.severity != QLatin1String("error")) continue;
+            *error = diagnostic.message;
+            break;
+        }
+    }
+    return false;
 }
 
 }  // namespace
@@ -266,6 +309,23 @@ QByteArray BackupStore::snapshot(QString *error) const {
     if (!files.contains("profiles.json")) files["profiles.json"] = R"({"profiles":[],"currentUid":""})";
     if (!files.contains("chain.json")) files["chain.json"] = R"({"chain":[]})";
     if (!files.contains("runtime-overrides.json")) files["runtime-overrides.json"] = "{}";
+
+    // Presets are resolved the way ProfileStore resolves them at load: the
+    // stored document when it parses, the last-good copy when it does not, the
+    // empty document when neither does. Two reasons not to simply copy the
+    // bytes. A preset file the running application has already recovered from
+    // must not be the one thing that makes a backup impossible -- snapshot()
+    // cannot emit, so it would fail with no explanation. And validate() rejects
+    // an unparsable preset document, so copying one through would produce an
+    // archive that can never be restored.
+    QByteArray presets = files.value(presetFiles.at(0));
+    QByteArray lastGood = files.value(presetFiles.at(1));
+    if (!validPresetDocument(presets, nullptr))
+        presets = validPresetDocument(lastGood, nullptr) ? lastGood : emptyPresets();
+    if (!validPresetDocument(lastGood, nullptr)) lastGood = presets;
+    files[presetFiles.at(0)] = presets;
+    files[presetFiles.at(1)] = lastGood;
+
     bool valid;
     auto profiles = jsonObject(files.value("profiles.json"), &valid);
     if (!valid) { *error = tr("The profile index is invalid."); return {}; }
@@ -319,10 +379,29 @@ bool BackupStore::validate(const QByteArray &archive, QMap<QString, QByteArray> 
         if (item.value("sha256").toString().toLatin1() != hash) return fail(tr("Backup checksum mismatch: %1").arg(path));
         files->insert(path, decoded.decoded);
     }
-    for (const auto &root : roots.mid(0, 3)) {
+    for (const auto &root : requiredFiles) {
         if (!files->contains(root)) return fail(tr("Backup is missing %1.").arg(root));
         jsonObject(files->value(root), &ok);
         if (!ok) return fail(tr("Invalid JSON in %1.").arg(root));
+    }
+
+    // Presets are validated here, before restoreLocal() stages anything, so a
+    // preset document this build cannot load is refused while the current files
+    // are still untouched -- including the last-good copy, which exists
+    // precisely to be loadable when the main one is not.
+    //
+    // An archive that carries neither is an archive written before presets
+    // existed, not an invalid one. It gets the empty document, materialised
+    // into `files` rather than skipped: restoring it has to clear the presets
+    // this installation has, which belong to the profiles being replaced.
+    for (const auto &path : presetFiles) {
+        if (!files->contains(path)) {
+            files->insert(path, emptyPresets());
+            continue;
+        }
+        QString detail;
+        if (!validPresetDocument(files->value(path), &detail))
+            return fail(tr("Invalid preset document in %1: %2").arg(path, detail));
     }
     for (const auto &kind : {QString("profiles"), QString("chain")}) {
         const auto index = jsonObject(files->value(kind + ".json"), &ok);

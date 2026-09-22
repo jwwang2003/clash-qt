@@ -13,6 +13,9 @@ class QListView;
 
 namespace ui {
 
+class EffectiveConfigView;
+class PresetEditor;
+
 class ProfileModel : public QAbstractListModel {
     Q_OBJECT
 
@@ -67,6 +70,9 @@ class ProfilesPage : public QWidget {
 public:
     explicit ProfilesPage(core::ProfileStore *store, QWidget *parent = nullptr);
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private slots:
     void onProfilesChanged(const QVector<core::Profile> &profiles, const QString &currentUid);
     void onErrorOccurred(const QString &message);
@@ -76,6 +82,9 @@ private:
     void importUrl();
     void importFile();
     void editProfile(const core::Profile &profile);
+    /// Points the preset editor at the profile the list has selected, so the
+    /// per-profile scope always edits the chain the user is looking at.
+    void updatePresetScope();
 
     core::ProfileStore *store_;
     ProfileModel *model_;
@@ -83,6 +92,9 @@ private:
     QLineEdit *urlEdit_;
     QLabel *errorLabel_;
     QLabel *emptyLabel_;
+    PresetEditor *presetEditor_;
+    EffectiveConfigView *preview_;
+    bool previewRequested_ = false;
 };
 
 }  // namespace ui

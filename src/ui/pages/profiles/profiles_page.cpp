@@ -22,8 +22,12 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QSplitter>
+#include <QTabWidget>
 #include <QVBoxLayout>
 
+#include "ui/pages/profiles/effective_config_view.h"
+#include "ui/pages/profiles/preset_editor.h"
 #include "ui/theme/formatting.h"
 #include "ui/theme/theme.h"
 
@@ -312,6 +316,7 @@ void ProfileDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptionVi
 ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     : QWidget(parent), store_(store), model_(new ProfileModel(this)) {
     urlEdit_ = new QLineEdit(this);
+    urlEdit_->setObjectName("subscriptionUrl");
     urlEdit_->setPlaceholderText(tr("Subscription URL…"));
     urlEdit_->setClearButtonEnabled(true);
     connect(urlEdit_, &QLineEdit::returnPressed, this, &ProfilesPage::importUrl);
@@ -363,9 +368,10 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     select->setEnabled(false);
     edit->setEnabled(false);
     connect(view_->selectionModel(), &QItemSelectionModel::currentChanged, this,
-            [select, edit](const QModelIndex &current) {
+            [this, select, edit](const QModelIndex &current) {
                 select->setEnabled(current.isValid());
                 edit->setEnabled(current.isValid());
+                updatePresetScope();
             });
     connect(select, &QPushButton::clicked, this, [this] {
         store_->selectProfile(model_->profileAt(view_->currentIndex()).uid);
@@ -390,7 +396,34 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     actions->addStretch();
     actions->addWidget(updateAll);
     layout->addLayout(actions);
-    layout->addWidget(view_, 1);
+
+    // The presets and the preview sit below the profile list rather than beside
+    // it: both are about the profile the list has selected, and the legacy
+    // controls above keep the positions they had.
+    presetEditor_ = new PresetEditor(store_, this);
+    preview_ = new EffectiveConfigView(store_, this);
+
+    auto *details = new QTabWidget(this);
+    details->setObjectName("profileDetails");
+    details->addTab(presetEditor_, tr("Presets"));
+    details->addTab(preview_, tr("Effective Config"));
+
+    auto *splitter = new QSplitter(Qt::Vertical, this);
+    splitter->setObjectName("profileSplitter");
+    splitter->setChildrenCollapsible(false);
+    splitter->addWidget(view_);
+    splitter->addWidget(details);
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 2);
+    layout->addWidget(splitter, 1);
+
+    // One preview request per accepted edit and per scope change, and no
+    // request at all until the page is shown: composing is work, and a preview
+    // nobody is looking at is work for nobody.
+    connect(presetEditor_, &PresetEditor::presetsCommitted, preview_,
+            &EffectiveConfigView::requestPreview);
+    connect(presetEditor_, &PresetEditor::scopeChanged, preview_,
+            &EffectiveConfigView::requestPreview);
 
     connect(store_, &core::ProfileStore::profileCreated, this, [this](const QString &uid) {
         for (const auto &profile : store_->profiles()) if (profile.uid == uid) { editProfile(profile); break; }
@@ -423,6 +456,22 @@ void ProfilesPage::onProfilesChanged(const QVector<core::Profile> &profiles,
         if (profile.remote) view_->openPersistentEditor(index);
         if (profile.uid == (selected.isEmpty() ? currentUid : selected)) view_->setCurrentIndex(index);
     }
+
+    // Also when the selection did not move -- the list may have been emptied,
+    // and then the per-profile scope has nothing left to edit.
+    updatePresetScope();
+}
+
+void ProfilesPage::updatePresetScope() {
+    const core::Profile profile = model_->profileAt(view_->currentIndex());
+    presetEditor_->setProfile(profile.uid, profile.name);
+}
+
+void ProfilesPage::showEvent(QShowEvent *event) {
+    QWidget::showEvent(event);
+    if (previewRequested_) return;
+    previewRequested_ = true;
+    preview_->requestPreview(presetEditor_->scopeUid());
 }
 
 void ProfilesPage::onErrorOccurred(const QString &message) {

@@ -1,0 +1,18 @@
+foreach(suite config_composer preset_document)
+    string(REPLACE "_" "-" test_name "${suite}")
+    qt_add_executable(${test_name}-tests ${suite}_test.cpp)
+    target_link_libraries(${test_name}-tests PRIVATE Qt6::Test clash_config_compose)
+    add_test(NAME ${test_name} COMMAND ${test_name}-tests)
+    clash_qt_label(${test_name} core config unit)
+    clash_qt_isolate_test(${test_name})
+endforeach()
+
+qt_add_executable(chain-snapshot-tests chain_snapshot_test.cpp)
+target_link_libraries(chain-snapshot-tests PRIVATE Qt6::Test clash_config clash_yaml clash_test_support)
+add_test(NAME chain-snapshot COMMAND chain-snapshot-tests)
+clash_qt_label(chain-snapshot core config unit)
+clash_qt_isolate_test(chain-snapshot)
+foreach(name config-composer preset-document chain-snapshot)
+    set_property(TEST ${name} APPEND PROPERTY ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen" "QT_QUICK_BACKEND=software")
+endforeach()

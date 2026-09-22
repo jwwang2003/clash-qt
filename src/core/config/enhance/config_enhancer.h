@@ -27,6 +27,21 @@ struct EnhanceResult {
     QString error;       // empty on success
 };
 
+/// One chain step with its source already read off disk.
+///
+/// `readError` is non-empty when the file could not be read; the step is still
+/// present, because the failure has to be reported against the step it belongs
+/// to and the rest of the chain has to keep running -- exactly what the
+/// read-at-the-last-moment version did.
+struct ChainStep {
+    ChainItem item;
+    QByteArray contents;
+    QString readError;
+};
+
+/// An immutable chain: every enabled step's contents, taken at one instant.
+using ChainSnapshot = QVector<ChainStep>;
+
 /// Applies a chain of merges and scripts to a profile's YAML.
 ///
 /// The chain is global rather than per-profile: it applies to whichever profile
@@ -63,6 +78,26 @@ public:
     static EnhanceResult applyChain(const QString &baseYaml, const QString &profileName,
                                    const QVector<ChainItem> &chain,
                                    const std::shared_ptr<std::atomic_bool> &cancelled = {});
+
+    /// Reads every enabled step's file, once, right now.
+    ///
+    /// Call this on the thread that owns the chain and hand the result to a
+    /// worker: the enhancement then runs on values, not on paths. The version
+    /// that takes ChainItems opens step N's file immediately before running step
+    /// N, so a merge fragment saved while a slow script two steps earlier was
+    /// still running was picked up mid-run and the generated config did not
+    /// correspond to any single state of the chain. Disabled steps are carried
+    /// through unread -- they are skipped either way, and reading them would
+    /// make the snapshot cost depend on steps that do nothing.
+    static ChainSnapshot snapshotChain(const QVector<ChainItem> &chain);
+    ChainSnapshot snapshot() const;
+
+    /// The same enhancement over an already-taken snapshot. Semantics are
+    /// identical to the ChainItem overload, down to which step a failure is
+    /// attributed to and the fact that a failing step leaves the chain running.
+    static EnhanceResult applyChain(const QString &baseYaml, const QString &profileName,
+                                    const ChainSnapshot &snapshot,
+                                    const std::shared_ptr<std::atomic_bool> &cancelled = {});
 
 signals:
     void reloaded();

@@ -1,7 +1,7 @@
 # Reusable backend libraries. Each owns one responsibility and declares only the
 # dependencies its code actually has; see .refactor/DECISIONS.md D1.
 
-# Published MihomoBackend contract, revision backend-r3. Header-only: it is the
+# Published MihomoBackend contract, revision backend-r4. Header-only: it is the
 # boundary the application codes against, and both the real backend and the fake
 # implement it. Depends on clash_types alone.
 add_library(clash_backend INTERFACE)
@@ -42,7 +42,9 @@ target_sources(clashqt_com PUBLIC FILE_SET HEADERS
 target_include_directories(clashqt_com PUBLIC "${PROJECT_SOURCE_DIR}/src")
 # qt_standard_project_setup turns AUTOMOC on for every target. This one has no
 # Q_OBJECT and must not acquire a Qt code path at all, so opt it back out.
-set_target_properties(clashqt_com PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+set_target_properties(clashqt_com PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF
+    POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON)
 
 # Shared value types. Header-only, so everything can depend on it without any
 # target depending on another implementation library. This is what keeps the
@@ -57,6 +59,14 @@ target_link_libraries(clash_types INTERFACE Qt6::Core)
 # separately packaged component never has to drag the configuration library in.
 add_library(clash_yaml STATIC config/yaml_util.cpp)
 target_link_libraries(clash_yaml PUBLIC clash_types yaml-cpp::yaml-cpp)
+set_target_properties(clash_yaml PROPERTIES POSITION_INDEPENDENT_CODE ON
+    CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+
+# Pure YAML composition: resource I/O and the legacy JS engine stay outside.
+add_library(clash_config_compose STATIC config/config_composer.cpp)
+target_link_libraries(clash_config_compose PUBLIC clash_types clash_yaml)
+target_sources(clash_config_compose PUBLIC FILE_SET HEADERS
+    BASE_DIRS "${PROJECT_SOURCE_DIR}/src" FILES config/config_composer.h)
 
 add_library(clash_config STATIC config/enhance/config_enhancer.cpp)
 target_link_libraries(clash_config
@@ -66,7 +76,7 @@ target_link_libraries(clash_config
 
 add_library(clash_profiles STATIC profiles/profile_store.cpp)
 target_link_libraries(clash_profiles
-    PUBLIC  clash_types clash_config
+    PUBLIC  clash_types clash_config clash_config_compose
     # PRE-ARCH edge 1 is GONE: the composition root supplies seedDir, so this
     # library no longer reaches into the component-private implementation for it.
     # That also removed the Qt Gui and WebSockets creep it was dragging in.
@@ -86,7 +96,7 @@ add_library(clash_backups STATIC backups/backup_store.cpp)
 # target linked Qt6::Concurrent unnecessarily.
 target_link_libraries(clash_backups
     PUBLIC  clash_types
-    PRIVATE Qt6::Network yaml-cpp::yaml-cpp clash_preferences)
+    PRIVATE Qt6::Network yaml-cpp::yaml-cpp clash_preferences clash_config_compose)
 
 add_library(clash_telemetry STATIC telemetry/traffic_history.cpp)
 target_link_libraries(clash_telemetry PUBLIC clash_types)
