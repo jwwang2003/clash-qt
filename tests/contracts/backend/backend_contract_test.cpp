@@ -952,10 +952,38 @@ class BackendContractTest : public QObject {
         status.version = QStringLiteral("1.0.0");
         fake.setServiceStatus(status);
 
+        // The published status carries the helper's own running-core report, so
+        // a consumer can guard an uninstall without opening a second privileged
+        // connection (decision D3). Captured here because RecordingObserver
+        // does not keep this payload.
+        struct StatusCapture final : core::backend::BackendObserver {
+            int answers = 0;
+            core::backend::PrivilegedServiceStatus last;
+            void privilegedServiceStatus(
+                const core::backend::Completion &,
+                const core::backend::PrivilegedServiceStatus &published) noexcept override {
+                ++answers;
+                last = published;
+            }
+        } capture;
+        fake.addObserver(&capture);
+
         const RequestId request = fake.requestPrivilegedServiceStatus();
         QVERIFY(request != RequestId::Invalid);
         QVERIFY(fake.flushEvents());
         QVERIFY(!observer.sawReentrantDelivery);
+        QCOMPARE(capture.answers, 1);
+        QVERIFY2(!capture.last.coreRunning,
+                 "a status with no running core reported one");
+
+        status.coreRunning = true;
+        fake.setServiceStatus(status);
+        QVERIFY(fake.requestPrivilegedServiceStatus() != RequestId::Invalid);
+        QVERIFY(fake.flushEvents());
+        QCOMPARE(capture.answers, 2);
+        QVERIFY2(capture.last.coreRunning,
+                 "the published status dropped the helper's running-core report");
+        fake.removeObserver(&capture);
 
         // A second instance answers from its own state, not from a shared one.
         FakeBackend other;

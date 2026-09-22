@@ -90,6 +90,23 @@ enum class ServiceState : std::uint8_t {
 struct PrivilegedServiceStatus {
     ServiceState state = ServiceState::Unsupported;
     QString version;
+    // The helper's OWN `state` field, verbatim: true when a core process is
+    // running under the privileged service. The macOS helper keeps exactly one
+    // core for the whole machine (src/services/macos/macos_helper.mm: a single
+    // `Core core` in serve(), reported by response() as "running"/"stopped" to
+    // EVERY connection, not only the one holding the lease). So this is true
+    // for a core another app session started, and it is NOT this backend's
+    // CoreState - a consumer that wants its own core asks coreState().
+    //
+    // Meaningful only when the query was actually answered, i.e. `state ==
+    // ServiceState::Connected` with no error. On any other outcome nothing was
+    // reported and this stays false; a consumer guarding on it must not treat
+    // that false as "no core is running".
+    //
+    // This is the flag ServiceSettings' uninstall guard reads. Decision D3
+    // removed that page's second PrivilegedServiceClient, which was the only
+    // producer, and the guard went inert until the contract carried it here.
+    bool coreRunning = false;
     ErrorInfo error;
 };
 

@@ -25,6 +25,14 @@ CTest now registers **47** tests. The table below is derived from `ctest -N`
 `clash_qt_label` calls that produce it — not from prose, and not from memory.
 The registered-suite table is the index; everything after it is detail.
 
+**47 is a measurement, not a property of the branch.** Re-confirmed in
+`build-records` on 2026-09-22: 47 registered, 44 in the `make test` lane, 15 in
+`make test-integration`, 0 in `make test-native`. One suite is in flight and not
+yet registered — `tests/ui/service_settings_test.cpp` exists in the working tree
+and `tests/CMakeLists.txt` does not name it — so the first two numbers move to 48
+and 45 the moment it is, and this table gains a row in the UI lane. Re-derive
+from `ctest -N` before quoting any of them.
+
 Feature identifiers are the ones used throughout the refactor plan:
 
 | ID | Feature |
@@ -62,6 +70,20 @@ list as a description of what exists.
 `make test-integration` selects `real-core|integration` and runs **15**: the
 eight core/platform integration suites, `backend-real-contract`,
 `backend-real-core`, and all five workflow suites.
+
+**`make test-native` selects `native|privileged` and therefore runs zero tests.**
+Stated plainly because the target's own help line — "Native and privileged tests.
+Opt-in; needs a disposable host." — reads as if a body of such tests exists. It
+does not. Verified against the configured tree: `ctest -N --label-regex
+"native|privileged"` matches **0 of 47** registered entries; no `clash_qt_label`
+call anywhere under `tests/` passes either word. Both labels are *reserved* —
+the lane, its `CLASH_QT_NATIVE_HOST=1` confirmation gate and its exclusion from
+`make test` are in place so that the first genuinely host-exclusive test has
+somewhere to go. Until one is written, `make test-native` succeeding means
+nothing was run, not that native and privileged behaviour was verified. The two
+cases that would belong to a `native` lane today — the GPU-display graph cases —
+live in `tests/benchmarks/` and carry `benchmark`, not `native`; see the
+benchmark-lane section.
 
 ### Core lane
 
@@ -203,6 +225,29 @@ harness `docs/TEST_STRATEGY.md` asks for separately, and it is the only suite
 whose subject is the shipped binary rather than the libraries behind it. It is
 the lane that can see a component which builds, links and is never wired up —
 the shape of the privileged-service regression P3 shipped.
+
+### The defect class this lane exists for: the producer went, the consumer stayed
+
+Six instances have now been found in this project, all the same shape: something
+that *produced* a value was replaced, moved or removed, and the code that
+*consumed* it was left in place, still compiling, still linking, still passing
+its own unit tests, and connected to nothing. `.refactor/PROGRESS_LEDGER.md`
+carries the full record under "Recorded defect class"; what belongs here is
+which lane can see each shape, because that is what decides where a new test
+goes.
+
+| Shape | What no lane below the journey lane can see | Lane that catches it |
+| --- | --- | --- |
+| A dependency is injected at the composition root, and the root does not inject it | Every unit test constructs the object *with* the dependency, so the defect lives only in `main.cpp` | `app-smoke` — it launches the shipped binary and distinguishes the two modes from outside the process |
+| Two components are each correct and their assembly deadlocks | Each suite supplies the missing precondition in its own `init()` | `w03-routing-controls` — a cold start with a genuinely empty data directory |
+| A member is read but never written | Compiles, links, and the reads are all reachable; no test asserts the state that would set it | None today. A grep for writes is the only detector; see the ledger |
+| A signal is emitted with zero `connect()` calls anywhere | The emit is exercised, so coverage looks fine | None today. `grep -rn` for the signal name is the only detector |
+| A library is built and linked by nothing but its own contract test | The contract test passes; the link graph is where the absence shows | `arch-graph` can show it, but only if someone reads the graph — no rule fails on it |
+| A build target is named for a thing it does not build | `make` exits 0 | None. Reading the recipe is the only detector |
+
+The bottom three rows are the honest part of this table: three of the six shapes
+have **no automated detector at all** today. They were found by reading, and the
+next one will be too unless a rule is written for it.
 
 ---
 
@@ -358,21 +403,23 @@ indexed above; this section is the detail the older suites already have.
   `ui::RoutingControls` and `ui::TrayIcon` from `src/ui/**` sources compiled into
   the test target, plus the `ClashQt` QML module. Fixed port 29097, `RUN_SERIAL`,
   300 s.
-* **DEFECT, found while reconciling this file and not yet fixed.**
-  `w03-routing-controls` is named in **both** environment lists at the end of
+* **DEFECT, found while reconciling this file — FIXED in `ac60175`.**
+  `w03-routing-controls` was named in **both** environment lists at the end of
   `tests/CMakeLists.txt` — the `QT_QPA_PLATFORM=offscreen` list and the
-  `QT_QUICK_BACKEND=software` list — and receives **neither**. Verified against
-  the configured tree: `ctest --show-only=json-v1` reports its `ENVIRONMENT` as
-  `CLASH_QT_FAKE_CORE` and `CLASH_QT_DATA_DIR` only, while `tray`,
-  `routing-controls` and `home-page` in the same lists get theirs. The cause is
-  that the test is registered in the `tests/workflows/` subdirectory, so
-  `if(TEST w03-routing-controls)` is false in the parent scope where that block
-  runs; CMake emits no warning. This is the **same failure mode** as the ordering
-  bug `447c381` fixed — a guard that quietly does nothing — recurring for the one
-  workflow suite that builds widgets. It passes today only because this machine
-  has a display; a headless runner would fail it. Owner: whoever holds
-  `tests/CMakeLists.txt` / `tests/workflows/CMakeLists.txt`. Not fixable from
-  this file.
+  `QT_QUICK_BACKEND=software` list — and received **neither**, because the test
+  is registered in the `tests/workflows/` subdirectory and `if(TEST
+  w03-routing-controls)` is false in the parent scope where those blocks run.
+  CMake emits no warning for that. It was the **same failure mode** as the
+  ordering bug `447c381` fixed — a guard that quietly does nothing — recurring
+  by scope instead of by order, for the one workflow suite that builds widgets.
+  The fix sets both variables where the test is registered
+  (`tests/workflows/CMakeLists.txt`, in the `set_tests_properties` call beside
+  `add_test(NAME w03-routing-controls ...)`), with a comment saying why they
+  cannot live in the parent. The parent block now says the same thing from the
+  other side: "Only tests defined in THIS directory can be listed". Verified in
+  `build-records`: `ctest --show-only=json-v1` reports `w03-routing-controls`'s
+  `ENVIRONMENT` as `CLASH_QT_FAKE_CORE`, `QT_QPA_PLATFORM=offscreen`,
+  `QT_QUICK_BACKEND=software` and `CLASH_QT_DATA_DIR`.
 * **Cases (2):** `everySurfaceAgreesWithConfirmedStateThroughAManagedSession`,
   `aColdStartCanEnableTheSystemProxyFromTheSettingsSurface`.
 * The three surfaces are driven the way a user drives them and then read back;

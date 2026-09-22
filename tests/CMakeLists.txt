@@ -74,6 +74,20 @@ if(CLASH_QT_BUILD_APP)
         clash_app_runtime clash_backend_bridge clash_backend_fake)
     add_test(NAME routing-controls COMMAND routing-controls-tests)
 
+    # The privileged uninstall guard. It was inert for an entire wave -- read in
+    # three places, written nowhere -- after D3 removed its only producer, which
+    # meant the helper could be uninstalled while another session's core ran
+    # under it. These cases fail if it goes inert again.
+    qt_add_executable(service-settings-tests ui/service_settings_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/settings/service_settings.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/settings_section.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(service-settings-tests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network
+        clash_backend_bridge clash_backend_fake clash_test_support
+        clash_profiles clash_platform clash_preferences)
+    add_test(NAME service-settings COMMAND service-settings-tests)
+
     # Injects BrowserOperations through DashboardButton's constructor, so it links
     # the real platform library. clash_platform is named explicitly rather than
     # relied on transitively. It used to arrive through clash_mihomo_impl's
@@ -382,7 +396,7 @@ set(clash_qt_widget_tests
     dashboard-async system-proxy-async privileged-service preferences
     config-generation profile-store core-process runtime-maintenance
     home-page traffic-graph proxies-page connections-page providers-page
-    rules-page logs-page)
+    rules-page logs-page service-settings)
 foreach(name IN LISTS clash_qt_widget_tests)
     if(TEST ${name})
         get_test_property(${name} ENVIRONMENT existing_env)
@@ -402,3 +416,4 @@ foreach(name home-page traffic-graph)
         set_tests_properties(${name} PROPERTIES ENVIRONMENT "${existing_env}")
     endif()
 endforeach()
+clash_qt_label(service-settings    ui pages service)

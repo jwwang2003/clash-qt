@@ -248,6 +248,13 @@ class StubPrivilegedService final : public core::PrivilegedCoreService {
             listener_->privilegedStatusReceived(status);
         statusAnswers_.clear();
     }
+    /// Hands the listener a helper status payload verbatim, in place of the
+    /// queued one. What is under test is what the backend makes of the helper's
+    /// OWN fields, so the case has to be able to spell them.
+    void deliverStatusPayload(const QJsonObject &status) {
+        if (listener_) listener_->privilegedStatusReceived(status);
+        statusAnswers_.clear();
+    }
 
   private:
     core::PrivilegedCoreServiceListener *listener_ = nullptr;
@@ -1343,6 +1350,58 @@ class BackendRealContractTest : public QObject {
 
     // G1: a missing managed engine fails with an actionable message rather than
     // silently supervising another Clash installation.
+    // The helper's own running-core report reaches the published status.
+    //
+    // The macOS helper keeps ONE core for the machine and answers `status` from
+    // it on every connection, so its `state` field is "running" even when the
+    // core belongs to another app session. That is the fact the UI's uninstall
+    // guard is built on. Decision D3 removed the second PrivilegedServiceClient
+    // that used to read this key and the contract did not carry it, so the
+    // guard was inert; this case is what keeps the producer honest.
+    void theHelpersRunningCoreReportReachesThePublishedStatus() {
+        struct Capture final : cb::BackendObserver {
+            int answers = 0;
+            cb::PrivilegedServiceStatus last;
+            void privilegedServiceStatus(const cb::Completion &,
+                                         const cb::PrivilegedServiceStatus &status) noexcept override {
+                ++answers;
+                last = status;
+            }
+        };
+
+        // Out-parameter rather than a return value, so QVERIFY inside reports
+        // the failure instead of turning into a compile error.
+        const auto publishFor = [](const QString &helperState, Capture &capture) {
+            testsupport::LoopbackServer controller;
+            QVERIFY(controller.listen(QString()));
+            StubPrivilegedService service(endpointOf(controller));
+            core::MihomoBackendImpl backend(&service);
+            backend.addObserver(&capture);
+            QVERIFY(backend.requestPrivilegedServiceStatus() != cb::RequestId::Invalid);
+            QJsonObject payload;
+            payload.insert(QStringLiteral("state"), helperState);
+            payload.insert(QStringLiteral("version"), QStringLiteral("helper-1.2.3"));
+            service.deliverStatusPayload(payload);
+            QVERIFY(backend.drainPendingEvents());
+            backend.removeObserver(&capture);
+        };
+
+        Capture stopped;
+        publishFor(QStringLiteral("stopped"), stopped);
+        QCOMPARE(stopped.answers, 1);
+        QCOMPARE(stopped.last.state, cb::ServiceState::Connected);
+        QCOMPARE(stopped.last.version, QStringLiteral("helper-1.2.3"));
+        QVERIFY2(!stopped.last.coreRunning,
+                 "the helper reported no core and the backend published one");
+
+        Capture running;
+        publishFor(QStringLiteral("running"), running);
+        QCOMPARE(running.answers, 1);
+        QCOMPARE(running.last.state, cb::ServiceState::Connected);
+        QVERIFY2(running.last.coreRunning,
+                 "the helper reported a running core and the backend dropped it");
+    }
+
     void aMissingManagedEngineFailsWithAnActionableMessage() {
         core::MihomoBackendImpl backend;
         Recorder observer(&backend);

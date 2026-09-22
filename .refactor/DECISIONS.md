@@ -83,6 +83,28 @@ MOD-CORE and integrated by the coordinator. **Not touched during P1** — it is 
 behaviour change, and P1 is mechanical relocation only. MOVE-UI relocates the file
 without altering its constructor.
 
+**Discharged in `88ef6cd`.** `src/ui/pages/settings/service_settings.cpp`
+constructs no `PrivilegedServiceClient`; status arrives on
+`core::backend::BackendBridge::privilegedServiceStatus`. One connection to the
+privileged socket, the one `CoreProcess` owns. Verified 2026-09-22: `grep -rn
+PrivilegedServiceClient src/` finds no construction under `src/ui/**`, only two
+comments in `service_settings.h` recording that there used to be one. The ledger
+went on listing this as open for two commits afterwards; that is corrected.
+
+**What discharging it cost, and what that cost teaches.** The second client was
+the only producer of `ServiceSettings::serviceRunning_` — "a core is already
+running under the privileged service, possibly for another app session". Removing
+it left three readers and no writer, so the guard that should refuse to install,
+repair or remove the helper while a core runs under it was inert: uninstallable
+state, silently permitted. The decision's own wording anticipated this — the flag
+becomes "a capability/status query on the backend contract" — but D3 was recorded
+as closed on the removal alone, and the contract did not yet carry the flag. **A
+decision that moves a value from one producer to another is not discharged when
+the old producer goes; it is discharged when the new one answers.** The repair
+adds `coreRunning` to `core::backend::PrivilegedServiceStatus` rather than
+restoring a second connection, which is what D3 asked for in the first place. See
+"Recorded defect class" in [PROGRESS_LEDGER.md](PROGRESS_LEDGER.md).
+
 ---
 
 ## D4 — What the architecture checker must and must not flag

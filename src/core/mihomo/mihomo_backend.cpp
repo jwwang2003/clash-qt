@@ -452,6 +452,13 @@ void MihomoBackendImpl::connectCollaborators() {
         cb::PrivilegedServiceStatus published;
         published.state = cb::ServiceState::Connected;
         published.version = status.value(QStringLiteral("version")).toString();
+        // Verbatim from the helper: its `state` is "running" while a core
+        // process lives under it, for ANY app session, since the helper keeps
+        // one core and answers every connection from it. Published so the
+        // uninstall guard in the UI has a producer again (decision D3 removed
+        // the second PrivilegedServiceClient that used to read this key).
+        published.coreRunning =
+            status.value(QStringLiteral("state")).toString() == QLatin1String("running");
         const cb::Completion completion = completionFor(
             serviceStatusRequest_, serviceStatusGeneration_, cb::CompletionStatus::Ok, {});
         serviceStatusRequest_ = cb::RequestId::Invalid;

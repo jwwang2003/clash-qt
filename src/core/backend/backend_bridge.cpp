@@ -518,7 +518,7 @@ void BackendBridge::onPrivilegedServiceStatus(const Completion &completion,
     const QString error =
         completion.isOk() ? errorText(status.error) : errorText(completion);
     EmitScope scope(this);
-    emit privilegedServiceStatus(status.state, status.version, error);
+    emit privilegedServiceStatus(status.state, status.version, error, status.coreRunning);
 }
 
 // =================================================================== errors

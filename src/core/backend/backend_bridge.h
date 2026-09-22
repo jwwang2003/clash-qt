@@ -332,13 +332,20 @@ class BackendBridge : public QObject {
     // =========================================================== errors (1)
     void errorOccurred(const QString &message);  // 1 site
 
-    // ================================================ capabilities (0 today)
+    // ==================================================== capabilities (1)
     //
-    // No UI site, because ServiceSettings opens a SECOND PrivilegedServiceClient
-    // beside the one the backend owns - two live connections to one privileged
-    // socket, the hazard decision D3 names. This is what it migrates onto.
+    // ServiceSettings' one status channel. It used to open a SECOND
+    // PrivilegedServiceClient beside the one the backend owns - two live
+    // connections to one privileged socket, the hazard decision D3 names - and
+    // this is what it migrated onto.
+    //
+    // `coreRunning` is APPENDED, not substituted: a slot may take fewer
+    // arguments, so the three-argument handlers that predate it connect
+    // unchanged. It is the helper's own running-core report and is meaningful
+    // only when `state == ServiceState::Connected` and `error` is empty; see
+    // PrivilegedServiceStatus::coreRunning.
     void privilegedServiceStatus(core::backend::ServiceState state, const QString &version,
-                                 const QString &error);
+                                 const QString &error, bool coreRunning);
 
     // ===================================================== bookkeeping (0)
     //

@@ -472,10 +472,12 @@ void BackendBridgeTest::everySignalFiresWithItsArguments() {
     cb::PrivilegedServiceStatus status;
     status.state = cb::ServiceState::NotInstalled;
     status.version = QStringLiteral("0.9");
+    status.coreRunning = true;
     sink.privilegedServiceStatus(ok(), status);
     QCOMPARE(service.size(), 1);
     QCOMPARE(service.first().at(0).value<cb::ServiceState>(), cb::ServiceState::NotInstalled);
     QCOMPARE(service.first().at(1).toString(), QStringLiteral("0.9"));
+    QCOMPARE(service.first().at(3).toBool(), true);
 
     // ---- errors, and the REPORTED-ONCE rule
     QSignalSpy errors(&bridge, &cb::BackendBridge::errorOccurred);
@@ -838,6 +840,21 @@ void BackendBridgeTest::republishesPrivilegedServiceStatus() {
     QCOMPARE(status.first().at(0).value<cb::ServiceState>(), cb::ServiceState::Connected);
     QCOMPARE(status.first().at(1).toString(), QStringLiteral("2.0.1"));
     QVERIFY(status.first().at(2).toString().isEmpty());
+    QVERIFY2(!status.first().at(3).toBool(),
+             "a status with no running core reported one");
+
+    // The helper's running-core report reaches the signal. ServiceSettings'
+    // uninstall guard is built on this argument and on nothing else, so a
+    // bridge that dropped it - or hard-coded it - would put the guard back in
+    // the permanently-inert state decision D3 left it in.
+    status.clear();
+    staged.coreRunning = true;
+    backend.setServiceStatus(staged);
+    backend.requestPrivilegedServiceStatus();
+    QVERIFY(backend.flushEvents());
+    QCOMPARE(status.size(), 1);
+    QVERIFY2(status.first().at(3).toBool(),
+             "the bridge dropped the helper's running-core report");
 }
 
 // --------------------------------------------------------- materialisation

@@ -87,8 +87,14 @@ ServiceSettings::ServiceSettings(const app::Context &context, cb::BackendBridge 
     // D3: the component owns the single privileged connection; this is the
     // published answer coming back, not a second socket of our own.
     connect(backend_, &cb::BackendBridge::privilegedServiceStatus, this,
-            [this](cb::ServiceState state, const QString &, const QString &error) {
+            [this](cb::ServiceState state, const QString &, const QString &error,
+                   bool coreRunning) {
         if (state == cb::ServiceState::Connected && error.isEmpty()) {
+            // The only producer of the uninstall guard. Written here and only
+            // here, because only an ANSWERED query carries the helper's report;
+            // on any other outcome `coreRunning` is false for want of an answer,
+            // and taking that as "nothing is running" would disarm the guard.
+            serviceRunning_ = coreRunning;
             startupRetries_ = 0;
             startupRetry_->stop();
             setError({});
@@ -124,10 +130,13 @@ ServiceSettings::ServiceSettings(const app::Context &context, cb::BackendBridge 
         message->setDefaultButton(QMessageBox::Cancel);
         message->setAttribute(Qt::WA_DeleteOnClose);
         connect(message, &QMessageBox::finished, this, [this](int result) {
-            if (result != QMessageBox::Yes || installer_->isBusy()) return;
-            const auto state = backend_->coreState();
-            if ((state != cb::CoreState::Stopped && state != cb::CoreState::Failed)
-                || context_.profiles->isRuntimeBusy() || serviceRunning_) return;
+            // Re-checked on confirmation, not just when the button was
+            // enabled: this dialog is modeless, so a core - ours or another
+            // session's, under the helper - can start while it is open.
+            if (result != QMessageBox::Yes || !canChangeInstallation()) {
+                if (result == QMessageBox::Yes) refresh();
+                return;
+            }
             installer_->uninstall();
         });
         message->open();
@@ -160,11 +169,20 @@ void ServiceSettings::checkStatus() {
     backend_->requestPrivilegedServiceStatus();
 }
 
+bool ServiceSettings::canChangeInstallation() const {
+    const auto state = backend_->coreState();
+    const bool stopped = state == cb::CoreState::Stopped || state == cb::CoreState::Failed;
+    return platform::PrivilegedServiceInstaller::isSupported() && stopped && !serviceRunning_
+        && !context_.profiles->isRuntimeBusy() && !installer_->isBusy();
+}
+
 void ServiceSettings::refresh() {
     const bool supported = platform::PrivilegedServiceInstaller::isSupported();
     const auto state = backend_->coreState();
     const bool stopped = state == cb::CoreState::Stopped || state == cb::CoreState::Failed;
-    const bool available = supported && stopped && !serviceRunning_ && !context_.profiles->isRuntimeBusy() && !installer_->isBusy();
+    // One predicate for the controls and for the uninstall confirmation, so the
+    // guard cannot hold at one site and be inert at the other.
+    const bool available = canChangeInstallation();
     const QSignalBlocker blocker(enabled_);
     enabled_->setChecked(backend_->backend().executionMode() == cb::ExecutionMode::PrivilegedService);
     enabled_->setEnabled(available && installed_);

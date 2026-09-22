@@ -1,4 +1,4 @@
-# MihomoBackend — contract revision `backend-r3`
+# MihomoBackend — contract revision `backend-r4`
 
 Coordinator-owned. MOD-CORE implements it against the real engine, MOD-RUNTIME and
 MOD-LIFECYCLE consume it, and the fake backend under `tests/support/backend/`
@@ -165,10 +165,18 @@ delivery must be safe.
 ## 8. Capability reporting
 
 Managed and attached cores differ in what they support, as do service and direct
-modes. Capabilities are **queried, not assumed** — this is what lets
+modes. Capabilities are **queried, not assumed** — this is what let
 `ui/service_settings.cpp` stop opening its own second `PrivilegedServiceClient`
-alongside the one `CoreProcess` owns (decision D3), which is a correctness hazard
-today: two live connections to one privileged socket.
+alongside the one `CoreProcess` owns (decision D3), which was a correctness
+hazard: two live connections to one privileged socket.
+
+**Discharged in `88ef6cd`** (2026-09-22): the page holds no client and reads
+`BackendBridge::privilegedServiceStatus`. The clause above is why this section
+matters in practice, and one field of it was missed — the helper's own "a core is
+running under me" report had no home on `PrivilegedServiceStatus`, so the page's
+uninstall guard was left reading a member nothing wrote. Removing a producer
+discharges nothing until the contract answers in its place; see decision D3 and
+the "Recorded defect class" section of the progress ledger.
 
 ## 9. ABI-readiness constraints on r1
 
@@ -383,3 +391,34 @@ actually protect, though the fake suite does:
 - **§5.2**, probe-cancel ordering: aborting before disconnecting survives the real suite.
 
 A bullet that only the fake protects is a bullet the engine does not have to honour.
+
+
+---
+
+# Amendment: `backend-r3` → `backend-r4`
+
+## C1 — `PrivilegedServiceStatus` carries `coreRunning`
+
+Additive: a `bool coreRunning` after `version`, meaningful only when
+`state == Connected`, and one appended argument on
+`BackendBridge::privilegedServiceStatus` (three-argument slots still connect).
+
+**Why it exists.** Closing decision D3 removed `ServiceSettings`'s second
+`PrivilegedServiceClient`, which was the only writer of its `serviceRunning_`
+flag. The flag stayed `false` for an entire wave while being read in three
+places, so the uninstall guard never fired, the controls that should have been
+disabled stayed enabled, and the *"A service core is still running"* notice could
+never appear. **The privileged helper could be uninstalled while another session's
+core was running under it.** Nothing asserted the guard, so nothing noticed.
+
+**What the field means.** The macOS helper keeps one core per `serve()` process
+and answers *every* connection — lease-holder or not — with `state` derived from
+`core.pid > 0`. So `coreRunning` means *a core is alive under the helper, possibly
+another application session's*, which is exactly the condition the guard needs.
+
+**Fail-safe rule.** The consumer writes its flag **only on an answered status
+query**. An unanswered or failed query must not disarm an already-armed guard.
+
+**Acceptance.** Three cases assert the guard directly, and it is proven by
+inversion at each of the three layers: dropping the UI write, having the bridge
+publish `false`, and hard-coding `false` in the backend each fail.
