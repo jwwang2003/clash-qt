@@ -30,6 +30,7 @@ endif()
 
 add_subdirectory(src/platform)
 add_subdirectory(src/core)
+include(cmake/Component.cmake)
 add_subdirectory(src/app/lifecycle)
 add_subdirectory(src/app/backup)
 add_subdirectory(src/app/runtime)
@@ -41,7 +42,7 @@ if(CLASH_QT_BUILD_APP)
         clash_profiles
         clash_backups
         clash_telemetry
-        clash_mihomo_impl
+        clash_module_host
         clash_backend_bridge
         clash_platform
         clash_config

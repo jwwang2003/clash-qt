@@ -82,6 +82,73 @@ private slots:
         QCOMPARE(stopped.size(), 2);
 #endif
     }
+    // REGRESSION. The kill that ends a child which refuses SIGTERM was armed
+    // with QTimer::singleShot(terminateWaitMs, child, ...). With no timer type
+    // that call asks QTimer::defaultTypeFor(), which answers Qt::CoarseTimer
+    // for any interval of 2 s or more - and a coarse timer may fire EARLY. The
+    // published wait is 3000 ms, so the escalation ran ahead of the grace: W05
+    // watched a stubborn child die 2962 ms into it, and a standalone probe on
+    // this machine saw the same call fire at 2851 ms. A child killed before its
+    // grace expires was never given the grace.
+    //
+    // The case is deliberately driven at the SHIPPED wait rather than at a
+    // value pushed in through setTimings(). Below 2 s the very same call picks
+    // a precise timer, so the 400 ms the workflow used to compress this to made
+    // the defect unreachable - the budget under test has to be one that reaches
+    // the coarse path. The three seconds are the honest price.
+    void aChildRefusingToTerminateKeepsItsWholePublishedGraceBeforeTheKill() {
+#ifdef Q_OS_WIN
+        QSKIP("Uses a POSIX fake core process; terminate() cannot be refused here");
+#else
+        const QString binary = environment_->filePath("refusing-core");
+        // The marker is printed AFTER SIG_IGN is installed, and the case waits
+        // for it: measuring against a child that has not yet armed its refusal
+        // would time a polite exit and prove nothing about the escalation.
+        testsupport::writeFile(binary, "#!/usr/bin/python3\nimport signal,sys,time\n"
+            "if '-t' in sys.argv: sys.exit(0)\n"
+            "signal.signal(signal.SIGTERM,signal.SIG_IGN)\n"
+            "print('refusal-armed',flush=True)\ntime.sleep(30)\n");
+        QVERIFY(QFile::setPermissions(binary, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+        // Listens and never answers, so the child stays up while it is probed.
+        QTcpServer controller;
+        QVERIFY(controller.listen(QHostAddress::LocalHost));
+        const QString config = environment_->filePath("config.yaml");
+        testsupport::writeFile(config, "external-controller: 127.0.0.1:" +
+            QByteArray::number(controller.serverPort()) + "\n");
+        core::CoreProcess process;
+        process.setBinaryPath(binary);
+        const int published = process.timings().terminateWaitMs;
+        QVERIFY2(published >= 2000, "a wait under 2 s is armed on a precise timer anyway, "
+                                    "so this case would not cover the escalation that ships");
+        QSignalSpy lines(&process, &core::CoreProcess::logLine);
+        QSignalSpy stopped(&process, &core::CoreProcess::stopped);
+        process.start(config, environment_->dataDir());
+        QTRY_VERIFY(!lines.isEmpty());
+        QVERIFY(lines.first().first().toString().contains("refusal-armed"));
+
+        QElapsedTimer elapsed;
+        elapsed.start();
+        process.stop();
+        QCOMPARE(process.state(), core::CoreState::Stopping);
+        QTRY_COMPARE_WITH_TIMEOUT(process.state(), core::CoreState::Stopped, published + 5000);
+        const qint64 took = elapsed.elapsed();
+        QCOMPARE(stopped.size(), 1);
+        // The bound, in both directions: the child refused the polite request,
+        // so it cannot have gone before its grace ran out, and the escalation
+        // must still have ended it soon after.
+        QVERIFY2(took >= published,
+                 qPrintable(QStringLiteral("the child was killed %1 ms into its published %2 ms "
+                                           "termination grace")
+                                .arg(took)
+                                .arg(published)));
+        QVERIFY2(took < published + 5000,
+                 qPrintable(QStringLiteral("the stop took %1 ms against a %2 ms published "
+                                           "termination wait: the escalation is not bounded")
+                                .arg(took)
+                                .arg(published)));
+#endif
+    }
+
     // REGRESSION. P3 replaced CoreProcess's default-constructed
     // platform::PrivilegedServiceClient with NullPrivilegedCoreService, whose
     // isSupported() is false. main.cpp passed no service, so service mode became

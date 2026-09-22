@@ -1,0 +1,36 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+Test project /tmp/clash-qt-p4.w0Y8Uo/coordinator-configure
+      Start  3: backup
+ 1/10 Test  #3: backup ...........................   Passed    0.82 sec
+      Start 21: config-generation
+ 2/10 Test #21: config-generation ................   Passed    0.35 sec
+      Start 22: profile-store
+ 3/10 Test #22: profile-store ....................   Passed    0.68 sec
+      Start 24: runtime-maintenance
+ 4/10 Test #24: runtime-maintenance ..............   Passed    0.21 sec
+      Start 34: preset-editor
+ 5/10 Test #34: preset-editor ....................   Passed    1.19 sec
+      Start 52: config-composer
+ 6/10 Test #52: config-composer ..................   Passed    0.05 sec
+      Start 53: preset-document
+ 7/10 Test #53: preset-document ..................   Passed    0.03 sec
+      Start 54: chain-snapshot
+ 8/10 Test #54: chain-snapshot ...................   Passed    0.07 sec
+      Start 55: preset-store
+ 9/10 Test #55: preset-store .....................   Passed    0.34 sec
+      Start 56: effective-config-preview
+10/10 Test #56: effective-config-preview .........   Passed    4.90 sec
+
+100% tests passed out of 10
+
+Label Time Summary:
+backups        =   0.82 sec*proc (1 test)
+config         =   6.94 sec*proc (7 tests)
+core           =   7.46 sec*proc (9 tests)
+integration    =   7.30 sec*proc (6 tests)
+profiles       =   0.89 sec*proc (2 tests)
+ui             =   1.19 sec*proc (1 test)
+unit           =   0.16 sec*proc (3 tests)
+
+Total Test time (real) =   8.67 sec
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

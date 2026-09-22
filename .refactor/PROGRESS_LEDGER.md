@@ -1208,3 +1208,241 @@ here before completion). Initial native preferences SHA-256:
 No tests/apps have run yet. Tests require isolated CLASH_QT_DATA_DIR and
 before/after native plist hashes. Installed helper/network/trust remain untouched.
 P4 gates remain OPEN; Windows/Linux evidence remains zero (G5).
+
+### P4 configuration and UI implementation barrier
+
+CFG-CORE and CFG-UI workers both returned STABLE (`claude-opus-5` explicitly
+selected; no fallback/nested agents). Source remains uncommitted pending combined
+integration; no full-tree build claimed. Their external snapshots exercised the
+real composer/ProfileStore: eight config suites and the preset-editor suite pass.
+Twelve config and eleven UI inversions detected; durable reports/preferences logs
+are in `.refactor/evidence/p4/`. Setup/teardown are not product cases.
+
+The config worker's final report incorrectly called main.cpp's presetsChanged
+connection absent and four test registrations outstanding: these had already
+been written by the coordinator. Verified from actual source instead of accepting
+that report. The missing fifth suite, chain-snapshot, is now registered.
+
+A producer/consumer sweep found the new preset documents absent from BackupStore's
+explicit roots/allowedPath lists. An Opus worker now owns that bounded integration
+and its backup tests. Another Opus worker owns W02 and migration of all existing
+journeys to ModuleLoader/ModuleBackend. The initial ABI worker still owns its
+source; no builds over any active lease. Initial ABI boundary suite is green in
+its own external snapshot, but common-backend parity, retained-object lifetime,
+independent sample, installed bundle and final read-only audit remain OPEN.
+
+Native preferences SHA-256 before and after all completed CFG/UI runs is
+`681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c`;
+both values per run are retained in the evidence logs. Windows/Linux: zero evidence.
+
+### P4 ABI correction — green boundary suite did not prove unload
+
+The independent sample drove a source-built engine to ready and confirmed stop,
+but actual dlclose after activation segfaulted (139). Omitting dlclose avoided it.
+The first ABI worker inferred Qt registry retention without a crash stack and
+introduced PinnedOnceActivated/kFalse. Coordinator rejected that as closure of
+the explicit unload gate; a fake/inactive module unloading is not production
+unload evidence. `P4_ABI_REVIEW.md` records the required targeted fixes and expanded
+private-source lease. The follow-up worker must diagnose the actual retained
+callback and demonstrate real unmapping, not restate the workaround as success.
+
+The initial ABI suite/benchmark/inversions remain useful boundary evidence but
+not P4 acceptance. Initial report is preserved under evidence/p4/abi-initial-report.md
+with this correction taking precedence. It also called clashqt_com visibility
+unfixed after the coordinator had set it; clash_yaml's missing hidden visibility
+was real and is now set. Treat every worker handoff as a claim to check.
+
+External documentation commit `17e65d1` appeared while workers ran: NAMING_PLAN.md
+plus some dispatch notes. Preserved as found; no implementation or main ref change.
+
+### P4 safety incident — the smoke guard covered start, not status
+
+Coordinator traced ServiceSettings construction to its unconditional queued
+checkStatus(), then requestPrivilegedServiceStatus → requestServiceStatus →
+PrivilegedServiceClient::requestStatus. main.cpp injected the default installed
+helper socket. The old app-smoke >8 MiB guard prevents startCore, not this status
+connection. Earlier P4 snapshot app-smoke runs used that path; we cannot claim
+those runs avoided the installed helper. No install/uninstall/restart was invoked.
+Do not probe/connect the installed socket to reconstruct history.
+
+Stopped W02 worker PID 59482 with SIGINT and verified it exited before assigning
+further app runs. No app child was listed in the scoped process check. Added
+CLASH_QT_SERVICE_SOCKET at the composition root, feeding both the client and
+adapter (absolute explicit endpoint, default unchanged). CTest supplies an isolated
+socket. W02 follow-up must make child environments always choose their own socket,
+prove startup status goes to that local fixture, and re-run smoke on the fixed
+executable before any further app-launch evidence is accepted. --data-dir by
+itself is not sufficient isolation for machine-wide helper IPC.
+
+Defense at the composition root: when CLASH_QT_DATA_DIR is selected (including
+--data-dir), an omitted service-socket override resolves to helper.socket in that
+isolated directory, never the installed default. Normal launches with neither
+setting retain the normal endpoint. Mutation proofs for this guard must substitute
+a DIFFERENT ISOLATED socket; never mutate a test launch back to the real helper.
+
+### Stable config/UI/backup packet committed
+
+`e5d7d7a` records the stable configuration extraction, versioned presets,
+side-effect-free preview, UI controls and backup compatibility plus adjacent
+tests. Explicit pathspec commit; no active ABI/core lease files swept in.
+Central whole-wave wiring remains uncommitted, so this intermediate commit is
+not a standalone P4 qualification point. Independent config subgate audit is
+running against these stable sources. ABI, shared contract parity and fresh-clone
+package/audit gates remain OPEN. main and legacy-v1 have not been changed.
+
+### Stable ABI packet committed; independent subgate checks active
+
+`2a0c577` records the module/loader/shim, fake module, independent consumer, ABI
+qualification tests and marshalling benchmark. Final module wire revision is 2;
+backend-r4/Qt bridge signatures remain unchanged. The debugger proved the original
+unload crash was a retained QtNetwork cleanup callback after that *runtime library*
+was unmapped. The component now actually unmaps while its shared runtime remains
+resident for host cleanup; real-engine consumer exit is 0. Independent ABI audit
+still checks root-reference retry, cross-thread final Release and date-time fidelity.
+
+Core parity correction still owns MihomoClient/common-test files; no combined build
+has run over that lease. Config subgate auditor owns no repository source.
+Benchmark qualification now records timings without assuming packed < naive in every
+build: the initial speed assertion failed in Debug despite unchanged codec. D8 asks
+for measurement; correctness/bounds remain hard assertions in the routine lane.
+No Windows or Linux C++ compile/run evidence exists, regardless of conditional code
+or any worker wording saying those paths 'compile'.
+
+### Independent config subgate audit found real defects
+
+Auditor was read-only, used its own snapshot and 17 differential corpus rows plus
+12 detected inversions. It returned a narrow CONFIG GO but reported F1 high:
+unreadable presets.json silently discarded presets and bypassed last-good; next
+save made the loss permanent. F2 medium: merge depth limit silently truncated data
+while reporting success. Coordinator does NOT accept those as non-blocking. A
+bounded config-fix lease addresses both and F3 (direct pure-compose mixed-port
+override). Original audit evidence retained under evidence/p4/config-audit-initial.md.
+Cosmetic mapping-key order and unmeasured main-thread read cost are not fabricated
+as failures or performance evidence. Full P4 gate remains open.
+
+### Independent ABI subgate audit — NO-GO
+
+Own stable snapshot, independent probes, Debug and Release; 53 isolated runs with
+before/after native plist hashes unchanged. Proved activated production image
+unmapping, buffer/error/nested-buffer retention, handshake canaries, production
+observer admission and no private helper/proxy-data boundary. But it reproduced:
+
+1. Activated final Release from another thread destroys QProcess/socket notifiers
+   there and crashes (SIGSEGV). Session was counted dead while cleanup survived.
+2. Holding a root reference makes first unload refuse correctly, then release/retry
+   cannot unload: loader detached its root and module latched unusable state.
+3. Epoch-only QDateTime encoding changes UTC/fixed-offset/named-zone presentation
+   despite operator== passing, observable in connection details.
+4. Decode failure diagnostic could be absent/stale.
+
+Coordinator assigned a bounded final repair, not a waiver. Detailed independent
+finding record: evidence/p4/abi-audit-no-go.md. Native prefs remain
+681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c.
+The coordinator's four backend integration CTest entries passed in the real build
+wiring (stable source subset only); exported module symbol list was exactly the
+C factory. Those greens do not override the audit's NO-GO.
+
+### Isolated startup must not inspect another client by default
+
+A separate producer/consumer trace found that app-smoke removed the controller
+variable for generic launches, while discovery could read another installed
+client's controller. A bounded isolation lease makes isolated/explicit-invalid
+controller selection authoritative (no implicit foreign/default attachment), and
+keeps traffic subscription intent for a later managed endpoint. The coordinator
+also disables automatic legacy geo-data seeding for isolated data directories;
+fixtures provide their own seed directory when needed. No claim is made that the
+previous generic smoke launches avoided external-controller discovery. New app
+qualification will run against these isolation guards.
+
+### Config corrections independently rechecked — GO
+
+`7b47a02` closes F1/F2/F3. A new read-only Opus reader used its own byte-identical
+snapshot and fifteen suites, including independent recovery/composition/journey/UI
+probes. Fifteen targeted flips were all detected and restored. It verified valid
+last-good recovery for unreadable/missing/directory/dangling primary, preserved
+memory state, appending edits retaining recovered content, diagnosed over-depth
+merge refusal without runtime writes, valid trusted port override/provenance,
+preview no writes/latest-wins, real-store UI, and backup compatibility.
+
+GO is for configuration, not all P4. Cosmetic YAML key order and owning-thread
+snapshot I/O cost are not claimed as improved. ABI NO-GO findings remain assigned.
+Current native preferences before/after all recorded recheck runs are identical.
+
+### Actual central wiring checks (not final qualification)
+
+Stable subsets built in `/tmp/clash-qt-p4.w0Y8Uo/coordinator-configure`, never
+build/dev: backend-real-contract, controller, ABI and snapshot codec **4/4**;
+config/composer/preset/document/preview/UI/backup/legacy generation **10/10**.
+All executed via paired-hash isolated runner; native plist before=after equals the
+original full SHA. Logs retained under evidence/p4/. No full source build crossed
+an active lease. These are not a substitute for the pending fresh-clone gate.
+
+### Targeted transport audit — another NO-GO, tested
+
+Read-only HEAD archive at f04647f, local fixture only. It proved provider requests
+coalesce across a replaced session (same retired RequestId, no new request), old
+provider and REST completions can remain Ok across lifecycle generation bumps,
+and old stream frames/drop events are stamped into the replacement generation.
+The fake's identical-endpoint early return hid the same boundary. Detailed evidence
+is evidence/p4/transport-audit-no-go.md. A bounded transport lease now addresses
+one coherent invalidation path across all three transports and the four shared
+contract implementations. No waiver or expected-failure marker closes this gate.
+
+The ABI wire-3 repair fixed the three independent ABI findings and decode diagnostics,
+but its deferred Release still returned zero before object destruction. A final
+small RC lease preserves component-r1's existing zero-return promise by keeping a
+cleanup reference or separately counted native state, without changing the facade.
+
+### Release return promise retained
+
+RC worker returned STABLE: deferred owner/native-work cleanup holds a real
+reference and returns nonzero; synchronous destruction returns zero afterwards.
+Forty-five ABI cases pass in Debug and Release, and early-zero/premature-count/
+ignored-native-work/Close-consuming-caller-reference inversions fail. The prior
+cross-thread probes' expectation `Release()==0` is intentionally corrected; their
+module count/refusal/drain/unmap assertions remain. Independent reader received
+RC_STABLE and will verify the resulting contract, not accept the worker report.
+A deliberately crashing scratch inversion left one owned engine; the worker
+terminated that exact process and confirmed its port free. No installed helper use.
+
+### Independent final ABI recheck — GO for the ABI subgate
+
+Read-only reader used a frozen snapshot, synchronized only the finished RC files,
+and tested Debug and Release. Its new probes independently covered timestamp
+representation through the actual boundary, retained root/interface retry with
+RTLD_NOLOAD checks, combined buffer/deferred retention, zero/nonzero Release meaning,
+caller-reference preservation, native work and actual activated unmapping. Forty-five
+ABI and sixteen snapshot cases pass. Fifteen of sixteen targeted mutations detected;
+the remaining single validator was redundant and removing both validators failed.
+Details: evidence/p4/abi-recheck-go.md. Destructor-ordering inversion remains an
+explicit unverified coverage detail, not fabricated evidence. Windows/Linux have
+zero compile/run evidence. Dead stale fake-protocol size constant was removed
+(coordinator; actual consumer uses marshal::kMinConnectionBytes).
+Whole-P4 still awaits transport/deadline fixes, fresh-clone gates and final audit.
+
+### Transport generation repair stable
+
+Transport repair returned STABLE: one session boundary orders epochs → owner bump
+→ participants/provider retirement → TUN cancellation → abort. Same-address attach
+replaces streams; lifecycle invalidation retires requests without recursion or
+unnecessary stream churn. Fake replacement now obeys the same rule. Shared suite
+now includes 17 cases × 4 implementations plus specialist/stream cases (105 reported
+passes); controller 23, provider 6. Seven targeted inversions detected; two isolated
+defensive checks survived as recorded redundancies, not independent coverage claims.
+A snapshot-wide 57/57 later passed but W05's earlier measured coarse-timer failure
+remains assigned to timer-fix and is not excused by that later green.
+
+### Final implementation source barrier
+
+All source writers returned STABLE. The W05 defect was reproduced independently:
+Qt's default singleShot switches to CoarseTimer at >=2 s; 3000 ms fired as early
+as 2851 ms, while the old 400 ms test selected precise timing and hid it. The fix
+uses a precise monotonic deadline and rechecks before kill. Published timings are
+unchanged; test lower bounds are not weakened. Refusal marker is now an explicit
+fixture precondition. Shortened-budget and restored-coarse-timer inversions fail.
+Detailed evidence: evidence/p4/termination-deadline-report.md.
+
+Coordinator now integrates the complete source/build/test/packaging wiring, then
+qualifies a fresh git clone using BUILD_DIR=build/p4. No build/dev writes. Final
+make test, integration, package, independent SDK consumer, packaged launch,
+marshalling measurements and whole-P4 independent audit remain to be recorded.

@@ -3,7 +3,7 @@
 
 // Shared vocabulary of the MihomoBackend facade: request identity, generations,
 // outcomes, and the value types that cross the boundary.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4.
 //
 // r3 is r1's section text as amended by A1-A4 (r1 -> r2) and B1-B4 (r2 -> r3).
 // Four of those amendments are load-bearing in this file and are cited where

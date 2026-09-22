@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_BRIDGE_H
 
 // BackendBridge: the Qt-native view of MihomoBackend.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 2, 7, 9.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 2, 7, 9.
 //
 // WHY THIS EXISTS
 //   BackendObserver is a plain C++ sink with defaulted callbacks, which is what

@@ -1,0 +1,23 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+Test project /tmp/clash-qt-p4.w0Y8Uo/coordinator-configure
+    Start  1: controller
+1/4 Test  #1: controller .......................   Passed    4.36 sec
+    Start 39: backend-real-contract
+2/4 Test #39: backend-real-contract ............   Passed   12.82 sec
+    Start 57: abi-contract
+3/4 Test #57: abi-contract .....................   Passed    0.13 sec
+    Start 58: connection-snapshot-codec
+4/4 Test #58: connection-snapshot-codec ........   Passed    0.07 sec
+
+100% tests passed out of 4
+
+Label Time Summary:
+component      =   0.20 sec*proc (2 tests)
+contract       =  12.95 sec*proc (2 tests)
+core           =  17.18 sec*proc (2 tests)
+integration    =  17.31 sec*proc (3 tests)
+mihomo         =  17.18 sec*proc (2 tests)
+unit           =   0.07 sec*proc (1 test)
+
+Total Test time (real) =  17.39 sec
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

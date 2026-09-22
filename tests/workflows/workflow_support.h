@@ -11,7 +11,22 @@
 //     minus the two things a test may never touch (the real SystemProxyService
 //     singleton and the real privileged helper). Construction and destruction
 //     order are main.cpp's, because that order is load-bearing: every
-//     coordinator is destroyed before the backend it observes.
+//     coordinator is destroyed before the backend it observes, and the module
+//     the backend lives in is unmapped after everything it produced.
+//   * moduleArtifactPath / moduleRequirementFailure - the one environment input
+//     these journeys REQUIRE. Since decision D8 the engine is a separately
+//     built shared library: the journeys drive it through
+//     clashqt::integration::ModuleLoader and ModuleBackend, exactly as
+//     src/main.cpp does, and nothing here includes core/mihomo/** any more.
+//     The artifact is never searched for - CLASH_QT_MODULE_PATH names it, the
+//     journeys FAIL with that requirement when it is absent, and
+//     ModuleLoader::load() is asked for the SHIPPING module id, so the test
+//     double cannot be loaded here by accident.
+//   * deadlineFor - a wait sized from a budget the backend PUBLISHES. There is
+//     no setTimings() across the boundary and there is deliberately no
+//     replacement for it: a journey that wants to see a readiness timeout waits
+//     out the module's real 10 s idle deadline, and one that wants to see a
+//     termination escalation waits out its real 3 s terminate wait.
 //   * ProxyOperations - what the OS proxy was asked to do, recorded from the
 //     worker thread. platform::SystemProxyService is REAL; only the one
 //     std::function that would shell out to the machine is substituted, so
@@ -55,8 +70,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <utility>
 
 #include "app/backup/backup_coordinator.h"
 #include "app/backup/backup_store_session.h"
@@ -68,14 +85,22 @@
 #include "app/runtime/runtime_coordinator.h"
 #include "core/backend/backend.h"
 #include "core/backend/privileged_core_service.h"
+#include "core/component/abi/backend_abi.h"
+#include "core/component/com_ptr.h"
 #include "core/config/enhance/config_enhancer.h"
-#include "core/mihomo/mihomo_backend.h"
 #include "core/profiles/profile_store.h"
+#include "integrations/component/module_backend.h"
+#include "integrations/component/module_loader.h"
 #include "platform/proxy/system_proxy_service.h"
 
 namespace workflows {
 
 namespace cb = core::backend;
+namespace com = ::clashqt::com;
+namespace abi = ::clashqt::com::abi;
+
+using ModuleBackend = clashqt::integration::ModuleBackend;
+using ModuleLoader = clashqt::integration::ModuleLoader;
 
 // The deadline every await in this directory runs against. Only ever a bound on
 // a failure: a passing journey returns as soon as its predicate holds.
@@ -108,6 +133,21 @@ inline bool drainPostedTimers() {
         QTimer::singleShot(0, QCoreApplication::instance(), [&marked] { marked = true; });
     });
     return waitFor([&marked] { return marked; }, kDeadlineMs);
+}
+
+/// A deadline for an event whose own budget the backend PUBLISHES - the
+/// readiness idle deadline, the termination wait - plus room for the event loop
+/// and the operating system.
+///
+/// Every journey that used to shrink such a budget through
+/// MihomoBackendImpl::setTimings() sizes its wait with this instead. There is no
+/// setTimings() on the far side of the module boundary and this deliberately
+/// does not reintroduce one: a private knob that makes a 10-second readiness
+/// deadline expire in 400 ms proves that *some* deadline works, not that the one
+/// the application ships does. The cost is a journey that takes ten seconds to
+/// watch a core fail to become ready, which is the honest price of the claim.
+inline int deadlineFor(std::uint32_t publishedMs, int slackMs = kDeadlineMs) {
+    return static_cast<int>(publishedMs) + slackMs;
 }
 
 /// Runs the event loop past `ms` and then past everything that expired with it.
@@ -254,6 +294,75 @@ inline std::unique_ptr<platform::SystemProxyService> makeIsolatedProxyService(
             result.state.owned = result.state.config.port != 0;
             return result;
         });
+}
+
+// ---------------------------------------------------------- the module seam
+
+/// The artifact CLASH_QT_MODULE_PATH names, or empty.
+///
+/// The ONLY way a journey chooses a module. ModuleLoader's other constructor
+/// input, installedModulePath(), is installation-relative - a bundle's
+/// Frameworks directory - and a build tree has no such layout, so a journey
+/// that fell back to it would load nothing and say "not installed" instead of
+/// "not registered". tests/workflows/CMakeLists.txt sets the variable from
+/// $<TARGET_FILE:clash_qt_backend_module>.
+inline QString moduleArtifactPath() {
+    return qEnvironmentVariable("CLASH_QT_MODULE_PATH");
+}
+
+/// Why this process cannot drive a module, or empty when it can. A journey
+/// asserts this rather than skipping: an unregistered module is a build defect,
+/// and the whole point of these suites since D8 is that the engine is reached
+/// across the boundary.
+inline QString moduleRequirementFailure() {
+    const QString path = moduleArtifactPath();
+    if (path.isEmpty()) {
+        return QStringLiteral(
+            "CLASH_QT_MODULE_PATH is not set. Since decision D8 the engine lives in a "
+            "separately built shared library and these journeys load it exactly as "
+            "src/main.cpp does; there is no source-tree, build-tree or PATH fallback by "
+            "design. Register the suite with ENVIRONMENT "
+            "\"CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>\".");
+    }
+    if (!QFileInfo(path).isFile()) {
+        return QStringLiteral("CLASH_QT_MODULE_PATH names %1, which is not a file. The module "
+                              "target has to be built before this suite runs "
+                              "(add_dependencies(<suite> clash_qt_backend_module)).")
+            .arg(path);
+    }
+    return {};
+}
+
+/// Loads the SHIPPING module through `loader` and wraps one session.
+///
+/// `expectedModuleId` defaults to the shipping id inside ModuleLoader::load(),
+/// so a stray CLASH_QT_MODULE_PATH pointing at the test double is refused by the
+/// handshake rather than silently accepted - the journeys assert the real
+/// supervisor's behaviour and a fake one answering in its place would be worse
+/// than a failure.
+///
+/// A failure does NOT throw and does not return null: the graph below still has
+/// to be constructible so that its construction order stays the thing under
+/// test. It returns an inert ModuleBackend (no session, isValid() false, every
+/// command failing) and writes the reason into `*error`, which every journey
+/// asserts is empty before it does anything else.
+inline std::unique_ptr<ModuleBackend> openModuleBackend(ModuleLoader &loader,
+                                                        core::PrivilegedCoreService *service,
+                                                        QString *error) {
+    com::ComPtr<abi::IBackendSession> session;
+    const QString requirement = moduleRequirementFailure();
+    if (!requirement.isEmpty()) {
+        *error = requirement;
+    } else if (!loader.load() || !loader.createSession(session)) {
+        *error = QStringLiteral("could not load the engine component at %1: %2")
+                     .arg(loader.artifactPath(), loader.lastError());
+    }
+    auto backend = std::make_unique<ModuleBackend>(std::move(session), service);
+    if (error->isEmpty() && !backend->isValid()) {
+        *error = QStringLiteral("the module at %1 would not accept a host: %2")
+                     .arg(loader.artifactPath(), backend->lastError().message);
+    }
+    return backend;
 }
 
 // ------------------------------------------------- the fixed controller port
@@ -506,24 +615,41 @@ inline QByteArray directOnlyProfile(quint16 controllerPort, const QString &marke
 /// it is what cancels a pending restore, so a journey that assembled the graph
 /// in a different order would be testing a different program.
 ///
+/// THE ENGINE IS BEHIND THE MODULE BOUNDARY, exactly as it is in main.cpp.
+/// `backend` is a clashqt::integration::ModuleBackend over a session the loader
+/// created: the same class, over the same ABI, with the same host-owned
+/// privileged seam. The loader is declared before it, so the library is
+/// unmapped only after every object, buffer and callback it produced is gone -
+/// ModuleLoader::unload() refuses while any is alive, and its destructor
+/// honours that refusal rather than pulling the mapping out from under a live
+/// vtable.
+///
 /// TWO DELIBERATE DIFFERENCES FROM main.cpp, both required by the isolation
 /// rules in docs/TEST_STRATEGY.md:
 ///   * the proxy service is a private instance with a substituted OS command,
 ///     not platform::SystemProxyService::instance(). The singleton writes the
 ///     developer's machine.
 ///   * the privileged seam is core::NullPrivilegedCoreService, not the real
-///     client. The real one connects to a root-owned helper socket. Which seam
-///     main.cpp actually injects is asserted by the application smoke harness
-///     against the shipped binary, because that is the only place it is
-///     observable without editing production code.
+///     client. The real one connects to a root-owned helper socket - and it
+///     would now be reached through the module's reverse interface, which makes
+///     it no less real. Which seam main.cpp actually injects is asserted by the
+///     application smoke harness against the shipped binary, because that is
+///     the only place it is observable without editing production code.
 class AssembledApp {
     // Declared FIRST, deliberately: members are initialised in declaration
     // order and destroyed in its reverse, so the seam handed to the backend
     // below must be constructed before it and destroyed after it. main.cpp
-    // makes the same statement in a comment over the same two lines.
+    // makes the same statement in a comment over the same two lines. It is also
+    // what the module marshals its privileged requests back to, so it has to
+    // outlive every pending one.
     core::NullPrivilegedCoreService privilegedService_;
 
   public:
+    /// Why the engine component could not be loaded, empty when it was.
+    /// Declared before the graph because openModuleBackend() writes it while
+    /// the graph is still being constructed.
+    QString moduleError;
+
     /// Registered for the WHOLE life of the graph, from the constructor, so a
     /// journey never asserts on a recorder that started listening after the
     /// event it is asking about. Removed in the destructor, before the backend
@@ -535,7 +661,8 @@ class AssembledApp {
                           app::runtime::RestoreDelays delays = {})
         : profiles(std::make_unique<core::ProfileStore>()),
           enhancer(std::make_unique<core::ConfigEnhancer>()),
-          backend(std::make_unique<core::MihomoBackendImpl>(&privilegedService_)),
+          moduleLoader(std::make_unique<ModuleLoader>(moduleArtifactPath())),
+          backend(openModuleBackend(*moduleLoader, &privilegedService_, &moduleError)),
           proxyService(makeIsolatedProxyService(proxyLog, osProxyState)),
           configs(std::make_unique<app::runtime::ProfileStoreConfigSource>(profiles.get())),
           runtimeCoordinator(
@@ -563,7 +690,9 @@ class AssembledApp {
 
     ~AssembledApp() {
         // The observer first: core/backend/observer.h requires it to be removed
-        // before it is destroyed, and it is a member of this object.
+        // before it is destroyed, and it is a member of this object. Across the
+        // boundary this is also what stops a queued module event from reaching
+        // a half-destroyed recorder.
         backend->removeObserver(&events);
         // Everything else is reverse declaration order, which is main.cpp's
         // reverse construction order - stated rather than implied, because a
@@ -601,10 +730,25 @@ class AssembledApp {
 
     QString blockingReason() const { return shutdown->blockingReason(); }
 
+    /// The module loaded, handshook and produced a usable session. Asserted by
+    /// every journey immediately after construction: without it the graph is
+    /// intact but inert, and a later "the core never started" would name the
+    /// wrong cause.
+    bool moduleLoaded() const { return moduleError.isEmpty() && backend->isValid(); }
+    /// The artifact this graph is actually driving, for a failure message and
+    /// for the journeys that assert which one was selected.
+    QString moduleArtifact() const { return moduleLoader->artifactPath(); }
+    /// Events the module produced that this host did not understand. Non-zero
+    /// with a matching handshake is a marshalling bug, so journeys assert zero
+    /// rather than assuming it.
+    std::uint64_t unknownModuleEvents() const { return backend->unknownEventCount(); }
+
     // Declared in src/main.cpp's construction order; destroyed in its reverse.
     std::unique_ptr<core::ProfileStore> profiles;
     std::unique_ptr<core::ConfigEnhancer> enhancer;
-    std::unique_ptr<core::MihomoBackendImpl> backend;
+    /// Before `backend`, so the library outlives everything it created.
+    std::unique_ptr<ModuleLoader> moduleLoader;
+    std::unique_ptr<ModuleBackend> backend;
     std::unique_ptr<platform::SystemProxyService> proxyService;
     std::unique_ptr<app::runtime::ProfileStoreConfigSource> configs;
     std::unique_ptr<app::runtime::RuntimeCoordinator> runtimeCoordinator;
@@ -648,6 +792,14 @@ class AssembledApp {
                          runtimeCoordinator.get(),
                          [this](const QString &uid) { runtimeCoordinator->onProfileUpdated(uid); });
         QObject::connect(enhancer.get(), &core::ConfigEnhancer::chainChanged,
+                         runtimeCoordinator.get(),
+                         [this] { runtimeCoordinator->scheduleReload(); });
+        // Saving a preset changes what the SELECTED profile composes to, so it
+        // has to reach the running core the same way a chain change does.
+        // main.cpp makes this connection (config-r1); without it a preset the
+        // user saved takes effect only at the next profile switch or restart,
+        // and W02 asserts the reload it schedules.
+        QObject::connect(profiles.get(), &core::ProfileStore::presetsChanged,
                          runtimeCoordinator.get(),
                          [this] { runtimeCoordinator->scheduleReload(); });
 

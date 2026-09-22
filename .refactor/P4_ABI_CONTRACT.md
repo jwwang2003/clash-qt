@@ -36,3 +36,25 @@ MihomoBackend or BackendBridge. Existing component-r1 vtables stay immutable.
 
 Registrations and packaging are coordinator-only. Workers return exact source
 list, target dependencies and how each acceptance claim was tested/inverted.
+
+## Qualified implementation details (P4 integration)
+
+- Module ABI remains 1; the current wire revision is 3 and connection snapshot
+  format is 2. Wire 2 added production-sequence admission; wire 3 preserves
+  timestamp validity, time specification, offset and zone identity. These payload
+  changes did not change component-r1 vtables or the Qt-facing facade.
+- The host creates QCoreApplication. Shared Qt runtime dependencies remain mapped
+  for their process/runtime cleanup callbacks; this does not pin the component
+  image. Qualification checks actual component unmapping and clean host exit.
+- For unloading, hold IModuleLifetime, release the root interface, then prepare.
+  Preparation requires zero children/work and no other root interfaces. On refusal
+  the loader restores its root and remains usable; release the foreign references
+  and retry. Release the lifetime interface last before closing the library handle.
+- A final Release that must defer destruction retains a cleanup reference and
+  returns nonzero. Returned zero retains component-r1's destruction meaning.
+  Owner-thread native cleanup and module-defined runnables remain counted until
+  finished; Close(timeout) cannot report quiescence while work survives.
+- Handshake failures validate response size before every write. Session decode
+  failures publish their own diagnostic rather than exposing a stale one.
+- Compatibility claims remain limited to measured macOS arm64 artifacts. Code
+  paths for other platforms do not constitute compile or runtime evidence.

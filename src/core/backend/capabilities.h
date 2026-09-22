@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_CAPABILITIES_H
 
 // BackendCapabilities: what this backend can do, queried rather than assumed.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 3, 4, 8, 9.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 3, 4, 8, 9.
 //
 // Capabilities are INSTANCE methods. CoreProcess::serviceSupported() and
 // serviceAvailable() are static today, and a loaded module gets its own copy of
@@ -49,11 +49,11 @@ constexpr FeatureSet operator|(Feature a, Feature b) noexcept {
 // Required by the COMPONENT-ABI handshake in P4. `interfaceRevision` is 1 for
 // this interface and is distinct from the module ABI version.
 //
-// It is NOT the contract revision number. r1, r2 and r3 are one interface: the
-// A1-A4 and B1-B4 amendments corrected and tightened its semantics without
-// adding or reordering a published method, so the value stayed 1 across all
-// three. Both the real backend and the fake report 1 today, and both contract
-// suites assert it. It moves only when the vtable does - which, per section 9,
+// It is NOT the contract revision number. r1 through r4 are one interface: the
+// A1-A4 and B1-B4 amendments tightened its semantics; C1 added status data.
+// None added or reordered a facet method, so the value remains 1. The shared
+// suite asserts this for all four implementations. It moves when the vtable
+// does - which, per section 9,
 // is a new interface id rather than a mutated one.
 struct BackendIdentity {
     QString name;

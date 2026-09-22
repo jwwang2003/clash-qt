@@ -20,7 +20,7 @@ endif
 ifneq ($(strip $(CMAKE_PREFIX_PATH)),)
 PREFIX_ARG := -DCMAKE_PREFIX_PATH=$(CMAKE_PREFIX_PATH)
 endif
-BUILD_DIR = build/$(PRESET)
+BUILD_DIR ?= build/$(PRESET)
 JOBS ?= 8
 CMAKE ?= cmake
 CTEST ?= ctest
@@ -48,7 +48,7 @@ help:
 	@echo "  clean             Remove generated output for PRESET. Never touches source,"
 	@echo "                    user data or the submodule checkout."
 	@echo ""
-	@echo "Variables:  PRESET (default dev)   JOBS (default 8)   CMAKE_PREFIX_PATH"
+	@echo "Variables:  PRESET (default dev)   BUILD_DIR   JOBS (default 8)   CMAKE_PREFIX_PATH"
 	@echo "Prerequisites: GNU Make >= 3.81, CMake >= 3.21, Ninja, Go, Git, Qt 6.9+, yaml-cpp."
 	@echo "Windows: use GNU Make from an initialised MSVC/Qt environment, not NMake."
 	@echo ""
@@ -61,19 +61,17 @@ setup:
 	@$(GIT) submodule update --init --recursive 3rdparty/mihomo && echo "setup: recorded submodules initialised."
 
 configure:
-	@$(CMAKE) --preset $(PRESET) $(PREFIX_ARG)
+	@$(CMAKE) --preset $(PRESET) -B "$(BUILD_DIR)" $(PREFIX_ARG)
 
 $(BUILD_DIR)/CMakeCache.txt:
-	@$(CMAKE) --preset $(PRESET) $(PREFIX_ARG)
+	@$(CMAKE) --preset $(PRESET) -B "$(BUILD_DIR)" $(PREFIX_ARG)
 
 core: $(BUILD_DIR)/CMakeCache.txt
 	@$(CMAKE) --build $(BUILD_DIR) --target clash-qt-core -j $(JOBS)
 
-# The separately packaged component does not exist yet; COMPONENT-BASE and
-# COMPONENT-ABI deliver it. Today this builds the reusable backend libraries and
-# the engine they supervise, which is what the component will be assembled from.
+# The loadable supervisor and the locally built engine it owns.
 module: $(BUILD_DIR)/CMakeCache.txt
-	@$(CMAKE) --build $(BUILD_DIR) --target clash_mihomo_impl clash_platform -j $(JOBS) && $(MAKE) core PRESET=$(PRESET)
+	@$(CMAKE) --build $(BUILD_DIR) --target clash_qt_backend_module -j $(JOBS) && $(MAKE) core PRESET=$(PRESET)
 
 build: $(BUILD_DIR)/CMakeCache.txt
 	@$(CMAKE) --build $(BUILD_DIR) -j $(JOBS)
@@ -82,17 +80,17 @@ run: build
 	@$(CMAKE) -E env CLASH_QT_CORE_BINARY=$(CURDIR)/$(BUILD_DIR)/core/mihomo $(BUILD_DIR)/clash-qt
 
 test: build
-	@$(CTEST) --preset $(PRESET) --label-exclude "native|privileged|benchmark|real-core"
+	@$(CTEST) --preset $(PRESET) --test-dir "$(BUILD_DIR)" --label-exclude "native|privileged|benchmark|real-core"
 
 test-integration: build core
-	@$(CTEST) --preset $(PRESET) --label-regex "real-core|integration"
+	@$(CTEST) --preset $(PRESET) --test-dir "$(BUILD_DIR)" --label-regex "real-core|integration"
 
 test-native: build
 	@echo "test-native runs privileged and network tests that require an exclusive," && \
 	 echo "disposable host. Set CLASH_QT_NATIVE_HOST=1 to confirm this is not your" && \
 	 echo "working machine, then re-run." && \
 	 test -n "$(CLASH_QT_NATIVE_HOST)" && \
-	 $(CTEST) --preset $(PRESET) --label-regex "native|privileged"
+	 $(CTEST) --preset $(PRESET) --test-dir "$(BUILD_DIR)" --label-regex "native|privileged"
 
 # Depends on core as well as build: the engine target is deliberately not in ALL,
 # so a package built without it would ship without a managed engine.

@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QCoreApplication>
+#include <QDeadlineTimer>
 #include <QFileInfo>
 #include <QFile>
 #include <QFutureWatcher>
@@ -506,9 +507,36 @@ void CoreProcess::terminateProcess() {
         child->deleteLater();
         finishStop();
     });
-    QTimer::singleShot(timings_.terminateWaitMs, child, [this, child] {
-        if (retiring_ == child && child->state() != QProcess::NotRunning) child->kill();
-    });
+    // The escalation waits out the budget the contract PUBLISHES, measured on
+    // the monotonic clock rather than trusted to one timer.
+    //
+    // Two reasons, both observed. QTimer::singleShot() without a timer type
+    // asks QTimer::defaultTypeFor(), which returns Qt::CoarseTimer for any
+    // interval of 2 s or more (qtimer.h) - and a coarse timer is allowed to
+    // fire EARLY. terminateWaitMs is 3000, so the kill was armed on a coarse
+    // timer that here fires up to 149 ms ahead of its interval; W05 measured a
+    // stubborn child dying 2962 ms into its published 3000 ms grace. A child
+    // killed before its grace expires was never given the grace, and the 400 ms
+    // this used to be driven with in tests hid it completely: under 2 s the
+    // same call picks a precise timer.
+    // Qt::PreciseTimer alone would be a platform promise; the deadline below is
+    // the guarantee. Each expiry re-checks the remaining time and re-arms while
+    // any is left, so the kill CANNOT land before the budget however the timer
+    // behaves. `child` is the context object, so both the timer and this work
+    // die with the process they are about.
+    const QDeadlineTimer grace(timings_.terminateWaitMs, Qt::PreciseTimer);
+    auto armKill = [this, child, grace](auto &&self, qint64 waitMs) -> void {
+        QTimer::singleShot(waitMs, Qt::PreciseTimer, child, [this, child, grace, self] {
+            if (retiring_ != child || child->state() == QProcess::NotRunning) return;
+            const qint64 remaining = grace.remainingTime();
+            if (remaining > 0) {
+                self(self, remaining);
+                return;
+            }
+            child->kill();
+        });
+    };
+    armKill(armKill, timings_.terminateWaitMs);
     setState(CoreState::Stopping);
     child->terminate();
 }

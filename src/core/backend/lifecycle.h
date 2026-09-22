@@ -3,7 +3,7 @@
 
 // BackendLifecycle: the managed core - a child process or a privileged lease
 // that THIS component started.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 1, 3, 4,
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 1, 3, 4,
 // 6, with amendments A1 and A4 (StopCompleted carries a Generation, stamped
 // post-bump), B1 (which is where the real backend violated A1) and B2
 // (StopCompleted carries a CompletionStatus).

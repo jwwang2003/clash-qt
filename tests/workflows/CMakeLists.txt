@@ -7,20 +7,28 @@
 # config, so a journey cannot choose its own port.
 set(clash_qt_workflow_libs
     clash_test_support clash_backend_fake clash_app_runtime clash_app_lifecycle
-    clash_app_backup clash_app_composition clash_mihomo_impl clash_profiles
+    clash_app_backup clash_app_composition clash_module_host clash_profiles
     clash_config clash_backups clash_platform clash_preferences clash_telemetry)
 
-foreach(wf w01_first_launch w04_restore w05_recovery)
+foreach(wf w01_first_launch w02_subscription_update w04_restore w05_recovery)
     string(REPLACE "_" "-" wf_name "${wf}")
     string(REGEX REPLACE "^w0([0-9])-" "w0\\1-" wf_test "${wf_name}")
     qt_add_executable(${wf_name}-tests ${wf}_test.cpp)
     target_link_libraries(${wf_name}-tests PRIVATE
         Qt6::Test Qt6::Network Qt6::Concurrent ${clash_qt_workflow_libs})
-    add_dependencies(${wf_name}-tests clash-qt-fake-core)
-    add_test(NAME ${wf_name} COMMAND ${wf_name}-tests)
+    add_dependencies(${wf_name}-tests clash-qt-fake-core clash_qt_backend_module)
+    if(wf STREQUAL "w02_subscription_update")
+        add_test(NAME ${wf_name} COMMAND ${wf_name}-tests
+            theHarnessStillMirrorsTheCompositionRoot
+            aSubscriptionIsComposedThroughPresetsStartedRefreshedAndReopened
+            aRejectedRefreshPreservesTheCachedSubscriptionAndTheLiveCore
+            aHeldRefreshLosesToAUrlEditAndTheLatestUrlWins)
+    else()
+        add_test(NAME ${wf_name} COMMAND ${wf_name}-tests)
+    endif()
     set_tests_properties(${wf_name} PROPERTIES
         RUN_SERIAL TRUE TIMEOUT 300
-        ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>")
+        ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>")
 endforeach()
 
 # W03 is the only journey that builds the real shell, so it needs the UI sources
@@ -33,6 +41,8 @@ qt_add_executable(w03-routing-controls-tests w03_routing_controls_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/home_page.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/pages/overview/traffic_graph.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/pages/profiles/profiles_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/profiles/preset_editor.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/profiles/effective_config_view.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/pages/providers/providers_page.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/pages/proxies/proxies_page.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/pages/rules/rules_page.cpp"
@@ -57,7 +67,7 @@ target_link_libraries(w03-routing-controls-tests PRIVATE
     Qt6::Test Qt6::Network Qt6::Concurrent Qt6::Widgets Qt6::Qml
     clash_backend_bridge ${clash_qt_workflow_libs})
 add_traffic_graph_module(w03-routing-controls-tests)
-add_dependencies(w03-routing-controls-tests clash-qt-fake-core)
+add_dependencies(w03-routing-controls-tests clash-qt-fake-core clash_qt_backend_module)
 add_test(NAME w03-routing-controls COMMAND w03-routing-controls-tests)
 # The offscreen platform and the software Quick backend are set HERE, not in the
 # parent. W03 builds the real shell, and the parent's env loops use if(TEST ...),
@@ -66,7 +76,7 @@ add_test(NAME w03-routing-controls COMMAND w03-routing-controls-tests)
 # scope instead of order.
 set_tests_properties(w03-routing-controls PROPERTIES
     RUN_SERIAL TRUE TIMEOUT 300
-    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>;QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
 
 # Launches the real shipping binary. This is the lane that can see a component
 # that builds and links but that nothing wires up -- the shape of the
@@ -74,17 +84,25 @@ set_tests_properties(w03-routing-controls PROPERTIES
 qt_add_executable(app-smoke-tests app_smoke_test.cpp)
 target_link_libraries(app-smoke-tests PRIVATE
     Qt6::Test Qt6::Network Qt6::Concurrent ${clash_qt_workflow_libs})
-add_dependencies(app-smoke-tests clash-qt-fake-core clash-qt)
+add_dependencies(app-smoke-tests clash-qt-fake-core clash-qt clash_qt_backend_module)
 add_test(NAME app-smoke COMMAND app-smoke-tests)
 set_tests_properties(app-smoke PROPERTIES
     RUN_SERIAL TRUE TIMEOUT 600
-    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_APP_BINARY=$<TARGET_FILE:clash-qt>")
+    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_APP_BINARY=$<TARGET_FILE:clash-qt>;CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>;CLASH_QT_SERVICE_SOCKET=${CMAKE_BINARY_DIR}/test-data/app-smoke/helper.socket")
 
 clash_qt_label(w01-first-launch      workflow integration app)
+clash_qt_label(w02-subscription-update workflow integration app config)
 clash_qt_label(w03-routing-controls  workflow integration app ui)
 clash_qt_label(w04-restore           workflow integration app)
 clash_qt_label(w05-recovery          workflow integration app)
 clash_qt_label(app-smoke             workflow integration app packaging)
-foreach(name w01-first-launch w03-routing-controls w04-restore w05-recovery app-smoke)
+foreach(name w01-first-launch w02-subscription-update w03-routing-controls w04-restore w05-recovery app-smoke)
     clash_qt_isolate_test(${name})
 endforeach()
+
+add_test(NAME w02-real-core COMMAND w02-subscription-update-tests
+    theRealSourceBuiltCoreRefreshesAndRejectsAnInvalidUpdate)
+set_tests_properties(w02-real-core PROPERTIES RUN_SERIAL TRUE TIMEOUT 300
+    ENVIRONMENT "CLASH_QT_W02_REAL_CORE=1;CLASH_QT_CORE_BINARY=${CLASH_QT_CORE_BINARY};CLASH_QT_CORE_PROVENANCE=${CLASH_QT_CORE_DIR}/mihomo-provenance.json;CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>")
+clash_qt_label(w02-real-core workflow real-core integration app config)
+clash_qt_isolate_test(w02-real-core)

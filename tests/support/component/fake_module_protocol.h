@@ -66,9 +66,4 @@ enum FakeCommand : std::uint32_t {
     kFakeEmitMemorySample = abi::kCmdTestControlBase + 0x43,   // Generation, u64, u64
 };
 
-/// A connection record, encoded field by field, for kFakeEmitConnections. The
-/// module unpacks it and hands it to the observer face, which re-packs it with
-/// the production snapshot codec - so the suite measures the real path.
-inline constexpr std::size_t kMinConnectionBytes = 4 * 13 + 8 * 4 + 8 * 2;
-
 }  // namespace testsupport::component

@@ -14,7 +14,8 @@ target_sources(backend-real-contract-tests PRIVATE
 target_link_libraries(backend-real-contract-tests PRIVATE
     Qt6::Test Qt6::Network clash_mihomo_impl clash_app_composition clash_test_support
     clash_module_host clash_component_marshal clash_backend_fake)
-add_dependencies(backend-real-contract-tests clash_qt_backend_module clash_qt_fake_backend_module)
+add_dependencies(backend-real-contract-tests
+    clash-qt-fake-core clash_qt_backend_module clash_qt_fake_backend_module)
 add_test(NAME backend-real-contract COMMAND backend-real-contract-tests)
 # Every FakeCore consumer needs the fixture path, not just the fixture's own suite.
 set_tests_properties(backend-real-contract PROPERTIES

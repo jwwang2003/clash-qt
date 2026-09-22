@@ -120,6 +120,27 @@ LoopbackServer::Reply LoopbackServer::Reply::drop() {
     return reply;
 }
 
+LoopbackServer::Reply LoopbackServer::Reply::document(const QByteArray &contentType,
+                                                      const QByteArray &body) {
+    Reply reply;
+    reply.contentType = contentType;
+    reply.body = body;
+    return reply;
+}
+
+bool LoopbackServer::Reply::isReservedHeader(const QByteArray &name) {
+    const QByteArray lowered = name.trimmed().toLower();
+    return lowered == "content-type" || lowered == "content-length" || lowered == "connection";
+}
+
+LoopbackServer::Reply LoopbackServer::Reply::withHeader(const QByteArray &name,
+                                                        const QByteArray &value) const {
+    Reply reply = *this;
+    if (name.trimmed().isEmpty() || isReservedHeader(name)) return reply;
+    reply.headers.append({name, value});
+    return reply;
+}
+
 LoopbackServer::LoopbackServer(QObject *parent) : QObject(parent) {
     connect(&listener_, &QTcpServer::newConnection, this, &LoopbackServer::accept);
 }
@@ -308,11 +329,18 @@ void LoopbackServer::respond(QTcpSocket *socket, const Reply &reply, bool client
     // request QNetworkAccessManager had already written on a pooled connection,
     // which shows up as a rare vanished request rather than a clear failure.
     const bool close = reply.closeConnection || clientWantsClose;
+    QByteArray extra;
+    for (const auto &header : reply.headers) {
+        // Re-checked here, not only in withHeader(): `Reply` is a plain struct
+        // and a caller may append to `headers` directly.
+        if (Reply::isReservedHeader(header.first)) continue;
+        extra += header.first.trimmed() + ": " + header.second + "\r\n";
+    }
     const QByteArray response = "HTTP/1.1 " + QByteArray::number(reply.status) + " " +
                                 statusText(reply.status) + "\r\nContent-Type: " + reply.contentType +
                                 "\r\nContent-Length: " + QByteArray::number(reply.body.size()) +
-                                "\r\nConnection: " + (close ? "close" : "keep-alive") +
-                                "\r\n\r\n" + reply.body;
+                                "\r\nConnection: " + (close ? "close" : "keep-alive") + "\r\n" +
+                                extra + "\r\n" + reply.body;
     if (close) connection->closing = true;
     socket->write(response);
     socket->flush();

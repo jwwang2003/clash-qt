@@ -29,6 +29,15 @@
 //       complete, the escalation must happen inside the budget the backend
 //       PUBLISHES, and no process may survive. A quit that only completes
 //       because the child was cooperative proves nothing about the bound.
+//
+// THE ENGINE IS LOADED, NOT LINKED. Since decision D8 these journeys drive
+// clashqt::integration::ModuleBackend over a session
+// clashqt::integration::ModuleLoader created from CLASH_QT_MODULE_PATH, exactly
+// as src/main.cpp does; nothing here names core/mihomo/** any more. The
+// termination bound below is therefore the module's PUBLISHED 3 s terminate
+// wait rather than a 400 ms value pushed in through setTimings(), which does
+// not exist across the boundary and is not being reintroduced: a bound that
+// only holds for a budget no release ever uses is not the shipped bound.
 //   "accurate cleanup status"  wasLastStopConfirmed(), and the stop completion
 //       it is derived from. backend-r2 section 6 forbids reporting an
 //       unconfirmed stop as a success, so the journey asserts the value rather
@@ -143,6 +152,7 @@ class W05RecoveryTest : public QObject {
         auto osProxy = std::make_shared<wf::ProxyConfig>();
         wf::AssembledApp app(proxyLog, osProxy,
                              app::runtime::RestoreDelays{0, kCompressedGraceMs});
+        QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
         app.bootstrap(engine->binaryPath());
 
         const QString alpha = createProfile(app, QStringLiteral("alpha"));
@@ -174,7 +184,7 @@ class W05RecoveryTest : public QObject {
                             app.backend->state() == cb::CoreState::Stopped;
                  }),
                  qPrintable(report(app, controller)));
-        QVERIFY(app.backend->drainPendingEvents());
+        QVERIFY(app.backend->drain());
         QVERIFY2(!app.events.coreFailures.empty(), "a crashed child produced no failure");
         QCOMPARE(app.events.coreFailures.back().error.code, cb::ErrorCode::CoreExited);
         QVERIFY2(!app.events.coreFailures.back().error.message.isEmpty(),
@@ -263,6 +273,7 @@ class W05RecoveryTest : public QObject {
         auto osProxy = std::make_shared<wf::ProxyConfig>();
         wf::AssembledApp app(proxyLog, osProxy,
                              app::runtime::RestoreDelays{0, kCompressedGraceMs});
+        QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
         app.bootstrap(engine.binaryPath());
         const QString alpha = createProfile(app, QStringLiteral("alpha"));
         app.profiles->selectProfile(alpha);
@@ -279,7 +290,7 @@ class W05RecoveryTest : public QObject {
         app.backend->refreshVersion();
         QVERIFY2(wf::waitFor([&app] { return !app.backend->isConnected(); }),
                  "a controller that stopped answering was still reported as connected");
-        QVERIFY(app.backend->drainPendingEvents());
+        QVERIFY(app.backend->drain());
         QVERIFY2(!app.events.failures.empty(), "the transport failure was never reported");
         QVERIFY2(!app.events.connected, "the observer was told the controller was still connected");
         // Not a crash: no failure of the managed core, and the core is still up.
@@ -328,16 +339,17 @@ class W05RecoveryTest : public QObject {
         auto proxyLog = std::make_shared<wf::ProxyOperations>();
         auto osProxy = std::make_shared<wf::ProxyConfig>();
         wf::AssembledApp app(proxyLog, osProxy);
+        QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
         app.bootstrap(engine.binaryPath());
-        // The budget the backend will REALLY apply, shrunk through the seam it
-        // publishes it from. timings() reports what is set here, so the bound
-        // asserted below is the bound the application advertises.
-        core::CoreTimings timings;
-        timings.probeIntervalMs = 25;
-        timings.probeTimeoutMs = 500;
-        timings.terminateWaitMs = 400;
-        app.backend->setTimings(timings);
-        QCOMPARE(app.backend->timings().terminateWaitMs, 400u);
+        // The budget the backend PUBLISHES, waited out rather than shrunk. The
+        // 400 ms this case used to push in through setTimings() is gone with the
+        // knob: backend-r2 section 4 states the escalation, capabilities.h
+        // states the value, and the shipped value is what a user's quit
+        // actually costs when a core refuses to go.
+        const cb::BackendTimings published = app.backend->timings();
+        QCOMPARE(published.terminateWaitMs, cb::kContractTimings.terminateWaitMs);
+        QVERIFY2(published.terminateWaitMs > 0,
+                 "a zero termination wait would make the bound below vacuous");
 
         const QString alpha = createProfile(app, QStringLiteral("alpha"));
         app.profiles->selectProfile(alpha);
@@ -346,10 +358,31 @@ class W05RecoveryTest : public QObject {
                  qPrintable(report(app, controller)));
         QCOMPARE(wf::liveProcessesOf(engine.binaryPath()), 1);
 
+        // READINESS IS NOT REFUSAL. Running is decided by the controller
+        // answering, and that controller is a fixture in THIS process: it is
+        // ready before the child has run a single line. The child installs its
+        // SIGTERM refusal first and prints "[INFO] stubborn" immediately after
+        // (tests/fixtures/fake_core_main.cpp orders it that way), so the marker
+        // is the one observable that says the refusal is armed. Without this
+        // wait the quit below can reach a child that would still have exited
+        // politely, and the bound is then measured against nothing.
+        QVERIFY2(wf::waitFor([&app] {
+                     for (const QString &line : app.events.logLines)
+                         if (line.contains(QStringLiteral("stubborn"))) return true;
+                     return false;
+                 }),
+                 qPrintable(QStringLiteral("the child never announced its refusal, so the "
+                                           "termination bound would measure a polite exit: %1")
+                                .arg(report(app, controller))));
+
         QElapsedTimer elapsed;
         elapsed.start();
-        QVERIFY2(app.quit(), qPrintable(QStringLiteral("a stubborn child wedged the quit: %1 | %2")
-                                            .arg(app.blockingReason(), report(app, controller))));
+        // The quit's own deadline is sized from the published wait, so a
+        // shutdown that misses the bound fails on the assertion below with the
+        // measurement in hand rather than on an unexplained expiry here.
+        QVERIFY2(app.quit(wf::deadlineFor(published.terminateWaitMs)),
+                 qPrintable(QStringLiteral("a stubborn child wedged the quit: %1 | %2")
+                                .arg(app.blockingReason(), report(app, controller))));
         const qint64 took = elapsed.elapsed();
 
         QVERIFY2(wf::awaitNoLiveProcess(engine.binaryPath()),
@@ -361,17 +394,17 @@ class W05RecoveryTest : public QObject {
         // The bound: the escalation cannot have been instant (the child refused
         // the polite request) and it must not have exceeded the published wait
         // by more than the event loop's own slack.
-        QVERIFY2(took >= timings.terminateWaitMs,
+        QVERIFY2(took >= published.terminateWaitMs,
                  qPrintable(QStringLiteral("the quit finished in %1 ms, inside the %2 ms "
                                            "termination wait: the child cannot have refused "
                                            "anything, so nothing was proven")
                                 .arg(took)
-                                .arg(timings.terminateWaitMs)));
-        QVERIFY2(took < static_cast<qint64>(timings.terminateWaitMs) + 8000,
+                                .arg(published.terminateWaitMs)));
+        QVERIFY2(took < static_cast<qint64>(published.terminateWaitMs) + 8000,
                  qPrintable(QStringLiteral("the quit took %1 ms against a %2 ms published "
                                            "termination wait: the shutdown is not bounded")
                                 .arg(took)
-                                .arg(timings.terminateWaitMs)));
+                                .arg(published.terminateWaitMs)));
         QVERIFY(snapshots().isEmpty());
     }
 

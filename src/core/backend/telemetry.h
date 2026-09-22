@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_TELEMETRY_H
 
 // BackendTelemetry: snapshots, streams and providers.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 2, 7, 9,
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 2, 7, 9,
 // with r2's answer to the second open question (one global Generation, and the
 // re-issue obligation that comes with it) and B3, which requires the fake to
 // honour that obligation too.

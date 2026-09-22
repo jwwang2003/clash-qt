@@ -2,8 +2,33 @@
 include(GNUInstallDirs)
 
 install(TARGETS clash-qt BUNDLE DESTINATION . RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+add_dependencies(clash-qt clash_qt_backend_module)
+# Re-run bundle staging when only the module changes. A build-order dependency
+# alone would leave an older copied module beside an unchanged executable.
+set_property(TARGET clash-qt APPEND PROPERTY LINK_DEPENDS
+    "$<TARGET_FILE:clash_qt_backend_module>")
+if(APPLE)
+    # Copy before Qt deployment so the module's runtime dependencies are also
+    # resolved inside the bundle. The loader uses this installed location.
+    add_custom_command(TARGET clash-qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_BUNDLE_DIR:clash-qt>/Contents/Frameworks"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:clash_qt_backend_module>"
+            "$<TARGET_BUNDLE_DIR:clash-qt>/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>"
+        VERBATIM)
+else()
+    add_custom_command(TARGET clash-qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:clash_qt_backend_module>" "$<TARGET_FILE_DIR:clash-qt>"
+        VERBATIM)
+    install(TARGETS clash_qt_backend_module
+        LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 if(WIN32)
     install(FILES $<TARGET_RUNTIME_DLLS:clash-qt> DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES $<TARGET_RUNTIME_DLLS:clash_qt_backend_module> DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 if(APPLE)

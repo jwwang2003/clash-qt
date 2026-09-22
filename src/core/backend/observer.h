@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_OBSERVER_H
 
 // BackendObserver: the event sink, published instead of Qt signals.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 2, 7, 9,
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 2, 7, 9,
 // with amendment A2, which is the reason the consumer obligation below is not
 // stated the way r1 stated it.
 //

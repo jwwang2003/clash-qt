@@ -182,6 +182,89 @@ private slots:
         QVERIFY(dropped->error() != QNetworkReply::NoError);
     }
 
+    // --- scripted response headers -------------------------------------------
+    //
+    // A subscription's quota and expiry do not arrive in the body: they arrive
+    // in `subscription-userinfo`, and its filename arrives in
+    // `content-disposition`. core::ProfileStore parses both out of the RAW
+    // header text, so the fixture's job is to put the bytes a provider sends on
+    // the wire and not to have an opinion about them. These two cases are what
+    // makes the W02 journey's quota assertions meaningful rather than circular:
+    // without them, a fixture that quietly dropped or rewrote the header would
+    // make "the quota did not arrive" indistinguishable from "the store cannot
+    // parse it".
+
+    void scriptedResponseHeadersReachTheClientVerbatim() {
+        LoopbackServer server;
+        QVERIFY(server.listen(fixtureSecret()));
+        // Deliberately awkward spacing and ordering, because a real provider's
+        // header is not normalised either.
+        const QByteArray quota =
+            QByteArrayLiteral("upload=1024; download= 2048 ;total=10737418240;expire=1794499200");
+        const QByteArray disposition =
+            QByteArrayLiteral("attachment; filename=\"w02-fixture.yaml\"");
+        server.route("GET", QStringLiteral("/sub.yaml"),
+                     LoopbackServer::Reply::document("text/yaml", QByteArrayLiteral("proxies: []\n"))
+                         .withHeader("subscription-userinfo", quota)
+                         .withHeader("content-disposition", disposition));
+        server.route("GET", QStringLiteral("/plain.yaml"),
+                     LoopbackServer::Reply::document("text/yaml", QByteArrayLiteral("proxies: []\n")));
+
+        QScopedPointer<QNetworkReply> reply(get(server, QStringLiteral("/sub.yaml")));
+        QVERIFY2(finished(reply.data(), server), qPrintable(server.pendingReport()));
+        QCOMPARE(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(), 200);
+        // Byte for byte: the spacing is what production's regex has to survive.
+        QCOMPARE(reply->rawHeader("subscription-userinfo"), quota);
+        QCOMPARE(reply->rawHeader("content-disposition"), disposition);
+        QCOMPARE(reply->header(QNetworkRequest::ContentTypeHeader).toByteArray(),
+                 QByteArrayLiteral("text/yaml"));
+        QCOMPARE(reply->readAll(), QByteArrayLiteral("proxies: []\n"));
+
+        // No bleed-through: a route that scripts no headers sends none. A
+        // fixture that kept them on the connection would make the journey's
+        // "the quota changed" assertion pass on a stale value.
+        QScopedPointer<QNetworkReply> plain(get(server, QStringLiteral("/plain.yaml")));
+        QVERIFY2(finished(plain.data(), server), qPrintable(server.pendingReport()));
+        QVERIFY2(plain->rawHeader("subscription-userinfo").isEmpty(),
+                 qPrintable(QStringLiteral("an unrelated route answered with %1")
+                                .arg(QString::fromUtf8(plain->rawHeader("subscription-userinfo")))));
+        QVERIFY(plain->rawHeader("content-disposition").isEmpty());
+        QVERIFY(!server.sawUnexpectedRequest());
+    }
+
+    void reservedResponseHeadersAreRefusedRatherThanDuplicated() {
+        using Reply = LoopbackServer::Reply;
+        QVERIFY(Reply::isReservedHeader("Content-Length"));
+        QVERIFY(Reply::isReservedHeader("content-type"));
+        QVERIFY(Reply::isReservedHeader(" Connection "));
+        QVERIFY(!Reply::isReservedHeader("subscription-userinfo"));
+
+        // withHeader() drops it...
+        const Reply attempted = Reply::json(QByteArrayLiteral("{}"))
+                                    .withHeader("Content-Length", "1")
+                                    .withHeader("", "ignored")
+                                    .withHeader("x-fixture", "kept");
+        QCOMPARE(attempted.headers.size(), 1);
+        QCOMPARE(attempted.headers.first().first, QByteArrayLiteral("x-fixture"));
+
+        // ...and so does the wire, for a caller that appended to the plain
+        // struct directly.
+        LoopbackServer server;
+        QVERIFY(server.listen(fixtureSecret()));
+        Reply forced = Reply::json(QByteArrayLiteral("{\"version\":\"fixture\"}"));
+        forced.headers.append({QByteArrayLiteral("Content-Length"), QByteArrayLiteral("1")});
+        forced.headers.append({QByteArrayLiteral("x-fixture"), QByteArrayLiteral("kept")});
+        server.route("GET", QStringLiteral("/version"), forced);
+
+        QScopedPointer<QNetworkReply> reply(get(server, QStringLiteral("/version")));
+        QVERIFY2(finished(reply.data(), server), qPrintable(server.pendingReport()));
+        QCOMPARE(reply->rawHeader("x-fixture"), QByteArrayLiteral("kept"));
+        // A leaked duplicate would arrive as "22, 1": Qt joins repeated headers.
+        QCOMPARE(reply->rawHeader("Content-Length"),
+                 QByteArray::number(QByteArrayLiteral("{\"version\":\"fixture\"}").size()));
+        QCOMPARE(reply->readAll(), QByteArrayLiteral("{\"version\":\"fixture\"}"));
+    }
+
     void failureTranscriptRedactsCredentials() {
         LoopbackServer server;
         QVERIFY(server.listen(fixtureSecret()));

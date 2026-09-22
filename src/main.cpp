@@ -15,7 +15,7 @@
 //
 //   platform::PrivilegedServiceClient      the privileged seam's transport
 //   core::PrivilegedServiceClientAdapter   -> core::PrivilegedCoreService (D2)
-//   core::MihomoBackendImpl                owns its client and its process
+//   component::ModuleLoader / ModuleBackend  module lifetime and host facade
 //   core::backend::BackendBridge           the Qt view of the backend (G2)
 //   app::runtime::ProfileStoreConfigSource
 //   app::runtime::RuntimeCoordinator       reload gate, snapshot retention
@@ -27,6 +27,7 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCryptographicHash>
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QLocalServer>
@@ -35,6 +36,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QStatusBar>
+#include <QStandardPaths>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
@@ -53,8 +55,8 @@
 #include "app/runtime/runtime_coordinator.h"
 #include "core/backend/backend_bridge.h"
 #include "core/config/enhance/config_enhancer.h"
-#include "core/mihomo/controller_discovery.h"
-#include "core/mihomo/mihomo_backend.h"
+#include "integrations/component/module_backend.h"
+#include "integrations/component/module_loader.h"
 #include "core/preferences/preferences.h"
 #include "core/profiles/profile_store.h"
 #include "platform/proxy/system_proxy_service.h"
@@ -67,6 +69,19 @@ namespace {
 namespace cb = core::backend;
 namespace lifecycle = app::lifecycle;
 namespace runtime = app::runtime;
+
+// Compatibility import location is host policy, not an engine implementation
+// dependency. This preserves the existing optional geo-data seeding location.
+QString legacyGeoSeedDirectory() {
+    constexpr auto id = "io.github.clash-verge-rev.clash-verge-rev";
+#ifdef Q_OS_MACOS
+    return QDir::homePath() + "/Library/Application Support/" + id;
+#elif defined(Q_OS_WIN)
+    return qEnvironmentVariable("APPDATA", QDir::homePath() + "/AppData/Roaming") + '/' + id;
+#else
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + '/' + id;
+#endif
+}
 
 }  // namespace
 
@@ -126,9 +141,34 @@ int main(int argc, char *argv[]) {
     //
     // Declared before the backend so it is destroyed after it: the adapter must
     // outlive every object that holds the seam.
-    platform::PrivilegedServiceClient privilegedClient;
-    core::PrivilegedServiceClientAdapter privilegedService(&privilegedClient);
-    core::MihomoBackendImpl backend(&privilegedService);
+    // A host with a relocated helper can select its socket explicitly. Smoke
+    // harnesses use an isolated socket here: --data-dir alone cannot redirect
+    // the machine-wide helper, and the Settings page queries status on startup.
+    QString serviceSocket = qEnvironmentVariable("CLASH_QT_SERVICE_SOCKET");
+    if (serviceSocket.isEmpty() && qEnvironmentVariableIsSet("CLASH_QT_DATA_DIR"))
+        serviceSocket = QDir(profiles->dataDir()).absoluteFilePath("helper.socket");
+    if (!serviceSocket.isEmpty() && !QDir::isAbsolutePath(serviceSocket)) {
+        qCritical() << "CLASH_QT_SERVICE_SOCKET must be an absolute path.";
+        return 2;
+    }
+    platform::PrivilegedServiceClient privilegedClient(nullptr, serviceSocket);
+    core::PrivilegedServiceClientAdapter privilegedService(&privilegedClient, serviceSocket);
+    const QString selectedModule = qEnvironmentVariable("CLASH_QT_MODULE_PATH");
+    clashqt::integration::ModuleLoader module(
+        selectedModule.isEmpty() ? clashqt::integration::ModuleLoader::installedModulePath()
+                                 : selectedModule);
+    clashqt::com::ComPtr<clashqt::com::abi::IBackendSession> session;
+    if (!module.load() || !module.createSession(session)) {
+        qCritical().noquote() << "Could not load the engine component:" << module.lastError();
+        return 2;
+    }
+    clashqt::integration::ModuleBackend backend(std::move(session), &privilegedService);
+    if (!backend.isValid()) {
+        qCritical().noquote() << "Could not initialize the engine component:"
+                             << backend.lastError().message;
+        return 2;
+    }
+    qInfo().noquote() << "Engine component loaded:" << module.artifactPath();
     cb::BackendBridge bridge(backend);
 
     auto *enhancer = new core::ConfigEnhancer(&app);
@@ -169,7 +209,8 @@ int main(int argc, char *argv[]) {
     // Set before anything can generate: the first generation is driven either
     // by RuntimeCoordinator (constructed below) or by the shell (constructed
     // after it), and neither exists yet.
-    profiles->setSeedDir(QFileInfo(core::vergeConfigPath()).absolutePath());
+    if (!qEnvironmentVariableIsSet("CLASH_QT_DATA_DIR"))
+        profiles->setSeedDir(legacyGeoSeedDirectory());
     profiles->load();
     QObject::disconnect(profileErrors);
     QObject::disconnect(chainErrors);
@@ -213,6 +254,8 @@ int main(int argc, char *argv[]) {
                          runtimeCoordinator.onProfileUpdated(uid);
                      });
     QObject::connect(enhancer, &core::ConfigEnhancer::chainChanged, &runtimeCoordinator,
+                     [&runtimeCoordinator] { runtimeCoordinator.scheduleReload(); });
+    QObject::connect(profiles, &core::ProfileStore::presetsChanged, &runtimeCoordinator,
                      [&runtimeCoordinator] { runtimeCoordinator.scheduleReload(); });
 
     // ------------------------------------------------------------- the quit gate
@@ -307,7 +350,8 @@ int main(int argc, char *argv[]) {
     // exists, and the traffic stream the tray and the home page read. A managed
     // core that becomes ready overwrites this attachment from
     // RuntimeCoordinator::coreReady.
-    bridge.attach(backend.discoverEndpoint());
+    const cb::Endpoint startupEndpoint = backend.discoverEndpoint();
+    if (cb::isValid(startupEndpoint)) bridge.attach(startupEndpoint);
     bridge.openTrafficStream();
 
     // The controller poll stays in the composition root. fetchVersion() is the

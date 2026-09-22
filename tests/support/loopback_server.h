@@ -75,12 +75,39 @@ public:
         int status = 200;
         QByteArray contentType = QByteArrayLiteral("application/json");
         QByteArray body;
+        // Extra response headers, sent verbatim and in this order.
+        //
+        // WHY VERBATIM MATTERS. The fields a subscription carries - the
+        // `subscription-userinfo` quota line, the `content-disposition`
+        // filename - are parsed out of the raw header text by production code
+        // (core::ProfileStore's parseUserInfo/nameFromResponse). A fixture that
+        // normalised the spacing, re-ordered the pairs or dropped a duplicate
+        // would be testing its own idea of the header rather than the one a
+        // subscription provider sends, so nothing here interprets the value.
+        //
+        // Reserved names are refused rather than merged: Content-Type,
+        // Content-Length and Connection are the fixture's to write, and a
+        // second copy of any of them is a malformed response rather than a
+        // scriptable one. See addHeader().
+        QList<QPair<QByteArray, QByteArray>> headers;
         bool closeConnection = false;  // send the reply, then close
         bool dropConnection = false;   // send nothing, abort the socket
 
         static Reply json(const QByteArray &body);
         static Reply failure(int status, const QByteArray &body = {});
         static Reply drop();
+        /// A reply with an explicit content type, for the bodies that are not
+        /// JSON - a subscription is YAML.
+        static Reply document(const QByteArray &contentType, const QByteArray &body);
+
+        /// Chainable: `Reply::json(body).withHeader("subscription-userinfo", ...)`.
+        /// A reserved name is DROPPED rather than sent: letting one through
+        /// would put two Content-Lengths on the wire and turn a fixture mistake
+        /// into a parse failure somewhere else. isReservedHeader() is public so
+        /// the refusal is assertable instead of merely documented.
+        Reply withHeader(const QByteArray &name, const QByteArray &value) const;
+        /// True when `name` is the fixture's own to write.
+        static bool isReservedHeader(const QByteArray &name);
     };
 
     // A held route (see LoopbackGate, below).

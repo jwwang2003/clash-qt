@@ -123,7 +123,8 @@
     "clash_profiles": {
       "deps": [
         "clash_types",
-        "clash_config"
+        "clash_config",
+        "clash_config_compose"
       ],
       "external": [
         "Qt6::Network",
@@ -146,7 +147,8 @@
     "clash_backups": {
       "deps": [
         "clash_types",
-        "clash_preferences"
+        "clash_preferences",
+        "clash_config_compose"
       ],
       "external": [
         "Qt6::Network",
@@ -269,7 +271,7 @@
       ]
     },
     "clash_backend": {
-      "_role": "Published MihomoBackend contract (backend-r3). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when D2 was discharged: the composition root needs it, so it cannot live in component-private core/mihomo/**.",
+      "_role": "Published MihomoBackend contract (backend-r4). Header-only boundary between the application and the engine; both the real backend and the fake implement it. Includes the privileged-service seam published when D2 was discharged: the composition root needs it, so it cannot live in component-private core/mihomo/**.",
       "deps": [
         "clash_types"
       ],
@@ -384,6 +386,92 @@
       "public_headers": [
         "core/backend/backend_bridge.h"
       ]
+    },
+    "clash_config_compose": {
+      "_role": "Pure P4 YAML composer: immutable input, no disk/network/process or JS engine.",
+      "deps": [
+        "clash_types",
+        "clash_yaml"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core",
+        "yaml-cpp::yaml-cpp"
+      ],
+      "public_headers": [
+        "core/config/config_composer.h"
+      ]
+    },
+    "clash_component_abi": {
+      "_role": "D8 binary boundary; no Qt or STL values.",
+      "deps": [
+        "clashqt_com"
+      ],
+      "external": [],
+      "transitive_external": [],
+      "public_headers": [
+        "core/component/abi/abi.h",
+        "core/component/abi/backend_abi.h",
+        "core/component/abi/module_entry.h",
+        "core/component/abi/target_abi.h",
+        "core/component/abi/wire.h"
+      ]
+    },
+    "clash_component_marshal": {
+      "_role": "Private codecs shared as source between allocating modules.",
+      "deps": [
+        "clash_component_abi",
+        "clash_backend"
+      ],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ],
+      "public_headers": []
+    },
+    "clash_qt_backend_module": {
+      "_role": "D8 shared engine supervisor; production component artifact.",
+      "deps": [
+        "clash_component_marshal",
+        "clash_backend",
+        "clash_yaml"
+      ],
+      "external": [
+        "Qt6::Network",
+        "Qt6::WebSockets",
+        "Qt6::Concurrent",
+        "dl"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Network",
+        "Qt6::WebSockets",
+        "Qt6::Concurrent",
+        "yaml-cpp::yaml-cpp",
+        "dl"
+      ],
+      "public_headers": []
+    },
+    "clash_module_host": {
+      "_role": "D8 host-owned MihomoBackend facade and explicit-path module loader.",
+      "deps": [
+        "clash_backend",
+        "clash_component_abi",
+        "clash_component_marshal"
+      ],
+      "external": [
+        "dl"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "dl"
+      ],
+      "public_headers": [
+        "integrations/component/module_loader.h",
+        "integrations/component/module_backend.h"
+      ]
     }
   },
   "consumers": {
@@ -406,7 +494,9 @@
         "clash_platform",
         "clash_preferences",
         "clash_profiles",
-        "clash_telemetry"
+        "clash_telemetry",
+        "clash_qt_backend_module",
+        "clash_module_host"
       ],
       "optional": true
     },
@@ -427,7 +517,8 @@
       "deps": [
         "clash_backups",
         "clash_preferences",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_config_compose"
       ]
     },
     "preferences-tests": {
@@ -616,7 +707,7 @@
       "optional": true
     },
     "backend-contract-tests": {
-      "_note": "Runs the backend-r3 contract suite against the fake.",
+      "_note": "Runs the backend-r4 contract suite against the fake.",
       "deps": [
         "clash_backend_fake"
       ],
@@ -631,11 +722,16 @@
       "optional": true
     },
     "backend-real-contract-tests": {
-      "_note": "MOD-CORE P3: the backend-r3 acceptance set against the real MihomoBackend with a fixture core. Links clash_mihomo_impl; that link is carried as a G2 site, not as a dep.",
+      "_note": "Private implementation specialist cases plus one shared assertion set over direct fake, direct real, module fake and module real. The existing private static link remains in the permanent six-target implementation-subject allowance.",
       "headless": true,
       "deps": [
         "clash_app_composition",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_module_host",
+        "clash_component_marshal",
+        "clash_backend_fake",
+        "clash_qt_backend_module",
+        "clash_qt_fake_backend_module"
       ]
     },
     "backend-real-core-tests": {
@@ -654,7 +750,7 @@
       ]
     },
     "w01-first-launch-tests": {
-      "_note": "W01 first launch: import, start, real readiness, stop, quit, reopen. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -667,12 +763,14 @@
         "clash_preferences",
         "clash_profiles",
         "clash_telemetry",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_module_host",
+        "clash_qt_backend_module"
       ],
       "optional": true
     },
     "w03-routing-controls-tests": {
-      "_note": "W03 routing: the only journey that builds the real shell. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -686,12 +784,14 @@
         "clash_preferences",
         "clash_profiles",
         "clash_telemetry",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_module_host",
+        "clash_qt_backend_module"
       ],
       "optional": true
     },
     "w04-restore-tests": {
-      "_note": "W04 restore while services are live and a write is in flight. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -704,12 +804,14 @@
         "clash_preferences",
         "clash_profiles",
         "clash_telemetry",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_module_host",
+        "clash_qt_backend_module"
       ],
       "optional": true
     },
     "w05-recovery-tests": {
-      "_note": "W05 crash, restart, latest-request-wins, bounded shutdown. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
       "deps": [
         "clash_app_backup",
         "clash_app_composition",
@@ -722,12 +824,14 @@
         "clash_preferences",
         "clash_profiles",
         "clash_telemetry",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_module_host",
+        "clash_qt_backend_module"
       ],
       "optional": true
     },
     "app-smoke-tests": {
-      "_note": "Launches the shipping binary; the lane that can see a component nothing wires up. Its clash_mihomo_impl edge is carried by the G2 exception, not by deps: the sealed-module rule forbids deps from naming it while that exception is open.",
+      "_note": "P4 journey through the dynamically loaded module; no private engine implementation link.",
       "deps": [
         "clash-qt",
         "clash_app_backup",
@@ -741,9 +845,96 @@
         "clash_preferences",
         "clash_profiles",
         "clash_telemetry",
-        "clash_test_support"
+        "clash_test_support",
+        "clash_module_host",
+        "clash_qt_backend_module"
       ],
       "optional": true
+    },
+    "config-composer-tests": {
+      "headless": true,
+      "deps": [
+        "clash_config_compose"
+      ]
+    },
+    "preset-document-tests": {
+      "headless": true,
+      "deps": [
+        "clash_config_compose"
+      ]
+    },
+    "preset-store-tests": {
+      "headless": true,
+      "deps": [
+        "clash_profiles",
+        "clash_test_support"
+      ]
+    },
+    "effective-config-preview-tests": {
+      "headless": true,
+      "deps": [
+        "clash_profiles",
+        "clash_test_support"
+      ]
+    },
+    "preset-editor-tests": {
+      "headless": false,
+      "optional": true,
+      "deps": [
+        "clash_profiles",
+        "clash_test_support"
+      ]
+    },
+    "chain-snapshot-tests": {
+      "headless": true,
+      "deps": [
+        "clash_config",
+        "clash_yaml",
+        "clash_test_support"
+      ]
+    },
+    "w02-subscription-update-tests": {
+      "_note": "W02 fixture and pinned real-core subscription journey, module-backed.",
+      "deps": [
+        "clash_app_backup",
+        "clash_app_composition",
+        "clash_app_lifecycle",
+        "clash_app_runtime",
+        "clash_backend_fake",
+        "clash_backups",
+        "clash_config",
+        "clash_platform",
+        "clash_preferences",
+        "clash_profiles",
+        "clash_telemetry",
+        "clash_test_support",
+        "clash_module_host",
+        "clash_qt_backend_module"
+      ],
+      "optional": true
+    },
+    "clash_qt_fake_backend_module": {
+      "headless": true,
+      "deps": [
+        "clash_component_marshal",
+        "clash_backend_fake"
+      ]
+    },
+    "abi-contract-tests": {
+      "headless": true,
+      "deps": [
+        "clash_module_host",
+        "clash_component_marshal",
+        "clash_backend_fake",
+        "clash_qt_backend_module",
+        "clash_qt_fake_backend_module"
+      ]
+    },
+    "connection-snapshot-marshal-tests": {
+      "headless": true,
+      "deps": [
+        "clash_component_marshal"
+      ]
     }
   },
   "include_rules": [
@@ -818,32 +1009,10 @@
     }
   ],
   "_sealed_modules_note": [
-    "A sealed module may be reached only through the ledger, never around it.",
-    "",
-    "check_targets() consults 'deps' BEFORE it consults exceptions, so writing",
-    "a module into consumers[].deps permanently allows the edge: no owner, no",
-    "removal phase, invisible to the ratchet. That is how eight targets came to",
-    "link clash_mihomo_impl without appearing in G2 at all -- migration debt",
-    "turned into architecture by one line of JSON.",
-    "",
-    "While any exception matching 'sealed_while' is still open, arch_check.py",
-    "  (a) fails any modules/consumers entry that names the module in 'deps',",
-    "  (b) fails any target that links the module directly and is carried by no",
-    "      baselined site of those exceptions.",
-    "Clause (b) is what makes the site list DERIVED: it is checked against the",
-    "evaluated CMake graph on every run, so the ledger cannot understate the",
-    "debt again.",
-    "",
-    "Both clauses lift when the last exception matching 'sealed_while' is",
-    "deleted -- but for clash_mihomo_impl that will not happen, and is not",
-    "meant to. Two G2-* exceptions cover it: one is migration debt that P4",
-    "clears, the other is a permanent allowance for the suites whose subject",
-    "IS the implementation. The seal therefore stays on after the debt is paid,",
-    "which is the point -- it is what keeps the list derived rather than",
-    "remembered. arch_check.py's check_seals() docstring still says both",
-    "clauses 'lift automatically when the last named exception is deleted';",
-    "that describes the mechanism correctly and this module's outcome",
-    "incorrectly, and arch_check.py is not this file's to edit."
+    "clash_mihomo_impl stays sealed by the permanent G2 implementation-subject allowance.",
+    "P4 removed both migration exceptions: desktop and journeys use clash_module_host and the separately built shared artifact.",
+    "The shared artifact compiles the private engine sources itself; it does not widen access to the private static library.",
+    "Every non-probe linker to that static library must remain an explicitly named implementation-subject suite."
   ],
   "sealed_modules": [
     {
@@ -854,44 +1023,10 @@
       "exempt_linkers": [
         "arch_probe_*"
       ],
-      "reason": "Component-private per G2. Every link must be a baselined site with an owner and a removal phase, so the list is derived from the evaluated graph rather than remembered. 'E1-*' was listed here until R5: the E1-profiles-links-mihomo-impl exception was deleted when clash_profiles stopped linking the implementation, so the pattern matched nothing and was dead prose in a file whose value is that it is derived. arch_probe_* is exempt: it is the public-header probe generated by tests/architecture/CMakeLists.txt, which links each module alone to prove its published headers stand up -- the checker's own harness, not a consumer. This seal does not expire. One of the covering G2-* exceptions, G2-impl-subject-suites-link-component-private, is permanent, because suites whose subject is the implementation will always link it. That is the intended end state: the seal's job is to keep the ledger honest about who links a component-private module, not to expire once the debt half of the ledger is paid."
+      "reason": "Component-private per G2. Only the six permanent implementation-subject test targets may link this static library; arch_probe_* compiles the public-header checks. Application and journeys load the shared module through the host facade. The permanent allowance keeps this seal active after the two P4 migration exceptions are discharged."
     }
   ],
   "exceptions": [
-    {
-      "id": "G2-consumers-link-component-private",
-      "class": "migration-baseline",
-      "kind": "target_edge",
-      "owner": "COMPONENT-ABI",
-      "remove_in": "P4",
-      "reason": "The half of the G2 link debt that can reach zero. Six targets link clash_mihomo_impl because they construct core::MihomoBackendImpl themselves: the application (src/main.cpp:131) and the five workflow suites, which build it through tests/workflows/workflow_support.h:538 precisely so that a journey assembles what the composition root assembles. All six clear when COMPONENT-ABI publishes a factory from clash_backend in P4 and nothing outside the component has to name the implementation type. The six suites whose subject IS the implementation are deliberately NOT here: they are carried by G2-impl-subject-suites-link-component-private, a permanent allowance, because an exception that can never reach zero must not carry a removal phase. This entry used to hold all twelve and to say 'only two are debt' while listing twelve sites; the split is that sentence made true. Derived from the evaluated CMake graph, not maintained by hand: clash_mihomo_impl has 13 direct linkers -- these 6, the 6 permanent ones, and arch_probe_clash_mihomo_impl, which sealed_modules exempts as the checker's own public-header probe.",
-      "sites": [
-        {
-          "from": "clash-qt",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "w01-first-launch-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "w03-routing-controls-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "w04-restore-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "w05-recovery-tests",
-          "to": "clash_mihomo_impl"
-        },
-        {
-          "from": "app-smoke-tests",
-          "to": "clash_mihomo_impl"
-        }
-      ]
-    },
     {
       "id": "G2-impl-subject-suites-link-component-private",
       "class": "architecture",
@@ -923,26 +1058,6 @@
         {
           "from": "backend-real-core-tests",
           "to": "clash_mihomo_impl"
-        }
-      ]
-    },
-    {
-      "id": "G2-ui-includes-component-private",
-      "class": "migration-baseline",
-      "kind": "include",
-      "rule": "IR-COMPONENT-PRIVATE",
-      "owner": "COMPONENT-ABI",
-      "remove_in": "P4",
-      "reason": "All 20 UI include sites are DISCHARGED: no file under src/ui/** reaches into core/mihomo/** any more. Frozen at exactly the two sites listed below, both in src/main.cpp -- the one file allowed to construct the implementation: mihomo_backend.h to build it, and controller_discovery.h for the seed directory ProfileStore used to fetch itself until E1 was discharged. A third site, or a third such include in main.cpp, fails the check; that is what happened when the E1 discharge added the second one, and it was baselined only once the trade was recorded -- one library edge affecting everything that links clash_profiles, exchanged for one include in the one file already permitted to name the implementation. Both sites clear when COMPONENT-ABI publishes a factory from clash_backend in P4. An earlier revision of this field said 'the single remaining site' and 'Frozen at two sites' in the same paragraph; the count is two, and the sites list below is what the checker enforces.",
-      "_status": "2 sites, both in src/main.cpp: mihomo_backend.h to construct the implementation, and controller_discovery.h for the seed directory that removing E1 moved here. Zero sites remain under src/ui/**. The UI migration landed in 88ef6cd; the second composition-root site in ac60175.",
-      "sites": [
-        {
-          "file": "src/main.cpp",
-          "include": "core/mihomo/mihomo_backend.h"
-        },
-        {
-          "file": "src/main.cpp",
-          "include": "core/mihomo/controller_discovery.h"
         }
       ]
     }

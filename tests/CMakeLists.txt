@@ -34,7 +34,7 @@ add_test(NAME provider COMMAND provider-tests)
 
 qt_add_executable(backup-tests core/backup_test.cpp)
 target_link_libraries(backup-tests PRIVATE Qt6::Test Qt6::Network clash_backups
-    clash_preferences clash_test_support)
+    clash_preferences clash_test_support clash_config_compose)
 add_test(NAME backup COMMAND backup-tests)
 
 qt_add_executable(traffic-history-tests core/traffic_history_test.cpp)
@@ -152,7 +152,8 @@ set_tests_properties(fake-core PROPERTIES
 # implementable and the consumers correct, not that the engine works.
 qt_add_library(clash_backend_fake STATIC
     support/backend/fake_backend.cpp support/backend/recording_observer.cpp)
-set_target_properties(clash_backend_fake PROPERTIES AUTOMOC OFF)
+set_target_properties(clash_backend_fake PROPERTIES AUTOMOC OFF
+    POSITION_INDEPENDENT_CODE ON CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
 target_include_directories(clash_backend_fake PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(clash_backend_fake PUBLIC clash_backend Qt6::Core)
 
@@ -417,3 +418,27 @@ foreach(name home-page traffic-graph)
     endif()
 endforeach()
 clash_qt_label(service-settings    ui pages service)
+
+# P4 composition, persistence and side-effect-free preview.
+add_subdirectory(core/config)
+add_subdirectory(core/profiles)
+
+if(CLASH_QT_BUILD_APP)
+    qt_add_executable(preset-editor-tests ui/preset_editor_test.cpp
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/profiles/preset_editor.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/profiles/effective_config_view.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/pages/profiles/profiles_page.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/widgets/combo_box.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/theme.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/theme/formatting.cpp"
+        "${PROJECT_SOURCE_DIR}/src/ui/resources/resources.qrc")
+    target_link_libraries(preset-editor-tests PRIVATE Qt6::Test Qt6::Widgets
+        Qt6::Concurrent clash_profiles clash_test_support)
+    add_test(NAME preset-editor COMMAND preset-editor-tests)
+    set_tests_properties(preset-editor PROPERTIES TIMEOUT 120
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+    clash_qt_label(preset-editor ui config)
+    clash_qt_isolate_test(preset-editor)
+endif()
+
+add_subdirectory(contracts/component/abi)

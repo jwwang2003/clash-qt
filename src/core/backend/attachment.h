@@ -3,7 +3,7 @@
 
 // BackendAttachment: the controller this component talks to, which may be the
 // managed core's or any endpoint the user or discovery pointed us at.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, sections 1, 2, 5,
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, sections 1, 2, 5,
 // with amendment A2 (an aborted request's completion is MARKED Superseded) and
 // r2's re-issue obligation, which an endpoint change discharges by itself.
 

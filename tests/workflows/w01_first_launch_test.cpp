@@ -36,6 +36,14 @@
 //   "the application remains usable"  the reopened graph starts a core again
 //       and quits again, and the quit gate reports no blocking reason.
 //
+// THE ENGINE IS LOADED, NOT LINKED. Since decision D8 this journey drives
+// clashqt::integration::ModuleBackend over a session
+// clashqt::integration::ModuleLoader created from CLASH_QT_MODULE_PATH - the
+// same two classes src/main.cpp uses, against the same shipping module id.
+// Nothing in this file names core/mihomo/** any more, and there is no
+// setTimings(): the readiness deadline this journey waits out below is the 10
+// seconds the module PUBLISHES through timings(), not a shrunken test value.
+//
 // THE FIXED CONTROLLER PORT. core::ProfileStore overwrites external-controller
 // in every configuration it generates, so a journey that starts a core through
 // it cannot choose where that core must answer. workflows::ControllerRelay
@@ -172,6 +180,10 @@ class W01FirstLaunchTest : public QObject {
         // ---- 1. an isolated, empty workspace -----------------------------
         {
             auto app = std::make_unique<wf::AssembledApp>(proxyLog, osProxy);
+            // The boundary first: an inert graph would fail every later
+            // assertion with the wrong reason.
+            QVERIFY2(app->moduleLoaded(), qPrintable(app->moduleError));
+            QCOMPARE(app->moduleArtifact(), wf::moduleArtifactPath());
             app->bootstrap(engine.binaryPath());
             QVERIFY2(app->startupErrors.isEmpty(),
                      qPrintable(app->startupErrors.join(QLatin1Char('\n'))));
@@ -229,7 +241,7 @@ class W01FirstLaunchTest : public QObject {
             // process's existence.
             QCOMPARE(wf::liveProcessesOf(engine.binaryPath()), 1);
             QCOMPARE(app->backend->state(), cb::CoreState::Starting);
-            QVERIFY(app->backend->drainPendingEvents());
+            QVERIFY(app->backend->drain());
             QVERIFY2(app->events.readyEndpoints.empty(),
                      "a core reported ready while its readiness probe was still held");
             QVERIFY2(!cb::isValid(app->backend->managedEndpoint()),
@@ -248,7 +260,7 @@ class W01FirstLaunchTest : public QObject {
                      }),
                      qPrintable(QStringLiteral("the core never became ready. %1 | %2")
                                     .arg(controller.pendingReport(), app->events.transcript())));
-            QVERIFY(app->backend->drainPendingEvents());
+            QVERIFY(app->backend->drain());
             QCOMPARE(static_cast<int>(app->events.readyEndpoints.size()), 1);
             QCOMPARE(app->events.readyEndpoints.front().port, wf::kGeneratedControllerPort);
 
@@ -268,6 +280,11 @@ class W01FirstLaunchTest : public QObject {
             QCOMPARE(app->events.versions.back(), QStringLiteral("workflow-core-1.19.31"));
             QVERIFY2(!controller.sawUnexpectedRequest(),
                      qPrintable(controller.redactedTranscript()));
+            // Everything above crossed the module boundary. A host that did not
+            // understand an event the module sent would have dropped it
+            // silently, so the count is asserted rather than assumed: with a
+            // matching handshake it can only be zero.
+            QCOMPARE(app->unknownModuleEvents(), std::uint64_t(0));
 
             // The snapshot the coordinator is retaining is the running core's,
             // and the backend agrees it must not be deleted yet.
@@ -313,6 +330,11 @@ class W01FirstLaunchTest : public QObject {
         // This is that graph; the first one is gone, including its ProfileStore.
         {
             auto app = std::make_unique<wf::AssembledApp>(proxyLog, osProxy);
+            // A second load of the same artifact in the same process: the first
+            // graph released its session and unmapped the library, so this is
+            // also the evidence that the loader's lifetime accounting lets a
+            // module be taken twice.
+            QVERIFY2(app->moduleLoaded(), qPrintable(app->moduleError));
             app->bootstrap(engine.binaryPath());
             QVERIFY2(app->startupErrors.isEmpty(),
                      qPrintable(app->startupErrors.join(QLatin1Char('\n'))));
@@ -385,17 +407,25 @@ class W01FirstLaunchTest : public QObject {
         auto proxyLog = std::make_shared<wf::ProxyOperations>();
         auto osProxy = std::make_shared<wf::ProxyConfig>();
         auto app = std::make_unique<wf::AssembledApp>(proxyLog, osProxy);
+        QVERIFY2(app->moduleLoaded(), qPrintable(app->moduleError));
         app->bootstrap(engine.binaryPath());
-        // The published budget, shrunk through the seam the backend publishes
-        // it from, rather than waited out. timings() reports what it will
-        // really do, so this is not a test-only shortcut.
-        core::CoreTimings timings;
-        timings.probeIntervalMs = 25;
-        timings.probeTimeoutMs = 200;
-        timings.idleDeadlineMs = 400;
-        timings.hardCapMs = 1500;
-        timings.terminateWaitMs = 250;
-        app->backend->setTimings(timings);
+
+        // THE BUDGET IS THE MODULE'S OWN. This case used to shrink the idle
+        // readiness deadline to 400 ms through MihomoBackendImpl::setTimings().
+        // There is no such call across the module boundary, and it is not coming
+        // back: the shipped deadline is what a user waits, so it is what this
+        // case waits. Read from timings() rather than written down, so a
+        // production change to the budget moves this wait with it instead of
+        // turning into a mystery timeout.
+        const cb::BackendTimings published = app->backend->timings();
+        QVERIFY2(published.idleDeadlineMs > 0,
+                 "the module published a zero readiness deadline, so nothing bounds a launch");
+        QCOMPARE(published.idleDeadlineMs, cb::kContractTimings.idleDeadlineMs);
+        // The fake core prints NOTHING after validation, and the idle deadline
+        // is silence-based (capabilities.h: refreshed by every log line), so the
+        // failure arrives one idle deadline after the launch rather than at the
+        // three-minute hard cap.
+        const int readinessDeadline = wf::deadlineFor(published.idleDeadlineMs);
 
         const QString source = environment_->filePath(QStringLiteral("import/home.yaml"));
         QVERIFY(wf::writeTextFile(source, profileBody()));
@@ -412,13 +442,19 @@ class W01FirstLaunchTest : public QObject {
                                      app->events.transcript())));
         QVERIFY2(wf::waitFor([&engine] { return engine.invocationCount() >= 2; }),
                  "the child was never launched, so nothing was probed");
-        QVERIFY2(wf::waitFor([&app] {
-                     return app->backend->state() == cb::CoreState::Failed ||
-                            app->backend->state() == cb::CoreState::Stopped;
-                 }),
-                 qPrintable(QStringLiteral("a core that never became ready stayed in state %1")
-                                .arg(static_cast<int>(app->backend->state()))));
-        QVERIFY(app->backend->drainPendingEvents());
+        QVERIFY2(wf::waitFor(
+                     [&app] {
+                         return app->backend->state() == cb::CoreState::Failed ||
+                                app->backend->state() == cb::CoreState::Stopped;
+                     },
+                     readinessDeadline),
+                 qPrintable(QStringLiteral("a core that never became ready stayed in state %1 for "
+                                           "%2 ms, past the %3 ms readiness deadline the module "
+                                           "publishes")
+                                .arg(static_cast<int>(app->backend->state()))
+                                .arg(readinessDeadline)
+                                .arg(published.idleDeadlineMs)));
+        QVERIFY(app->backend->drain());
         QVERIFY2(!app->events.coreFailures.empty(), "the failure was never reported");
         QCOMPARE(app->events.coreFailures.back().error.code, cb::ErrorCode::ReadyTimeout);
         QVERIFY2(app->events.readyEndpoints.empty(),

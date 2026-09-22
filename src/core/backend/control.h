@@ -3,7 +3,7 @@
 
 // BackendControl: the mutating operations the application performs against the
 // attached controller.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3, section 2, with
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4, section 2, with
 // amendments A4 and B2 (TunChangeCompleted carries a Generation and a
 // CompletionStatus, and a supersession is never reported as a protocol error).
 //

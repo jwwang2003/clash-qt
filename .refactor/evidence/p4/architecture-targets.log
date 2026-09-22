@@ -1,0 +1,13 @@
+PREFERENCES BEFORE 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c
+{
+  "violations": [],
+  "rules_checked": [
+    "R1 module edge allowlist",
+    "R2 acyclicity",
+    "R3 external dependency allowlist",
+    "R4 exception ratchet",
+    "R4 exception-site liveness",
+    "R4 sealed-module seals"
+  ]
+}
+PREFERENCES AFTER 681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c

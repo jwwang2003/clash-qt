@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_H
 
 // MihomoBackend: the asynchronous facade the application talks to.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
+// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r4.
 //
 // One object exposing five facets. A consumer that needs only part of the
 // surface takes a reference to the facet it needs - MOD-RUNTIME can hold a
