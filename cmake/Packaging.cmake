@@ -115,11 +115,18 @@ if(APPLE)
     # that only logs an error, verification failure must fail `make package`.
     find_program(clash_qt_codesign NAMES codesign REQUIRED)
     install(CODE "
+set(_bundle \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/clash-qt.app\")
 execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
-    \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/clash-qt.app\"
+    \"\${_bundle}/Contents/Frameworks/$<TARGET_FILE_NAME:clash_qt_backend_module>\"
+    COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
+    \"\${_bundle}/Contents/Helpers/clash-qt-service-helper\"
+    COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
+    \"\${_bundle}\"
     COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND \"${clash_qt_codesign}\" --verify --deep --strict
-    \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/clash-qt.app\"
+    \"\${_bundle}\"
     COMMAND_ERROR_IS_FATAL ANY)
 ")
 else()

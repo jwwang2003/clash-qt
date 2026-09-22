@@ -1506,3 +1506,13 @@ bundles. After the pinned engine/manifest are copied, the completed developer bu
 is ad-hoc signed (no certificate/trust-store change) and verified deep/strict with
 failure propagated. The engine itself is not re-signed, preserving its build hash.
 This packaging fix needs a new clean qualification run; prior logs are retained.
+
+### Explicit nested signing required
+
+Fresh-4 routine54/integration20 passed, but package failed as intended after the
+new verification: Qt deployment's fake signature remained on the nested module;
+post-install bundle signing alone did not replace that nested code signature.
+The package script now explicitly ad-hoc signs the module dylib and helper first,
+then the bundle, then verifies deep/strict. The package gate remains OPEN until a
+new clone's install completes without deployment ERROR lines and deep verification
+passes. No certificate, trust store or engine re-signing is used.
