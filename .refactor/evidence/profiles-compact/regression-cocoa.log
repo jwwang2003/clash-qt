@@ -1,0 +1,16 @@
+********* Start testing of PresetEditorTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : PresetEditorTest::initTestCase()
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+PASS   : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short)
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) qt.accessibility.table: Cell requested for row 0 is out of bounds for table with 0 rows! Resizing table model.
+PASS   : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium)
+PASS   : PresetEditorTest::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 939ms
+********* Finished testing of PresetEditorTest *********

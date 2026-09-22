@@ -22,6 +22,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -341,6 +342,10 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     view_->setSelectionMode(QAbstractItemView::SingleSelection);
     view_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     view_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    // Keep a complete profile card readable even when the details pane needs
+    // more vertical space than the window can provide.
+    view_->setMinimumHeight(qMax(100, 3 * view_->fontMetrics().lineSpacing()
+                                         + 2 * (kCardMargin + kPadV) + 12));
     view_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(view_, &QListView::customContextMenuRequested, this, &ProfilesPage::showContextMenu);
     connect(view_, &QListView::activated, this, [this](const QModelIndex &index) {
@@ -405,8 +410,18 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
 
     auto *details = new QTabWidget(this);
     details->setObjectName("profileDetails");
-    details->addTab(presetEditor_, tr("Presets"));
-    details->addTab(preview_, tr("Effective Config"));
+    // The editor's form must retain usable control sizes without imposing its
+    // full minimum height on the splitter (and squeezing away the profile list).
+    auto scrollable = [details](QWidget *content, const char *name) {
+        auto *scroll = new QScrollArea(details);
+        scroll->setObjectName(QLatin1String(name));
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        scroll->setWidget(content);
+        return scroll;
+    };
+    details->addTab(scrollable(presetEditor_, "presetScrollArea"), tr("Presets"));
+    details->addTab(scrollable(preview_, "previewScrollArea"), tr("Effective Config"));
 
     auto *splitter = new QSplitter(Qt::Vertical, this);
     splitter->setObjectName("profileSplitter");
@@ -415,6 +430,7 @@ ProfilesPage::ProfilesPage(core::ProfileStore *store, QWidget *parent)
     splitter->addWidget(details);
     splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 2);
+    splitter->setSizes({180, 360});
     layout->addWidget(splitter, 1);
 
     // One preview request per accepted edit and per scope change, and no

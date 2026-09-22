@@ -1594,3 +1594,35 @@ historical hashes and recorded the later transition as unattributed. Current
 geometry was read only. The source remains be851f5; no rerun was needed for this
 records-only correction. Its report and corrected original notes are archived
 under evidence/p4/final/audit/.
+
+
+### Post-P4 fix — Profiles page at short window heights
+
+The preset editor's full minimum height propagated through the details tab into
+the vertical splitter, squeezing the profile list into a strip in the main window.
+Each details tab now scrolls its contents; the profile list retains enough space
+for one full card, with an initial 1:2 list/details split. Import actions and tabs
+remain available while the preset form scrolls.
+
+Regression cases cover 360px and 520px page heights, a complete visible profile
+card, scrolling to bottom preset actions and persisting an operation, and switching
+to Effective Config. Both cases fail against the original layout (page minimum
+height779); all14 preset-editor cases pass after the fix. The two compact cases
+also pass on native Cocoa. Native light/dark rendering was inspected using an
+isolated profile fixture; no installed helper or real subscription was used.
+The rebuilt package passes deep/strict signature verification and a native Cocoa
+startup check with its bundle-relative module and no developer runtime paths.
+The user quit the app for replacement; build/package/clash-qt.app now has the fix.
+Temporary builds are removed after replacement; source and committed P4 evidence
+remain intact. Evidence: evidence/profiles-compact/.
+
+Every run's preference hashes are in verification.jsonl. Checks before packaging
+retained512424ed6812913cf358e7bd449851a0b5214df28a2d7902c5326fe9486d4d24.
+Packaging itself exited0, while its concurrent-change guard returned99: the user
+confirmed closing the running app, and the geometry hash became
+4d5578366b289d06bc7eb4f5a3ff06b105a58af8967c8f46fc7ebe5ef6be5799. The hash guard
+cannot attribute a writer. The signature and isolated app smoke
+checks retained that value. Before replacement a further geometry-only transition
+was observed, without an identified writer: the update check read
+71cb7aee79d36a01cfbfab969aa1add7e46b330ecb9f97227f30a4d42df361ca both before and
+after. No preference restoration or modification was made.

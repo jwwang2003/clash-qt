@@ -26,6 +26,8 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSignalSpy>
 #include <QTabWidget>
 #include <QTimer>
@@ -111,6 +113,50 @@ private slots:
         QVERIFY2(environment_->realPreferencesUnchanged(),
                  "the real user preference store changed during this case");
         environment_.reset();
+    }
+
+    void shortWindowsKeepProfilesVisibleAndPresetActionsReachable_data() {
+        QTest::addColumn<int>("height");
+        QTest::newRow("short") << 360;
+        QTest::newRow("medium") << 520;
+    }
+
+    void shortWindowsKeepProfilesVisibleAndPresetActionsReachable() {
+        QFETCH(int, height);
+        core::ProfileStore store;
+        importSample(store);
+        ui::ProfilesPage page(&store);
+        page.resize(1400, height);
+        page.show();
+        QTRY_VERIFY(page.isVisible());
+        QCoreApplication::processEvents();
+        QCOMPARE(page.height(), height);
+
+        auto *profiles = page.findChild<QListView *>();
+        QVERIFY(profiles);
+        const QRect card = profiles->visualRect(profiles->model()->index(0, 0));
+        QVERIFY2(profiles->viewport()->rect().contains(card),
+                 "the preset form squeezed the profile card out of view");
+
+        auto *editor = page.findChild<ui::PresetEditor *>();
+        auto *scroll = page.findChild<QScrollArea *>("presetScrollArea");
+        QVERIFY(scroll);
+        QVERIFY(scroll->verticalScrollBar()->maximum() > 0);
+        addPreset(editor, "Compact window");
+        auto *action = editor->findChild<QPushButton *>("addOperation");
+        scroll->ensureWidgetVisible(action);
+        QCoreApplication::processEvents();
+        const QRect actionRect(action->mapTo(scroll->viewport(), QPoint()), action->size());
+        QVERIFY2(scroll->viewport()->rect().contains(actionRect),
+                 "the bottom preset actions must be reachable by scrolling");
+        addOperation(editor, "merge", "/dns/enable", "true");
+        QCOMPARE(presetAt(globalChain(store), 0).value("operations").toArray().size(), 1);
+
+        page.findChild<QTabWidget *>("profileDetails")->setCurrentIndex(1);
+        QCoreApplication::processEvents();
+        QVERIFY(profiles->viewport()->rect().contains(profiles->visualRect(
+            profiles->model()->index(0, 0))));
+        QVERIFY(page.findChild<QPushButton *>("previewRefresh")->isVisible());
     }
 
     void addingAPresetAndAnOperationReachesThePersistedDocument() {

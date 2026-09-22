@@ -1,0 +1,11 @@
+Test project /var/folders/w7/m_7gxmrn3fdfbnhfdwyks2xw0000gn/T/clash-qt-layout-7yi1627r.noindex/build
+    Start 34: preset-editor
+1/1 Test #34: preset-editor ....................   Passed    1.01 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+config    =   1.01 sec*proc (1 test)
+ui        =   1.01 sec*proc (1 test)
+
+Total Test time (real) =   1.01 sec

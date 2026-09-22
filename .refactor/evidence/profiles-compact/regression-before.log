@@ -1,0 +1,17 @@
+********* Start testing of PresetEditorTest *********
+Config: Using QtTest library 6.11.1, Qt 6.11.1 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 21.0.0 (clang-2100.0.123.102)), macos 26.6.2
+PASS   : PresetEditorTest::initTestCase()
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short) qt.qpa.fonts: Populating font family aliases took 155 ms. Replace uses of missing font family "Sans Serif" with one that exists to avoid this cost. 
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short) This plugin does not support propagateSizeHints()
+FAIL!  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(short) Compared values are not the same
+   Actual   (page.height()): 779
+   Expected (height)       : 360
+   Loc: [/Users/junweiwang/Documents/workspace/app/clash-qt/tests/ui/preset_editor_test.cpp(133)]
+QWARN  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) This plugin does not support propagateSizeHints()
+FAIL!  : PresetEditorTest::shortWindowsKeepProfilesVisibleAndPresetActionsReachable(medium) Compared values are not the same
+   Actual   (page.height()): 779
+   Expected (height)       : 520
+   Loc: [/Users/junweiwang/Documents/workspace/app/clash-qt/tests/ui/preset_editor_test.cpp(133)]
+PASS   : PresetEditorTest::cleanupTestCase()
+Totals: 2 passed, 2 failed, 0 skipped, 0 blacklisted, 331ms
+********* Finished testing of PresetEditorTest *********
