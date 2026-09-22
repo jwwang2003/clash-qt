@@ -2,7 +2,7 @@
 
 // The real MihomoBackend: an ADAPTER over the existing CoreProcess,
 // MihomoClient and ProviderClient, not a rewrite of them.
-// Contract: .refactor/BACKEND_CONTRACT.md revision backend-r3.
+// Contract: docs/module-api.md.
 //
 // WHAT THIS CLASS ADDS OVER THE THREE OBJECTS IT WRAPS
 //
@@ -17,17 +17,17 @@
 //       CoreProcess::launchGeneration_->  Generation (managed start/stop/fail)
 //       MihomoClient::tunChangeId_    ->  a RequestId. It is incremented per
 //                                         OPERATION, so it was never a
-//                                         generation (backend-r2, answer 2).
+//                                         generation.
 //       ProviderClient::pending_      ->  coalescing keyed by (Generation,
 //                                         operation identity); a duplicate
 //                                         submission returns the outstanding
-//                                         request's id (backend-r2, answer 1).
+//                                         request's id.
 //
 //     Folding launchGeneration_ into the global counter means a managed
 //     start/stop/fail now invalidates in-flight CONTROLLER replies, which it did
 //     not before. fetchVersion/fetchProxies recover through the application's
 //     5 s poll; fetchRules and fetchConfigs have NO recovery poll. So the
-//     obligation r2 attaches to the single counter is honoured here: every
+//     obligation the single counter carries is honoured here: every
 //     generation bump that is not an endpoint change re-issues the snapshot set
 //     (see scheduleSnapshotReissue). An endpoint change needs no help, because
 //     MihomoClient::setEndpoint already ends in refreshState().
@@ -37,12 +37,12 @@
 //     five signals synchronously from inside setEndpoint/setConnected; this
 //     class is what stops that reaching a consumer mid-mutation.
 //
-//   * Terminal-outcome stamping that survives its own teardown (backend-r3 B1).
-//     A stop's StopCompleted is stamped when it is PRODUCED, not when it was
-//     submitted, because CoreProcess emits failed() before stopFinished() on the
+//   * Terminal-outcome stamping that survives its own teardown. A stop's
+//     StopCompleted is stamped when it is PRODUCED, not when it was submitted,
+//     because CoreProcess emits failed() before stopFinished() on the
 //     unconfirmed path and this class bumps on failed(). See the stopFinished
-//     handler; it is the one place where A1's "post-bump" clause is load-bearing
-//     rather than a restatement of the submit-time stamp.
+//     handler; it is the one place where the contract's "post-bump" clause is
+//     load-bearing rather than a restatement of the submit-time stamp.
 
 #include <cstdint>
 #include <functional>
@@ -64,7 +64,8 @@ namespace cb = backend;
 
 class MihomoBackendImpl final : public cb::MihomoBackend {
   public:
-    /// `service` is the privileged-execution seam (DECISION D2); null means this
+    /// `service` is the privileged-execution seam: an interface this component
+    /// owns, so no platform type reaches its published surface. Null means this
     /// backend has no privileged service and reports none. No QObject *parent,
     /// and no collaborator is implicitly constructed for a null argument
     /// (contract section 9): the owner creates this and deletes it.
@@ -100,12 +101,12 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     /// exit. Published for the same reason the two sequences above are: across
     /// a module boundary the consumer has to know whether code in the module's
     /// image is still executing before it unmaps that image, and no published
-    /// backend-r4 operation can tell it. Nothing in the facade changes.
+    /// operation can tell it. Nothing in the facade changes.
     int pendingNativeWork() const noexcept { return process_.pendingNativeWork(); }
     /// Readiness-probe completions delivered after their probe was cancelled.
     /// Contract section 5.2 requires the probe to disconnect before aborting, so
     /// this must always be 0; published here because the rule is otherwise
-    /// unobservable through the facade (backend-r3, weak-coverage item 3).
+    /// unobservable through the facade.
     int probeCompletionsAfterCancel() const noexcept {
         return process_.probeCompletionsAfterCancel();
     }
@@ -325,8 +326,7 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     /// outstanding. MihomoClient cancels the pending change on exactly those
     /// three paths (setEndpoint, detach, setConnected(false)), so this - not the
     /// text of the error message, which is translated - is how the adapter knows
-    /// a TUN completion is a SUPERSESSION rather than a protocol error
-    /// (backend-r3 B2).
+    /// a TUN completion is a SUPERSESSION rather than a protocol error.
     bool tunSuperseded_ = false;
     cb::RequestId serviceStatusRequest_ = cb::RequestId::Invalid;
     cb::Generation serviceStatusGeneration_ = cb::Generation::Initial;

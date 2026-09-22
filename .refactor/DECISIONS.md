@@ -253,3 +253,50 @@ is already a separate process, and that is not changing.
 **Open for P4's first worker to answer, not to assume:** whether the fake backend
 also becomes module-backed. If it does not, the module path has exactly one
 implementation and the common-contract claim is weaker than it sounds.
+
+---
+
+## D9 — A revision token belongs only to the contract that defines it
+
+**The problem, found during the naming pass.** `runtime_coordinator.h` pinned
+`backend-r2` and `mihomo_backend.h` pinned `backend-r3` while the live contract is
+`backend-r4`. `mihomo_backend.h` managed to contradict itself: line 5 claimed r3,
+line 104 referred to r4.
+
+Pinning a revision in a file that *implements or consumes* a contract is a
+staleness generator. Every amendment silently invalidates every such pin, and
+nothing checks them.
+
+**Decision.** The revision token lives in exactly two places: the contract's own
+headers (`src/core/backend/*.h`) and the document that defines it
+(`docs/module-api.md`). Implementations and consumers reference the contract
+**without** a revision — "the published contract", not "revision backend-r3".
+
+A file that implements a contract implements whatever is current; if it does not,
+that is a defect to fix rather than a fact to record in a comment.
+
+**What this does not forbid.** Prose that cites a rule — "an observer is admitted
+by …, as the module API documents" — is fine, because `docs/module-api.md`
+survives cutover and the pointer stays live. The module implementation under
+`src/core/mihomo/module/**` reads this way and is left alone. The distinction is:
+
+- **Forbidden:** a file *claiming a revision for itself*. It goes stale on the next
+  amendment and nothing checks it. That is how one header came to say r3 on line 5
+  and r4 on line 104.
+- **Allowed:** referring to a rule that lives in a document which still exists.
+
+The test is whether the reference survives cutover, not whether it contains a
+revision token.
+
+## D10 — The configuration contract gets a cutover home
+
+`config-r1` is defined in `.refactor/P4_CONFIG_CONTRACT.md`, which is removed from
+the merged tree at cutover along with the rest of `.refactor/`. Unlike the backend
+and component contracts, it had no destination in the planned doc set, so its
+citations would have dangled.
+
+**Decision.** It moves to **`docs/configuration.md`**, added to the cutover set
+alongside `architecture`, `build`, `development`, `testing`, `packaging`,
+`module-api` and `migration`. The cutover plan already permits consolidating that
+set if shorter documents suffice; this is the opposite case, where a contract with
+real consumers needs a home of its own.
