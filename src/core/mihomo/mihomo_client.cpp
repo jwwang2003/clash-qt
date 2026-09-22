@@ -33,9 +33,42 @@ quint16 port(const QJsonObject &object, const QString &key) {
 MihomoClient::MihomoClient(QObject *parent)
     : QObject(parent), network_(new QNetworkAccessManager(this)) {}
 
+Endpoint MihomoClient::detachedEndpoint() {
+    Endpoint endpoint;
+    endpoint.host.clear();
+    endpoint.port = 0;
+    endpoint.secret.clear();
+    return endpoint;
+}
+
 void MihomoClient::setEndpoint(const Endpoint &endpoint) {
     if (endpoint_.host == endpoint.host && endpoint_.port == endpoint.port &&
         endpoint_.secret == endpoint.secret) {
+        // The same controller ADDRESS, and a new session on it: a reload rebinds
+        // the replacement engine to the port the retired one held, so every
+        // reply still owed by that address is owed by a process that has gone.
+        // Left "current", those replies land AFTER the replacement has answered
+        // - a refused connection then calls setConnected(false) and clears the
+        // live view the new session just populated, and the UI reports a healthy
+        // engine as disconnected until the next poll.
+        //
+        // The REQUESTS moved on, not the attachment, so requestEpoch_ is what
+        // advances: the endpoint is unchanged and publishing endpointChanged for
+        // it would be a lie. Bump, announce, THEN abort, for the reason spelled
+        // out below - and finish any outstanding TUN change immediately after
+        // invalidating(), which is what lets a consumer classify the
+        // cancellation as a supersession instead of matching on its text.
+        ++requestEpoch_;
+        emit invalidating();
+        finishTunChange(lastTunEnabled_,
+                        tr("TUN change cancelled because the controller was replaced."));
+        lastTunEnabled_ = false;
+        for (auto *reply : network_->findChildren<QNetworkReply *>())
+            if (reply->isRunning()) reply->abort();
+        // Neither connected_ nor the live view is cleared: the replacement is
+        // reachable at the address we are already on, and refreshState() - the
+        // re-issue this path owes - is what confirms or denies it. The streams
+        // are left to their own reconnect, which re-dials the same address.
         refreshState();
         return;
     }
@@ -78,10 +111,7 @@ void MihomoClient::detach() {
     emit invalidating();
     finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller changed."));
     lastTunEnabled_ = false;
-    endpoint_ = Endpoint{};
-    endpoint_.host.clear();
-    endpoint_.port = 0;
-    endpoint_.secret.clear();
+    endpoint_ = detachedEndpoint();
     for (auto *reply : network_->findChildren<QNetworkReply *>())
         if (reply->isRunning()) reply->abort();
     setConnected(false);

@@ -25,14 +25,34 @@ class MihomoClient : public QObject {
 public:
     explicit MihomoClient(QObject *parent = nullptr);
 
+    /// Points this client at a controller. A DIFFERENT address retires the
+    /// previous attachment outright. The SAME address is not a no-op either:
+    /// a managed reload replaces the engine behind that address, so the caller
+    /// is announcing a NEW SESSION on the old one. Everything still in flight
+    /// belongs to the process that has gone, and is invalidated and aborted
+    /// before the new session's requests are issued. What does NOT happen there
+    /// is an endpointChanged for an endpoint that did not change, or a
+    /// connected/live-state clear the replacement would immediately undo.
     void setEndpoint(const Endpoint &endpoint);
     /// Stops talking to the current controller: bumps the endpoint epoch,
     /// aborts every in-flight request, clears live state and closes the
     /// streams. It NEVER terminates the controller - detaching is not a kill
     /// switch - and, unlike setEndpoint, it issues nothing afterwards.
     void detach();
+    /// The controller this client was POINTED AT, and an invalid endpoint until
+    /// something points it somewhere. It is never the discovery default on its
+    /// own account: see detachedEndpoint().
     const Endpoint &endpoint() const { return endpoint_; }
     bool isConnected() const { return connected_; }
+    /// "Attached to nothing", explicitly. core::Endpoint's default is the
+    /// localhost DISCOVERY default (127.0.0.1:9090) and isValid() accepts it,
+    /// so a freshly built client used to answer endpoint().isValid() - and
+    /// therefore MihomoBackendImpl::isAttached() and an Attached ownership -
+    /// for a controller nothing had pointed it at. Discovery still hands that
+    /// default out (controller_discovery.cpp:73-77); a guess about where a
+    /// controller might be is simply not an attachment until setEndpoint()
+    /// accepts it.
+    static Endpoint detachedEndpoint();
 
     // --- REST ---
     //
@@ -147,7 +167,7 @@ private:
     void handleLogMessage(const QString &message);
     void handleMemoryMessage(const QString &message);
 
-    Endpoint endpoint_;
+    Endpoint endpoint_ = detachedEndpoint();
     quint64 operation_ = 0;
     quint64 currentOperation_ = 0;
     quint64 endpointEpoch_ = 0;

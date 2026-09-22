@@ -33,22 +33,45 @@
 // Nothing here sleeps on a fixed duration. Gates are released explicitly, the
 // readiness budget is made small through the published CoreTimings seam rather
 // than waited out, and every deadline only bounds a failure.
+//
+// THE SHARED SUITE, AND WHY IT IS HOSTED HERE
+//
+// Everything above is a SPECIALIST case: it names core::MihomoBackendImpl and
+// uses seams a module consumer does not get. Below, after them, the
+// implementation-neutral cases of tests/contracts/backend/common/ run against
+// FOUR implementations from this one executable - the in-process fake, this
+// real backend, the shipping module through the production loader, and the
+// test module - one QTest data row each. They reach their subject only through
+// core::backend::MihomoBackend &, and the assertions live once, in
+// backend_common_cases.cpp, rather than four times.
+//
+// They are hosted in THIS target on purpose. clash_mihomo_impl is
+// component-private (G2): a new executable linking it would be a sixth
+// permanent exception to that rule, and the permanent allowance is for the
+// targets that already exist. Nothing of the shared suite is specific to this
+// file, and nothing here is weakened by them: the specialist cases above keep
+// every claim they already made.
 
 #include <QtTest>
 
 #include <functional>
+#include <memory>
 #include <type_traits>
 
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include "contracts/backend/common/backend_common_cases.h"
 #include "core/mihomo/mihomo_backend.h"
+#include "support/backend/common_contract_driver.h"
 #include "support/fake_core.h"
 #include "support/loopback_server.h"
 #include "support/scoped_environment.h"
 
 namespace cb = core::backend;
+namespace shared = testsupport::backend::common;
+namespace scenarios = testsupport::backend::common::cases;
 
 namespace {
 
@@ -71,6 +94,10 @@ class Recorder final : public cb::BackendObserver {
     std::vector<cb::Endpoint> readyEndpoints;
     std::vector<cb::StopCompleted> stops;
     std::vector<cb::TunChangeCompleted> tunChanges;
+    // Every connection transition, in order: which one a stale reply produced
+    // is the whole question in theReplacementAtTheSameAddress... below, and a
+    // count of "is it connected NOW" cannot answer it.
+    std::vector<bool> connections;
     struct StateEvent { cb::Generation generation; cb::CoreState state; cb::Ownership ownership; };
     std::vector<StateEvent> states;
     int callbackCount = 0;
@@ -122,7 +149,10 @@ class Recorder final : public cb::BackendObserver {
                          cb::Ownership) noexcept override {
         note(generation);
     }
-    void connectedChanged(cb::Generation generation, bool) noexcept override { note(generation); }
+    void connectedChanged(cb::Generation generation, bool connected) noexcept override {
+        note(generation);
+        connections.push_back(connected);
+    }
     void configReceived(const cb::Completion &completion, const cb::BaseConfig &config) noexcept override {
         record(QStringLiteral("config"), completion, config.mode);
     }
@@ -407,6 +437,89 @@ class BackendRealContractTest : public QObject {
                  "the completion did not compare older than the newest observed generation");
         QVERIFY2(completion->payload != QStringLiteral("from-the-old-endpoint"),
                  "a completion aborted by an endpoint change was delivered as live data");
+        backend.removeObserver(&observer);
+    }
+
+    // A re-attach to the address we are ALREADY on is not a no-op: a reload
+    // rebinds the replacement engine to the port the retired one held, so it
+    // announces a new session on an unchanged endpoint. Everything the retired
+    // process still owes has to be invalidated at that moment. Left current,
+    // those replies land after the replacement has answered and clear the live
+    // session - observed against the real engine
+    // (/tmp/clash-qt-p4.w0Y8Uo/w02-fix/logs/w02-real-probe3.log: ten refused
+    // connections, connected false, and an explicit refreshVersion() healing it
+    // with the generation unchanged).
+    void aReplacementAtTheSameAddressCannotClearTheNewSession() {
+        using Reply = testsupport::LoopbackServer::Reply;
+        testsupport::LoopbackServer controller;
+        QVERIFY(controller.listen());
+        scriptController(controller, R"({"version":"first-session"})");
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+
+        backend.attach(endpointOf(controller));
+        QVERIFY(controller.waitFor([&] { return backend.isConnected(); }));
+        QVERIFY(backend.drainPendingEvents());
+        QCOMPARE(observer.connections.size(), std::size_t(1));
+        QVERIFY(observer.connections.front());
+
+        // What the retired engine still owes.
+        auto *held = controller.hold("GET", "/version");
+        const cb::RequestId stale = backend.refreshVersion();
+        QVERIFY(stale != cb::RequestId::Invalid);
+        const cb::Generation submitted = backend.generation();
+        QVERIFY(held->waitForPending(1));
+
+        // The engine is replaced at the same host and port. The endpoint is
+        // byte-identical; the session behind it is not.
+        controller.route("GET", "/configs",
+                         Reply::json(R"({"mode":"global","tun":{"enable":false}})"));
+        backend.attach(endpointOf(controller));
+        QVERIFY2(backend.generation() > submitted,
+                 "re-attaching to a replaced engine left the generation where it was, so "
+                 "nothing the retired process owed was invalidated");
+
+        // The replacement answers first: from here on, anything the retired
+        // engine produces is arriving AFTER the new response.
+        QVERIFY(controller.waitFor([&] {
+            return observer.countOf(QStringLiteral("config"), cb::CompletionStatus::Ok) >= 2;
+        }));
+        const int clears = observer.liveStateClears;
+        const std::size_t transitions = observer.connections.size();
+
+        // Now the retired engine answers the way a process that has gone
+        // answers: the socket closes with nothing on it.
+        controller.route("GET", "/version", Reply::drop());
+        held->releaseOne();
+        QVERIFY2(controller.waitFor([&] {
+                     return observer.find(QStringLiteral("version"), stale) != nullptr;
+                 }),
+                 qPrintable(controller.pendingReport()));
+
+        const auto *completion = observer.find(QStringLiteral("version"), stale);
+        QVERIFY(completion);
+        QVERIFY2(completion->completion.status == cb::CompletionStatus::Superseded,
+                 "a reply owed by the retired engine settled as live work");
+        QCOMPARE(completion->completion.generation, submitted);
+        QVERIFY2(observer.connections.size() == transitions,
+                 "a reply owed by the retired engine reported the live session as "
+                 "disconnected");
+        QVERIFY2(observer.liveStateClears == clears,
+                 "a reply owed by the retired engine cleared the live view the replacement "
+                 "had just populated");
+        QVERIFY(backend.isConnected());
+
+        // And the replacement's own probe is unaffected by any of it.
+        controller.route("GET", "/version", Reply::json(R"({"version":"second-session"})"));
+        held->releaseOne();
+        QVERIFY(controller.waitFor([&] {
+            return observer.countOf(QStringLiteral("version"), cb::CompletionStatus::Ok) >= 2;
+        }));
+        QVERIFY(backend.isConnected());
+        QCOMPARE(observer.connections.size(), transitions);
+        QVERIFY(!controller.sawUnexpectedRequest());
         backend.removeObserver(&observer);
     }
 
@@ -1423,10 +1536,120 @@ class BackendRealContractTest : public QObject {
         backend.removeObserver(&observer);
     }
 
+    // ===================================================================
+    // The shared contract. One set of assertions, four implementations.
+    //
+    // Each pair below is a data-driven slot: the _data() half is the ONE row
+    // builder every shared case uses, so a case cannot quietly run against
+    // three of the four; the other half runs the implementation-neutral
+    // scenario from tests/contracts/backend/common/. Nothing is asserted here
+    // - the statements live in backend_common_cases.cpp and are reached
+    // through core::backend::MihomoBackend & alone.
+    // ===================================================================
+
+    void sharedIdentityAndPublishedBudget_data() { shared::addSubjectRows(); }
+    void sharedIdentityAndPublishedBudget() { runShared(&scenarios::identityAndPublishedBudget); }
+
+    void sharedRequestIdentityAndLosslessPayloads_data() { shared::addSubjectRows(); }
+    void sharedRequestIdentityAndLosslessPayloads() {
+        runShared(&scenarios::requestIdentityAndLosslessPayloads);
+    }
+
+    void sharedObserverRegistrationIsExplicit_data() { shared::addSubjectRows(); }
+    void sharedObserverRegistrationIsExplicit() {
+        runShared(&scenarios::observerRegistrationIsExplicit);
+    }
+
+    void sharedRemovingAnObserverDuringDeliveryIsSafe_data() { shared::addSubjectRows(); }
+    void sharedRemovingAnObserverDuringDeliveryIsSafe() {
+        runShared(&scenarios::removingAnObserverDuringDeliveryStopsFurtherCallbacks);
+    }
+
+    void sharedObserverAddedDuringACallbackSeesOnlyLaterEvents_data() { shared::addSubjectRows(); }
+    void sharedObserverAddedDuringACallbackSeesOnlyLaterEvents() {
+        runShared(&scenarios::anObserverAddedDuringACallbackSeesOnlyLaterEvents);
+    }
+
+    void sharedObserverAddedBeforeDeliverySeesNoEarlierEvents_data() { shared::addSubjectRows(); }
+    void sharedObserverAddedBeforeDeliverySeesNoEarlierEvents() {
+        runShared(&scenarios::anObserverAddedBeforeDeliverySeesNoEarlierEvents);
+    }
+
+    void sharedDeliveryIsNeverReentrant_data() { shared::addSubjectRows(); }
+    void sharedDeliveryIsNeverReentrant() { runShared(&scenarios::deliveryIsNeverReentrant); }
+
+    void sharedAbandonedCompletionIsMarkedSuperseded_data() { shared::addSubjectRows(); }
+    void sharedAbandonedCompletionIsMarkedSuperseded() {
+        runShared(&scenarios::anAbandonedCompletionIsMarkedSuperseded);
+    }
+
+    void sharedNonEndpointBumpReissuesTheSnapshotSet_data() { shared::addSubjectRows(); }
+    void sharedNonEndpointBumpReissuesTheSnapshotSet() {
+        runShared(&scenarios::aNonEndpointBumpReissuesTheSnapshotSet);
+    }
+
+    void sharedDetachLeavesTheAttachedControllerRunning_data() { shared::addSubjectRows(); }
+    void sharedDetachLeavesTheAttachedControllerRunning() {
+        runShared(&scenarios::detachLeavesTheAttachedControllerRunning);
+    }
+
+    void sharedStopTerminatesOnlyTheManagedCore_data() { shared::addSubjectRows(); }
+    void sharedStopTerminatesOnlyTheManagedCore() {
+        runShared(&scenarios::stopTerminatesOnlyTheManagedCore);
+    }
+
+    void sharedFailedValidationLeavesTheRunningConfigurationIntact_data() {
+        shared::addSubjectRows();
+    }
+    void sharedFailedValidationLeavesTheRunningConfigurationIntact() {
+        runShared(&scenarios::aFailedValidationLeavesTheRunningConfigurationIntact);
+    }
+
+    void sharedDuplicateProviderRequestIsCoalesced_data() { shared::addSubjectRows(); }
+    void sharedDuplicateProviderRequestIsCoalesced() {
+        runShared(&scenarios::aDuplicateProviderRequestIsCoalesced);
+    }
+
+    void sharedTunCompletionIsAReadBackNotAnEcho_data() { shared::addSubjectRows(); }
+    void sharedTunCompletionIsAReadBackNotAnEcho() {
+        runShared(&scenarios::theTunCompletionIsAReadBackNotAnEcho);
+    }
+
+    void sharedPrivilegedStatusCarriesTheHelpersRunningCore_data() { shared::addSubjectRows(); }
+    void sharedPrivilegedStatusCarriesTheHelpersRunningCore() {
+        runShared(&scenarios::thePrivilegedStatusCarriesTheHelpersRunningCore);
+    }
+
   private:
     // Log lines the chattering core emits, one per 150 ms: 3.6 s of continuous
     // output against a 600 ms hard cap.
     static constexpr int kChatteringLines = 24;
+
+    /// Builds the row's subject and runs one shared scenario against it.
+    ///
+    /// EVERY ROW IS REQUIRED. A module artifact the build did not supply, or
+    /// one that will not load, FAILS by name: the integration note for this
+    /// lane is explicit that a skipped required row while CTest prints Passed
+    /// is the failure mode the shared suite exists to prevent, and that no mock
+    /// may stand in for a module. The registration supplies
+    /// CLASH_QT_BACKEND_MODULE and CLASH_QT_FAKE_MODULE and depends on both
+    /// artifacts, so an empty reason here is the normal case and a non-empty
+    /// one is a broken build or a broken loader, not an absent platform.
+    void runShared(void (*scenario)(shared::BackendDriver &)) {
+        QFETCH(int, subject);
+        std::unique_ptr<shared::BackendDriver> driver =
+            shared::makeDriver(static_cast<shared::Subject>(subject), *environment_);
+        QVERIFY(driver != nullptr);
+        const QString unavailable = driver->unavailableReason();
+        QVERIFY2(unavailable.isEmpty(),
+                 qPrintable(QStringLiteral("required subject '%1' is unavailable: %2")
+                                .arg(driver->name(), unavailable)));
+        QVERIFY2(driver->prepare(), qPrintable(driver->errorString()));
+        scenario(*driver);
+        // Teardown runs even when the scenario failed: a module must be closed
+        // before it is unmapped, and a managed child must not outlive the row.
+        driver->teardown();
+    }
 
     QString writeConfig(quint16 port, const QString &name = QStringLiteral("config.yaml")) {
         const QString path = environment_->filePath(name);

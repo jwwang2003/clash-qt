@@ -113,6 +113,153 @@ private slots:
             QVERIFY(request.contains("Authorization: Bearer secret"));
     }
 
+    // core::Endpoint's default is the DISCOVERY default. A guess about where a
+    // controller might be is not an attachment, and a client that adopts it at
+    // construction makes every published attachment query answer for a
+    // controller nothing pointed it at.
+    void aFreshClientIsAttachedToNothing() {
+        const core::Endpoint discoveryDefault;
+        QCOMPARE(discoveryDefault.host, QString("127.0.0.1"));
+        QCOMPARE(discoveryDefault.port, quint16(9090));
+        QVERIFY2(discoveryDefault.isValid(),
+                 "the discovery default must stay a usable endpoint: it is what "
+                 "controller_discovery falls back to");
+
+        core::MihomoClient client;
+        QVERIFY2(!client.endpoint().isValid(),
+                 "a client nothing has pointed anywhere reports itself attached");
+        QVERIFY(client.endpoint().host.isEmpty());
+        QCOMPARE(client.endpoint().port, quint16(0));
+        QVERIFY(!client.isConnected());
+        QVERIFY(!core::MihomoClient::detachedEndpoint().isValid());
+
+        // An explicit attach is what makes it an attachment - and because the
+        // client starts from nowhere, the first one is a CHANGE and is
+        // published as one. It used to be silent whenever the controller
+        // happened to sit on the default port, which is the common case for a
+        // managed core.
+        TestController server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        QSignalSpy changed(&client, &core::MihomoClient::endpointChanged);
+        client.setEndpoint(server.endpoint());
+        QVERIFY(client.endpoint().isValid());
+        QCOMPARE(changed.size(), 1);
+        QTRY_VERIFY(client.isConnected());
+
+        // Detaching returns it to "nothing", not to the discovery default.
+        client.detach();
+        QCOMPARE(changed.size(), 2);
+        QVERIFY(!client.endpoint().isValid());
+        QVERIFY(!client.isConnected());
+    }
+
+    // A reload rebinds the replacement engine to the port the retired one held,
+    // so the same endpoint arrives again and means a NEW session. Everything
+    // the retired process still owes must be retired with it: left current,
+    // those replies land after the replacement has answered and report a
+    // healthy engine as disconnected.
+    void reattachingToAReplacedEngineRetiresItsInFlightWork() {
+        TestController server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        server.responses["/version"] = R"({"version":"first-session"})";
+        core::MihomoClient client;
+        QSignalSpy versions(&client, &core::MihomoClient::versionReceived);
+        QSignalSpy connections(&client, &core::MihomoClient::connectedChanged);
+        QSignalSpy errors(&client, &core::MihomoClient::errorOccurred);
+        QSignalSpy invalidations(&client, &core::MihomoClient::invalidating);
+        QSignalSpy changed(&client, &core::MihomoClient::endpointChanged);
+        QSignalSpy settled(&client, &core::MihomoClient::requestSettled);
+        QSignalSpy cleared(&client, &core::MihomoClient::trafficSample);
+        client.setEndpoint(server.endpoint());
+        QTRY_VERIFY(client.isConnected());
+        QTRY_COMPARE(versions.size(), 1);
+
+        // What the engine that is about to go still owes. The fixture captures
+        // body, status and delay when the request ARRIVES, so this one is
+        // already committed to failing late even after the scripting changes.
+        const int probes = server.paths.count("/version");
+        server.delays["/version"] = 200;
+        server.statuses["/version"] = "503 Unavailable";
+        const quint64 stale = client.fetchVersion();
+        QVERIFY(stale != 0);
+        QTRY_COMPARE(server.paths.count("/version"), probes + 1);
+
+        // The replacement binds the same host, port and secret.
+        server.delays.remove("/version");
+        server.statuses.remove("/version");
+        server.responses["/version"] = R"({"version":"second-session"})";
+        const int announced = invalidations.size();
+        client.setEndpoint(server.endpoint());
+        // Exactly one. None means nothing the retired engine owed was retired;
+        // more than one means an aborted reply was accepted as live on its way
+        // out and disconnected the session, because setConnected(false)
+        // announces an invalidation of its own.
+        QCOMPARE(invalidations.size(), announced + 1);
+        QVERIFY2(changed.size() == 1,
+                 "an endpoint that did not change was published as an endpoint change");
+
+        // The replacement answers. From here on the retired engine is replying
+        // AFTER the new response.
+        QTRY_COMPARE(versions.size(), 2);
+        QCOMPARE(versions.last().first().toString(), QString("second-session"));
+        QVERIFY(client.isConnected());
+        const int transitions = connections.size();
+        const int clears = cleared.size();
+
+        QTest::qWait(300);
+        QVERIFY2(client.isConnected(),
+                 "a reply owed by the retired engine disconnected the live session");
+        QVERIFY2(connections.size() == transitions,
+                 "a reply owed by the retired engine produced a connection transition");
+        QVERIFY2(cleared.size() == clears,
+                 "a reply owed by the retired engine cleared the live view the "
+                 "replacement had just populated");
+        QCOMPARE(errors.size(), 0);
+        QCOMPARE(versions.size(), 2);
+
+        // It is retired, not silently dropped: its single terminal event says
+        // superseded, with no error to report to anyone.
+        bool sawStale = false;
+        for (const auto &row : settled) {
+            if (row.at(0).toULongLong() != stale) continue;
+            sawStale = true;
+            QVERIFY2(row.at(1).toBool(), "the retired engine's reply settled as live work");
+            QVERIFY(row.at(2).toString().isEmpty());
+        }
+        QVERIFY2(sawStale, "the retired engine's request never settled at all");
+    }
+
+    // The same boundary, for the one operation that spans several round trips.
+    void aReplacedEngineCancelsAnOutstandingTunChangeExactlyOnce() {
+        TestController server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        server.responses["/configs"] = R"({"mode":"rule","tun":{"enable":false}})";
+        server.responses["PATCH /configs"] = {};
+        server.statuses["PATCH /configs"] = "204 No Content";
+        server.delays["PATCH /configs"] = 180;
+        core::MihomoClient client;
+        QSignalSpy completed(&client, &core::MihomoClient::tunChangeFinished);
+        client.setEndpoint(server.endpoint());
+        QTRY_VERIFY(client.isConnected());
+        client.setTunEnabled(true);
+        QTRY_VERIFY(std::any_of(server.requests.cbegin(), server.requests.cend(),
+                                [](const QByteArray &request) {
+                                    return request.startsWith("PATCH /configs ");
+                                }));
+
+        client.setEndpoint(server.endpoint());
+        QCOMPARE(completed.size(), 1);
+        QVERIFY(completed.first().at(2).toString().contains("replaced"));
+        QVERIFY(!client.isTunChangePending());
+        // The retired engine's confirmation arrives here, and must not report a
+        // second, contradictory outcome for a change already called off.
+        QTest::qWait(230);
+        QCOMPARE(completed.size(), 1);
+        // The new session owns the seam: a change is accepted rather than
+        // refused by a pending flag nobody will ever clear.
+        QVERIFY(client.setTunEnabled(true) != 0);
+    }
+
     void nestedGroupsRemainNodes() {
         TestController server;
         QVERIFY(server.listen(QHostAddress::LocalHost));

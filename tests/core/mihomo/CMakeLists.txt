@@ -8,12 +8,17 @@
 # fake: a passing fake proves the contract is implementable, this proves the
 # engine honours it.
 qt_add_executable(backend-real-contract-tests backend_real_contract_test.cpp)
+target_sources(backend-real-contract-tests PRIVATE
+    "${PROJECT_SOURCE_DIR}/tests/contracts/backend/common/backend_common_cases.cpp"
+    "${PROJECT_SOURCE_DIR}/tests/support/backend/common_contract_driver.cpp")
 target_link_libraries(backend-real-contract-tests PRIVATE
-    Qt6::Test Qt6::Network clash_mihomo_impl clash_app_composition clash_test_support)
+    Qt6::Test Qt6::Network clash_mihomo_impl clash_app_composition clash_test_support
+    clash_module_host clash_component_marshal clash_backend_fake)
+add_dependencies(backend-real-contract-tests clash_qt_backend_module clash_qt_fake_backend_module)
 add_test(NAME backend-real-contract COMMAND backend-real-contract-tests)
 # Every FakeCore consumer needs the fixture path, not just the fixture's own suite.
 set_tests_properties(backend-real-contract PROPERTIES
-    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>")
+    ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_BACKEND_MODULE=$<TARGET_FILE:clash_qt_backend_module>;CLASH_QT_FAKE_MODULE=$<TARGET_FILE:clash_qt_fake_backend_module>")
 
 qt_add_executable(engine-discovery-tests engine_discovery_test.cpp)
 target_link_libraries(engine-discovery-tests PRIVATE
@@ -36,4 +41,3 @@ endforeach()
 clash_qt_label(backend-real-contract integration core mihomo contract)
 clash_qt_label(engine-discovery unit core mihomo)
 clash_qt_label(backend-real-core real-core integration core mihomo)
-
