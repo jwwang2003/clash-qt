@@ -39,8 +39,7 @@ help:
 	@echo "  configure         Configure the selected preset."
 	@echo "  core              Build mihomo from 3rdparty/mihomo only."
 	@echo "  module            Build the component and the engine artifacts it needs."
-	@echo "  build             Build the application and all runtime dependencies.
-#"
+	@echo "  build             Build the application and all runtime dependencies."
 	@echo "  run               Build if necessary and launch with the staged core."
 	@echo "  test              Build and run portable feature/architecture/UI tests."
 	@echo "  test-integration  Build the local engine and run real component/core workflows."
@@ -56,7 +55,7 @@ help:
 	@echo "Not in this milestone: capture-addons, test-capture (delivered by P8/P9)."
 
 doctor:
-	@$(CMAKE) -S scripts/build/doctor -B build/doctor $(PREFIX_ARG) -DSOURCE_ROOT=$(CURDIR) -DMAKE_VERSION_REPORT="$(MAKE_VERSION)" > build/doctor.log 2>&1 || (cat build/doctor.log && exit 1) && grep -E "^-- " build/doctor.log
+	@$(CMAKE) -E make_directory build && $(CMAKE) -S scripts/build/doctor -B build/doctor $(PREFIX_ARG) -DSOURCE_ROOT=$(CURDIR) -DMAKE_VERSION_REPORT="$(MAKE_VERSION)" > build/doctor.log 2>&1 || (cat build/doctor.log && exit 1) && grep -E "^-- " build/doctor.log
 
 setup:
 	@$(GIT) submodule update --init --recursive 3rdparty/mihomo && echo "setup: recorded submodules initialised."
