@@ -910,3 +910,41 @@ empty. `tests/README.md` and `.refactor/**` are not compiled.
 | D3's second privileged connection | Still open |
 | E1 | In flight, not discharged |
 | `w03-routing-controls` unguarded against a headless runner | Open. It is the one widget-building workflow suite and it receives no `QT_QPA_PLATFORM`; it passes here only because this machine has a display |
+
+
+## Fresh-checkout verification (2026-09-22, HEAD `e8dbf60`)
+
+Run exactly as a newcomer would, from `git clone` in a clean directory. The point
+of doing it from a clone rather than the working tree is that two defects had
+already hidden there: `scripts/build/**` was excluded by an unanchored
+`.gitignore` pattern, and `make doctor` failed because `build/` does not exist in
+a clone — both invisible to any check run in place.
+
+| Step | Result |
+| --- | --- |
+| `git clone` | 321 tracked files |
+| `make help` | exit 0, 22 lines |
+| `make doctor` before setup | fails, names `make setup` |
+| `make setup` → `make doctor` | all prerequisites present |
+| `make build` | 1 m 13 s, **zero errors and zero warnings** |
+| `make test` | **44/44** |
+| `make test-integration` | **15/15** |
+| `make package` | staged |
+| Packaged app, launched isolated | starts and exits cleanly |
+| Developer's real preferences | byte-identical throughout |
+
+Engine provenance from the clone: `v1.19.31`, source `ab405bad`, state `clean`,
+toolchain `go1.26.5`, and the manifest's sha256 **matches the staged binary**. The
+engine in the bundle is provably the one built from the recorded submodule.
+
+## Working practice (user directive, 2026-09-22)
+
+Run as a **sub-agent driven workflow with Opus for every sub-agent**, to keep the
+coordinator's context small. Architecture, contract revisions, concurrency
+decisions and integration stay in the main thread; analysis, implementation and
+verification go to workers with bounded scope and exact writable paths.
+
+Two practices earned their cost repeatedly and should be kept: requiring a worker
+to **prove** a claim by inverting the behaviour and confirming the test fails,
+and strict single-writer file ownership. Several worker self-reports were wrong;
+none of the proofs were.
