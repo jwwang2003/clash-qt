@@ -422,3 +422,13 @@ query**. An unanswered or failed query must not disarm an already-armed guard.
 **Acceptance.** Three cases assert the guard directly, and it is proven by
 inversion at each of the three layers: dropping the UI write, having the bridge
 publish `false`, and hard-coding `false` in the backend each fail.
+
+
+## P4 clarification under D8 (no semantic revision)
+
+The Qt-facing backend-r4 interface remains host-side, including Endpoint's
+QString members and the host-owned facade destructor. The earlier A3 statement
+that P4 would change Endpoint's layout is superseded by D8: separate ABI values
+and a COM-owning host shim perform that adaptation. Existing vtables/consumers
+do not change. Module ABI and qualification are specified separately in
+P4_ABI_CONTRACT.md; backend interfaceRevision remains 1.

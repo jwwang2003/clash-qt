@@ -1189,3 +1189,22 @@ Two practices earned their cost repeatedly and should be kept: requiring a worke
 to **prove** a claim by inverting the behaviour and confirming the test fails,
 and strict single-writer file ownership. Several worker self-reports were wrong;
 none of the proofs were.
+
+
+## P4 resumed — 2026-09-22, base `eb7bab1`
+
+Coordinator resumed from this ledger, D1–D8 and git log. Initial working tree
+clean on `codex/refactor-v2`. No changes to main, legacy-v1 or remotes.
+Worker transport: installed Claude CLI, each dispatch explicitly `--model opus`,
+no fallback and no child agents. Availability probe resolved to `claude-opus-5`.
+Maximum three concurrent workers. Initial ABI, CFG-CORE and CFG-UI/W02 analyses
+are read-only; implementation leases are recorded in `P4_DISPATCH.md`.
+Coordinator retains shared architecture, contracts, concurrency, git, main.cpp,
+all build files and architecture.json. No builds during source-edit leases.
+
+Scratch evidence: `/tmp/clash-qt-p4.w0Y8Uo` (ephemeral; durable findings recorded
+here before completion). Initial native preferences SHA-256:
+`681784383d6e4072c8c3b86abfb1f7a6f848a0f3af11e022223d70bb4178371c`.
+No tests/apps have run yet. Tests require isolated CLASH_QT_DATA_DIR and
+before/after native plist hashes. Installed helper/network/trust remain untouched.
+P4 gates remain OPEN; Windows/Linux evidence remains zero (G5).

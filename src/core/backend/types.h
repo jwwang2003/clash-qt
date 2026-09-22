@@ -233,10 +233,9 @@ enum class Ownership : std::uint8_t {
 // permits Qt types in an in-process C++ interface), and amendment A3 settled
 // that: r1 demanded both and the two cannot hold together. What r3 requires,
 // and what is asserted below, is standard layout with no virtuals and no
-// behaviour; trivial copyability is a P4 layout change under COMPONENT-ABI and
-// is not claimed here. P4 replaces the QStrings
-// with UTF-8 pointer+length pairs, which is a layout change inside one struct
-// rather than a change to any signature.
+// behaviour. Decision D8 keeps this Qt value host-side. COMPONENT-ABI uses
+// separate fixed-layout values and UTF-8 byte ranges; its host shim converts
+// them without changing this interface or its consumers.
 struct Endpoint {
     QString host;
     quint16 port = 0;

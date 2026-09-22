@@ -12,10 +12,10 @@
 // no facet can be deleted (each has a protected, non-virtual destructor).
 //
 // LIFETIME
-//   The facade's destructor is public and virtual: in r3, an in-process C++
-//   interface, the host creates a backend and deletes it. P4 replaces that with
-//   an explicit create/release pair, because a virtual destructor cannot cross
-//   a module boundary. Nothing else in this surface has to change for that.
+//   The facade's destructor is public and virtual: the host creates and deletes
+//   this in-process facade. Per D8, the module-backed implementation is a host
+//   shim that holds COM references; module allocations are released inside the
+//   module. This Qt interface itself never crosses the binary boundary.
 //
 // THREAD AFFINITY
 //   Every method of every facet, and addObserver/removeObserver here, belongs
