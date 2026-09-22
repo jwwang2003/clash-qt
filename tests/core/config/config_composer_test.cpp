@@ -9,6 +9,7 @@
 #include <QtTest>
 #include <QDir>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <yaml-cpp/yaml.h>
@@ -87,6 +88,51 @@ QString provenanceOf(const QVector<Provenance> &provenance, const QString &path)
     for (const Provenance &entry : provenance)
         if (entry.path == path) source = entry.source;
     return source;
+}
+
+int provenanceCount(const QVector<Provenance> &provenance, const QString &path) {
+    int seen = 0;
+    for (const Provenance &entry : provenance)
+        if (entry.path == path) ++seen;
+    return seen;
+}
+
+// A `/nest` subtree `levels` maps deep, and the merge fragment that lines up
+// with it key for key. The pair matters: a deep merge only recurses where BOTH
+// sides are maps, so this is what it takes to reach the recursion guard at all.
+QString nestedYaml(int levels) {
+    QString yaml = QStringLiteral("nest:\n");
+    QString indent = QStringLiteral("  ");
+    for (int i = 0; i < levels; ++i) {
+        yaml += indent + QStringLiteral("k:\n");
+        indent += QStringLiteral("  ");
+    }
+    return yaml + indent + QStringLiteral("marker: shallow\n");
+}
+
+QJsonValue nestedFragment(int levels) {
+    QJsonObject value{{"marker", "deep"}};
+    for (int i = 0; i < levels; ++i) value = QJsonObject{{"k", value}};
+    return value;
+}
+
+// The value at the bottom of `levels` nested "k" keys.
+QString markerAt(const YAML::Node &root, int levels) {
+    YAML::Node node = root["nest"];
+    for (int i = 0; i < levels; ++i) {
+        if (!node.IsMap()) return QStringLiteral("(missing at level %1)").arg(i);
+        node = node["k"];
+    }
+    if (!node.IsMap() || !node["marker"].IsDefined()) return QStringLiteral("(no marker)");
+    return QString::fromStdString(node["marker"].as<std::string>());
+}
+
+bool mentionsDepth(const QVector<Diagnostic> &diagnostics) {
+    for (const Diagnostic &diagnostic : diagnostics)
+        if (diagnostic.severity == QLatin1String("error") &&
+            diagnostic.message.contains(QLatin1String("deep"), Qt::CaseInsensitive))
+            return true;
+    return false;
 }
 
 }  // namespace
@@ -389,9 +435,149 @@ private slots:
         QCOMPARE(result.diagnostics.first().severity, QStringLiteral("warning"));
         QCOMPARE(result.diagnostics.first().source, QStringLiteral("override"));
         QCOMPARE(result.diagnostics.first().path, QStringLiteral("/secret"));
-        // mixed-port is the one override that IS consulted, through the
-        // controller fields; it must not be warned about.
+        // mixed-port is the one override that IS honoured, so it is not warned
+        // about -- and, unlike every other field on the list, it is not inert.
         QVERIFY(!result.diagnostics.first().message.contains("mixed-port"));
+        QCOMPARE(config["mixed-port"].as<int>(), 28888);
+    }
+
+    // ------------------------------------------------------------ mixed-port
+    //
+    // The local proxy port is the user's decision, and compose() is the
+    // published function that answers "what will the port be?". It used to
+    // answer with the application default no matter what the overrides said,
+    // because ProfileStore resolved the override before calling -- so the answer
+    // was right only for the one caller that knew to do that.
+
+    void avalidMixedPortOverrideWinsAndProvenanceNamesTheOverride() {
+        const ComposeResult result =
+            run("proxies: []\n", {}, "p1", QJsonObject{{"mixed-port", 41234}});
+        QVERIFY2(result.ok, qPrintable(messages(result.diagnostics).join('\n')));
+        QCOMPARE(yamlOf(result)["mixed-port"].as<int>(), 41234);
+        QCOMPARE(provenanceOf(result.provenance, "/mixed-port"), QStringLiteral("override"));
+        // Written once, by one layer, so the answer to "who chose this?" is one
+        // answer and not a list.
+        QCOMPARE(provenanceCount(result.provenance, "/mixed-port"), 1);
+        QVERIFY2(result.diagnostics.isEmpty(), qPrintable(messages(result.diagnostics).join('\n')));
+    }
+
+    void withNoOverrideTheApplicationDefaultStandsAndSaysSo() {
+        const ComposeResult result = run("proxies: []\n");
+        QCOMPARE(yamlOf(result)["mixed-port"].as<int>(), 27890);
+        QCOMPARE(provenanceOf(result.provenance, "/mixed-port"), QStringLiteral("controller"));
+    }
+
+    // Anything that cannot be a port is not one. The engine would refuse the
+    // document; refusing the value and saying so leaves a configuration that
+    // still launches.
+    void amixedPortOverrideThatIsNotAPortIsRefusedWithAWarning() {
+        const QVector<QJsonValue> notPorts{QJsonValue(QStringLiteral("8080")), QJsonValue(0),
+                                           QJsonValue(70000),                 QJsonValue(-1),
+                                           QJsonValue(8080.5),                QJsonValue(true),
+                                           QJsonValue(QJsonValue::Null)};
+        for (const QJsonValue &value : notPorts) {
+            const ComposeResult result =
+                run("proxies: []\n", {}, "p1", QJsonObject{{"mixed-port", value}});
+            const QString what = QJsonDocument(QJsonObject{{"v", value}}).toJson();
+            QVERIFY2(result.ok, qPrintable(what));
+            QCOMPARE(yamlOf(result)["mixed-port"].as<int>(), 27890);
+            QCOMPARE(provenanceOf(result.provenance, "/mixed-port"), QStringLiteral("controller"));
+            QVERIFY2(hasSeverity(result.diagnostics, "warning"), qPrintable(what));
+            QVERIFY2(!hasSeverity(result.diagnostics, "error"), qPrintable(what));
+            QCOMPARE(result.diagnostics.constLast().path, QStringLiteral("/mixed-port"));
+        }
+    }
+
+    // The distinction that makes the exception safe: TRUSTED overrides may pick
+    // the port, presets may not, and an override does not lend a preset its
+    // privilege.
+    void apresetStillCannotPickThePortEvenWhileAnOverrideDoes() {
+        using core::config::OperationKind;
+        core::config::Preset greedy;
+        greedy.id = greedy.name = QStringLiteral("greedy");
+        greedy.operations = {raw(OperationKind::Replace, "/mixed-port", 1)};
+        ComposeInput input;
+        input.sourceYaml = QStringLiteral("proxies: []\n");
+        input.profileUid = QStringLiteral("p1");
+        input.profileName = QStringLiteral("fixture");
+        input.controller = controller();
+        input.presets.global = {greedy};
+        input.overrides = QJsonObject{{"mixed-port", 41234}};
+
+        const ComposeResult result = core::config::compose(input);
+        QVERIFY(result.ok);
+        QCOMPARE(yamlOf(result)["mixed-port"].as<int>(), 41234);
+        QVERIFY(hasSeverity(result.diagnostics, "error"));
+        QCOMPARE(result.diagnostics.first().source, QStringLiteral("global:greedy"));
+    }
+
+    // ------------------------------------------------------- the merge guard
+    //
+    // The recursion guard is not negotiable -- untrusted input driving unbounded
+    // recursion is a stack overflow -- but stopping halfway through a fragment
+    // and reporting success is worse than refusing it: the user gets a
+    // configuration nobody described, with no way to tell.
+
+    void amergeNestedPastTheGuardIsRefusedInsteadOfTruncated() {
+        for (const int levels : {64, 70, 100}) {
+            const QJsonObject presets = document(QJsonArray{
+                preset("deep", QJsonArray{op("merge", "/nest", nestedFragment(levels))})});
+            const ComposeResult result = run(nestedYaml(levels), presets);
+            const QByteArray what = QByteArrayLiteral("levels=") + QByteArray::number(levels);
+            QVERIFY2(!result.ok, what.constData());
+            QVERIFY2(result.yaml.isEmpty(), what.constData());
+            QVERIFY2(mentionsDepth(result.diagnostics),
+                     qPrintable(messages(result.diagnostics).join('\n')));
+            QCOMPARE(result.diagnostics.constLast().path, QStringLiteral("/nest"));
+            QCOMPARE(result.diagnostics.constLast().source, QStringLiteral("global:deep"));
+        }
+    }
+
+    // The boundary, from the other side: everything that fits still applies in
+    // full, so the refusal above is about the guard and not about deep documents.
+    void amergeThatFitsInsideTheGuardStillAppliesCompletely() {
+        const QJsonObject presets = document(
+            QJsonArray{preset("deep", QJsonArray{op("merge", "/nest", nestedFragment(63))})});
+        const ComposeResult result = run(nestedYaml(63), presets);
+        QVERIFY2(result.ok, qPrintable(messages(result.diagnostics).join('\n')));
+        QCOMPARE(markerAt(yamlOf(result), 63), QStringLiteral("deep"));
+    }
+
+    // Depth is only reached where both sides are maps. A fragment that meets no
+    // matching map is cloned whole, past the merge guard, and must not be
+    // refused. (100 levels, not more: the renderer in core/config/yaml_util.cpp
+    // refuses to emit past 128 nested nodes, which is a different limit with a
+    // different error.)
+    void adeepFragmentThatMeetsNoMatchingMapIsClonedWhole() {
+        const QJsonObject presets = document(
+            QJsonArray{preset("deep", QJsonArray{op("merge", "/nest", nestedFragment(100))})});
+        const ComposeResult result = run("nest:\n  unrelated: 1\n", presets);
+        QVERIFY2(result.ok, qPrintable(messages(result.diagnostics).join('\n')));
+        QCOMPARE(markerAt(yamlOf(result), 100), QStringLiteral("deep"));
+        QCOMPARE(yamlOf(result)["nest"]["unrelated"].as<int>(), 1);
+    }
+
+    // A refusal that costs the whole document must not also be a refusal that
+    // hides which preset caused it, and it must not leave a half-composed
+    // candidate behind for a later layer to dress up as valid.
+    void afatalMergeStopsTheLayersAfterItRatherThanComposingAnyway() {
+        const QJsonObject presets =
+            document(QJsonArray{preset("deep", QJsonArray{op("merge", "/nest",
+                                                             nestedFragment(70))}),
+                                preset("later", QJsonArray{op("replace", "/mode", "global")})},
+                     QJsonObject{{"p1", QJsonArray{preset("profile-level",
+                                                          QJsonArray{op("replace", "/x", 1)})}}});
+        const ComposeResult result =
+            run(nestedYaml(70), presets, "p1", QJsonObject{{"mode", "direct"}});
+        QVERIFY(!result.ok);
+        QVERIFY(result.yaml.isEmpty());
+        // One error, from the one preset that caused it.
+        QCOMPARE(result.diagnostics.size(), 1);
+        QCOMPARE(result.diagnostics.first().source, QStringLiteral("global:deep"));
+        // And no layer below it claims to have written anything.
+        QVERIFY(provenanceOf(result.provenance, "/mode").isEmpty());
+        QVERIFY(provenanceOf(result.provenance, "/x").isEmpty());
+        QVERIFY(provenanceOf(result.provenance, "/mixed-port").isEmpty());
     }
 
     // -------------------------------------------------------- bad structure

@@ -4,6 +4,8 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <algorithm>
+
 #include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -69,6 +71,30 @@ void deepMerge(YAML::Node target, const YAML::Node &fragment, int depth = 0) {
     }
 }
 
+// How many levels deepMerge would actually recurse: only a level where both
+// sides are maps recurses, which is exactly where the guard above could stop
+// early. Answered before anything is written, and abandoned as soon as it
+// reaches `limit`, because the only question is "does this fit?".
+int alignedMergeDepth(const YAML::Node &target, const YAML::Node &fragment, int limit) {
+    if (limit <= 0) return 0;
+    int deepest = 0;
+    for (const auto &entry : fragment) {
+        if (!entry.second.IsMap()) continue;
+        const YAML::Node into = target[entry.first.as<std::string>()];
+        if (!into.IsDefined() || !into.IsMap()) continue;
+        deepest = std::max(deepest, 1 + alignedMergeDepth(into, entry.second, limit - 1));
+        if (deepest >= limit) break;
+    }
+    return deepest;
+}
+
+// True when the whole fragment lands. A merge that would run into the guard is
+// refused rather than performed: half of a fragment is not a weaker version of
+// the user's intent, it is a different configuration nobody asked for.
+bool mergeFitsTheGuard(const YAML::Node &target, const YAML::Node &fragment) {
+    return alignedMergeDepth(target, fragment, kMaxMergeDepth) < kMaxMergeDepth;
+}
+
 // Walks to the map that owns the pointer's last token. `create` fills in missing
 // intermediate maps, which is what lets a preset set /dns/enable on a profile
 // that has no dns block at all. An intermediate that exists but is not a map is
@@ -121,8 +147,13 @@ const QVector<QStringList> &controllerOwnedPaths() {
 
 // ------------------------------------------------------------ the layers
 
+// `fatal` is set when a layer could only be applied in part. It is separate
+// from an error diagnostic on purpose: a refused operation (a protected path, a
+// non-map parent) leaves a document that still means what the rest of the
+// presets said, while a truncated one does not, so only the second kind may
+// take the whole candidate down with it.
 bool applyOperation(YAML::Node root, const Operation &operation, const QString &source,
-                    ComposeResult *result) {
+                    ComposeResult *result, bool *fatal) {
     const QString path = operation.path;
     if (isControllerOwnedPath(operation.tokens)) {
         diagnose(&result->diagnostics, "error", source, path,
@@ -175,10 +206,21 @@ bool applyOperation(YAML::Node root, const Operation &operation, const QString &
         break;
     case OperationKind::Merge: {
         const YAML::Node fragment = jsonToYaml(operation.value);
-        if (fragment.IsMap() && parent[key].IsDefined() && parent[key].IsMap())
+        if (fragment.IsMap() && parent[key].IsDefined() && parent[key].IsMap()) {
+            if (!mergeFitsTheGuard(parent[key], fragment)) {
+                diagnose(&result->diagnostics, "error", source, path,
+                         text("The value merged into %1 nests maps more than %2 levels deep, "
+                              "which is past the supported limit; flatten it or split it into "
+                              "several operations. Nothing was composed.")
+                             .arg(path)
+                             .arg(kMaxMergeDepth));
+                *fatal = true;
+                return false;
+            }
             deepMerge(parent[key], fragment);
-        else
+        } else {
             parent[key] = YAML::Clone(fragment);
+        }
         break;
     }
     case OperationKind::Prepend:
@@ -190,12 +232,17 @@ bool applyOperation(YAML::Node root, const Operation &operation, const QString &
 }
 
 void applyPresets(YAML::Node root, const QVector<Preset> &presets, const QString &layer,
-                  ComposeResult *result) {
+                  ComposeResult *result, bool *fatal) {
     for (const Preset &preset : presets) {
         if (!preset.enabled) continue;
         const QString source = layer + QLatin1Char(':') + preset.id;
-        for (const Operation &operation : preset.operations)
-            applyOperation(root, operation, source, result);
+        for (const Operation &operation : preset.operations) {
+            applyOperation(root, operation, source, result, fatal);
+            // Past a fatal operation the document is already not the one any
+            // layer described, so further diagnostics would be about a
+            // configuration that is never going to exist.
+            if (*fatal) return;
+        }
     }
 }
 
@@ -210,7 +257,11 @@ void applyOverrides(YAML::Node root, const QJsonObject &overrides, ComposeResult
     for (const auto &entry : parsed) {
         const std::string key = entry.first.as<std::string>();
         const QString name = QString::fromStdString(key);
-        if (isControllerOwnedPath({name}) && name != QLatin1String("mixed-port")) {
+        // mixed-port is settled by the controller layer, which is the only place
+        // that knows what the default is; writing it here too would put two
+        // provenance entries on one key and answer neither honestly.
+        if (name == QLatin1String("mixed-port")) continue;
+        if (isControllerOwnedPath({name})) {
             // Not rejected: it is inert anyway, because the controller-owned
             // fields are reasserted below. Said out loud so a user who set one
             // is not left wondering why nothing happened.
@@ -273,12 +324,46 @@ bool applyDefaults(YAML::Node root, ComposeResult *result) {
     return true;
 }
 
+// The local proxy port is the one application-owned field a trusted runtime
+// override may choose: the user picks where their browser points, a preset never
+// does. HEAD resolved it inside ProfileStore
+// (`runtimeOverrides_.value("mixed-port").toInt(kMixedPort)`), which left
+// compose() answering "27890" to a caller who had just asked for 41234 --
+// published-API behaviour nobody could have wanted. Resolving it here is what
+// makes the pure function's answer the real answer.
+//
+// Validity is the store's own rule (ProfileStore::setRuntimeOverrides): an
+// integer in 1..65535. Anything else cannot be a port, so the default stands and
+// the user is told, rather than the engine being handed a number it will refuse.
+struct MixedPort {
+    int value = 0;
+    QString source;
+};
+
+MixedPort resolveMixedPort(const ComposeInput &input, ComposeResult *result) {
+    const QString key = QStringLiteral("mixed-port");
+    const MixedPort owned{input.controller.mixedPort, QStringLiteral("controller")};
+    if (!input.overrides.contains(key)) return owned;
+
+    const QJsonValue chosen = input.overrides.value(key);
+    const bool integral = chosen.isDouble() && chosen.toDouble() == chosen.toInt();
+    if (!integral || chosen.toInt() < 1 || chosen.toInt() > 65535) {
+        diagnose(&result->diagnostics, "warning", QStringLiteral("override"),
+                 QStringLiteral("/mixed-port"),
+                 text("/mixed-port must be an integer between 1 and 65535; the override is "
+                      "ignored and %1 is used.")
+                     .arg(input.controller.mixedPort));
+        return owned;
+    }
+    return {chosen.toInt(), QStringLiteral("override")};
+}
+
 void applyControllerFields(YAML::Node root, const ControllerFields &controller,
-                           ComposeResult *result) {
+                           const MixedPort &mixedPort, ComposeResult *result) {
     const QString source = QStringLiteral("controller");
     root[std::string("external-controller")] = controller.externalController.toStdString();
     root[std::string("secret")] = controller.secret.toStdString();
-    root[std::string("mixed-port")] = controller.mixedPort;
+    root[std::string("mixed-port")] = mixedPort.value;
     root.remove(std::string("port"));
     root.remove(std::string("socks-port"));
     if (!root[std::string("profile")].IsMap())
@@ -287,9 +372,11 @@ void applyControllerFields(YAML::Node root, const ControllerFields &controller,
     root[std::string("external-ui")] = controller.externalUi.toStdString();
     root[std::string("external-ui-url")] = controller.externalUiUrl.toStdString();
 
-    for (const char *path : {"/external-controller", "/secret", "/mixed-port",
-                             "/profile/store-selected", "/external-ui", "/external-ui-url"})
+    for (const char *path : {"/external-controller", "/secret", "/profile/store-selected",
+                             "/external-ui", "/external-ui-url"})
         result->provenance.append({QString::fromLatin1(path), source});
+    // Written by this layer either way, but chosen by whoever supplied the value.
+    result->provenance.append({QStringLiteral("/mixed-port"), mixedPort.source});
 }
 
 // ----------------------------------------------------------- document parsing
@@ -581,12 +668,18 @@ ComposeResult compose(const ComposeInput &input) {
         }
         result.provenance.append({QStringLiteral("/"), input.sourceLabel});
 
-        applyPresets(root, input.presets.global, QStringLiteral("global"), &result);
-        applyPresets(root, input.presets.profiles.value(input.profileUid),
-                     QStringLiteral("profile"), &result);
+        bool fatal = false;
+        applyPresets(root, input.presets.global, QStringLiteral("global"), &result, &fatal);
+        if (!fatal)
+            applyPresets(root, input.presets.profiles.value(input.profileUid),
+                         QStringLiteral("profile"), &result, &fatal);
+        // A partly applied layer has no honest rendering, so there is no
+        // candidate to hand back: ok stays false and yaml stays empty, which is
+        // what keeps the last usable runtime file where it is.
+        if (fatal) return result;
         applyOverrides(root, input.overrides, &result);
         if (!applyDefaults(root, &result)) return result;
-        applyControllerFields(root, input.controller, &result);
+        applyControllerFields(root, input.controller, resolveMixedPort(input, &result), &result);
 
         const std::string rendered = yamlutil::dump(root);
         if (rendered.empty()) {

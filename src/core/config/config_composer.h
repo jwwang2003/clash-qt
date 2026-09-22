@@ -20,7 +20,8 @@
 //     -> the selected profile's presets, in array order
 //     -> runtime overrides (shallow per-top-level-key map merge)
 //     -> defaults the controller fills in (TUN, DNS hijack)
-//     -> controller-owned fields, always reasserted
+//     -> controller-owned fields, always reasserted -- except mixed-port, where
+//        a valid runtime override beats the application default
 //
 // Explicit false, explicit zero, an explicitly empty sequence and the order of
 // a sequence are all meaningful values, never "absent".
@@ -99,9 +100,18 @@ struct PresetDocument {
 /// at one of them is diagnosed and dropped, and the value here is reasserted
 /// afterwards regardless -- so an untrusted preset cannot point the controller,
 /// the secret or the dashboard directory anywhere of its choosing.
+///
+/// One exception, and only for the trusted layer: a `mixed-port` in
+/// ComposeInput::overrides wins over `mixedPort` below when it is an integer in
+/// 1..65535, because the local proxy port is the user's choice. A preset still
+/// cannot reach it. Supply the application default here and let composition
+/// settle the value; a caller that pre-resolves the override as well gets the
+/// same answer, but the provenance then says "controller" where "override" is
+/// the truth.
 struct ControllerFields {
     QString externalController;
     QString secret;
+    /// The default. Overridden only by a valid runtime override (see above).
     int mixedPort = 0;
     QString externalUi;
     QString externalUiUrl;
@@ -129,6 +139,12 @@ struct ComposeInput {
 /// `ok == false` means no candidate configuration exists and `yaml` is empty.
 /// `ok == true` means a document was produced -- it does NOT mean the engine
 /// will accept it. Nothing here validates mihomo semantics.
+///
+/// An operation that is refused (a protected path, a non-map parent) is an error
+/// diagnostic and the rest still composes: the other operations are decisions of
+/// their own. An operation that could only be applied in PART -- today, a merge
+/// value nested deeper than the recursion limit -- fails the whole call instead,
+/// because a truncated document is not a weaker version of what was asked for.
 ComposeResult compose(const ComposeInput &input);
 
 // --------------------------------------------------------------- the document

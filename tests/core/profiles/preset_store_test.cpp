@@ -4,6 +4,7 @@
 //
 // Contract: config-r1, .refactor/P4_CONFIG_CONTRACT.md.
 #include <QtTest>
+#include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -33,6 +34,33 @@ QJsonObject preset(const QString &id, const QJsonArray &operations, bool enabled
 
 QJsonObject document(const QJsonArray &global, const QJsonObject &profiles = {}) {
     return QJsonObject{{"version", 1}, {"global", global}, {"profiles", profiles}};
+}
+
+// A merge value nested `levels` maps deep, and the source it lines up with. Past
+// the composer's recursion guard this pair has no complete composition, which is
+// the input the runtime-preservation case below needs.
+QJsonValue nestedFragment(int levels) {
+    QJsonObject value{{"marker", "deep"}};
+    for (int i = 0; i < levels; ++i) value = QJsonObject{{"k", value}};
+    return value;
+}
+
+QByteArray nestedYaml(int levels) {
+    QString yaml = QStringLiteral("proxies: []\nnest:\n");
+    QString indent = QStringLiteral("  ");
+    for (int i = 0; i < levels; ++i) {
+        yaml += indent + QStringLiteral("k:\n");
+        indent += QStringLiteral("  ");
+    }
+    return (yaml + indent + QStringLiteral("marker: shallow\n")).toUtf8();
+}
+
+QStringList presetIdsOf(const QJsonObject &document) {
+    QStringList ids;
+    for (const QJsonValue &preset : document.value("global").toArray())
+        ids.append(preset.toObject().value("id").toString());
+    ids.sort();
+    return ids;
 }
 
 }  // namespace
@@ -194,6 +222,164 @@ private slots:
         QCOMPARE(reopened.presetDocument(), stored);
     }
 
+    // ------------------------------------- recovery from something other than
+    //                                                  a malformed primary file
+    //
+    // The four cases below are one defect: loadPresets() used to answer a failed
+    // open() with the empty document, so anything short of "the bytes are
+    // corrupt" -- a permission change, a directory left at the path, the file
+    // going missing -- lost every preset the user had, said nothing about it, and
+    // then let the next save overwrite the intact recovery copy as well.
+
+    void amissingPrimaryFileIsRecoveredFromTheLastGoodCopy() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.setPresetDocument(
+            document(QJsonArray{preset("keepme", QJsonArray{op("replace", "/mode", "global")})})));
+        const QJsonObject stored = store.presetDocument();
+        // Only the primary goes; the recovery copy is exactly what it is for.
+        QVERIFY(QFile::remove(presetsPath(store)));
+
+        core::ProfileStore reopened;
+        QSignalSpy errors(&reopened, &core::ProfileStore::errorOccurred);
+        reopened.load();
+        QCOMPARE(reopened.presetDocument(), stored);
+        QCOMPARE(errors.size(), 1);
+        QVERIFY(!reopened.lastPresetDiagnostics().isEmpty());
+        // Loading recovers in memory and writes nothing, so the primary is still
+        // absent until something asks for a save.
+        QVERIFY(!QFile::exists(presetsPath(reopened)));
+    }
+
+    // The auditor's reproducer: a present-but-unopenable primary. The file lives
+    // in this test's own temporary data directory and its mode is put back before
+    // anything is asserted.
+    void apresetFileThatWillNotOpenIsRecoveredNotTreatedAsAFirstRun() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.setPresetDocument(
+            document(QJsonArray{preset("keepme", QJsonArray{op("replace", "/mode", "global")})})));
+        const QJsonObject stored = store.presetDocument();
+        const QByteArray onDisk = testsupport::readFile(presetsPath(store));
+        QVERIFY(QFile::setPermissions(presetsPath(store), {}));
+
+        core::ProfileStore reopened;
+        QSignalSpy errors(&reopened, &core::ProfileStore::errorOccurred);
+        reopened.load();
+        QVERIFY(QFile::setPermissions(presetsPath(reopened),
+                                      QFileDevice::ReadOwner | QFileDevice::WriteOwner));
+
+        QCOMPARE(reopened.presetDocument(), stored);
+        QCOMPARE(errors.size(), 1);
+        // The diagnostic names the file that failed and the reason, not just
+        // "something went wrong": an unreadable file is a thing the user can fix.
+        bool named = false;
+        for (const core::config::Diagnostic &diagnostic : reopened.lastPresetDiagnostics())
+            if (diagnostic.severity == QLatin1String("error") &&
+                diagnostic.message.contains(QLatin1String("presets.json")))
+                named = true;
+        QVERIFY2(named, "no error diagnostic named the unreadable file");
+        // And the bad file is left where it is, evidence intact.
+        QCOMPARE(testsupport::readFile(presetsPath(reopened)), onDisk);
+    }
+
+    // The same class of failure without touching any permission: a directory
+    // where the document should be. open() fails, and that is still not a first
+    // run.
+    void adirectoryLeftAtThePresetPathIsAnUnusableDocument() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.setPresetDocument(
+            document(QJsonArray{preset("keepme", QJsonArray{op("replace", "/mode", "global")})})));
+        const QJsonObject stored = store.presetDocument();
+        QVERIFY(QFile::remove(presetsPath(store)));
+        QVERIFY(QDir().mkpath(presetsPath(store)));
+
+        core::ProfileStore reopened;
+        QSignalSpy errors(&reopened, &core::ProfileStore::errorOccurred);
+        reopened.load();
+        QCOMPARE(reopened.presetDocument(), stored);
+        QCOMPARE(errors.size(), 1);
+        QVERIFY(QDir(presetsPath(reopened)).exists());  // not deleted, not written through
+    }
+
+    // The amplification, and the reason the silent loss mattered: whatever was
+    // recovered has to survive the next save. setPresetDocument() writes BOTH
+    // copies, so a load that emptied itself would take the one intact copy with
+    // it on the user's next edit.
+    void therecoveredDocumentIsWhatTheNextSaveBuildsOn() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.setPresetDocument(
+            document(QJsonArray{preset("keepme", QJsonArray{op("replace", "/mode", "global")})})));
+        QVERIFY(QFile::setPermissions(presetsPath(store), {}));
+
+        core::ProfileStore reopened;
+        reopened.load();
+        QVERIFY(QFile::setPermissions(presetsPath(reopened),
+                                      QFileDevice::ReadOwner | QFileDevice::WriteOwner));
+
+        // The user adds one unrelated preset in the editor.
+        QJsonObject next = reopened.presetDocument();
+        QJsonArray global = next.value("global").toArray();
+        global.append(preset("new", QJsonArray{op("replace", "/ipv6", true)}));
+        next["global"] = global;
+        QVERIFY(reopened.setPresetDocument(next));
+
+        const QStringList expected{QStringLiteral("keepme"), QStringLiteral("new")};
+        QCOMPARE(presetIdsOf(reopened.presetDocument()), expected);
+        for (const QString &path : {presetsPath(reopened), lastGoodPath(reopened)}) {
+            const QJsonObject written =
+                QJsonDocument::fromJson(testsupport::readFile(path)).object();
+            QVERIFY2(!written.isEmpty(), qPrintable(path));
+            QCOMPARE(presetIdsOf(written), expected);
+        }
+        // The primary is readable again, so the next session needs no recovery.
+        core::ProfileStore third;
+        QSignalSpy errors(&third, &core::ProfileStore::errorOccurred);
+        third.load();
+        QCOMPARE(presetIdsOf(third.presetDocument()), expected);
+        QCOMPARE(errors.size(), 0);
+        QVERIFY(third.lastPresetDiagnostics().isEmpty());
+    }
+
+    // Nothing on disk is usable, but presets are already loaded. They are the
+    // user's, they are still valid, and a load that cannot read a document has
+    // no business throwing away the one it has.
+    void presetsAlreadyLoadedAreKeptWhenNeitherCopyCanBeRead() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.setPresetDocument(
+            document(QJsonArray{preset("keepme", QJsonArray{op("replace", "/mode", "global")})})));
+        const QJsonObject stored = store.presetDocument();
+
+        testsupport::writeFile(presetsPath(store), "{ half written");
+        testsupport::writeFile(lastGoodPath(store), "also not json");
+        QSignalSpy errors(&store, &core::ProfileStore::errorOccurred);
+        store.load();
+
+        QCOMPARE(store.presetDocument(), stored);
+        QCOMPARE(errors.size(), 1);
+        QVERIFY(!store.lastPresetDiagnostics().isEmpty());
+        // And they are still the presets the composition uses, not just a value
+        // presetDocument() returns.
+        QVERIFY(store.createLocalProfile("target", "proxies: []\nmode: rule\n"));
+        const YAML::Node config =
+            YAML::Load(testsupport::readFile(store.generateRuntimeConfig()).toStdString());
+        QCOMPARE(config["mode"].as<std::string>(), std::string("global"));
+    }
+
+    void amalformedPrimaryWithNoRecoveryCopyIsReportedNotAssumedEmpty() {
+        core::ProfileStore store;
+        testsupport::writeFile(presetsPath(store), "{ not json");
+        QVERIFY(!QFile::exists(lastGoodPath(store)));
+        QSignalSpy errors(&store, &core::ProfileStore::errorOccurred);
+        store.load();
+        QCOMPARE(store.presetDocument(), core::config::emptyPresetDocument());
+        QCOMPARE(errors.size(), 1);
+        QVERIFY(!store.lastPresetDiagnostics().isEmpty());
+    }
+
     void withNoUsableCopyAnywhereTheStoreStartsEmptyAndSaysSo() {
         core::ProfileStore store;
         testsupport::writeFile(store.dataDir() + "/presets.json", "{ broken");
@@ -259,6 +445,77 @@ private slots:
         QVERIFY(config["secret"].as<std::string>() != "attacker");
         QCOMPARE(config["external-ui"].as<std::string>(),
                  (reopened.dataDir() + "/ui").toStdString());
+    }
+
+    // A preset whose merge cannot be applied in full has no candidate
+    // configuration at all, so generation must fail with an actionable reason and
+    // leave the runtime the core is using exactly where it is. The alternative --
+    // what this forbids -- is a truncated document being written over a working
+    // one and reported as a success.
+    void apresetTooDeepToComposeFailsGenerationAndKeepsThePreviousRuntime() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.createLocalProfile("target", nestedYaml(70)));
+        const QString first = store.generateRuntimeConfig();
+        QVERIFY2(!first.isEmpty(), "the baseline generation failed");
+        const QString preview = store.dataDir() + "/runtime.yaml";
+        const QByteArray before = testsupport::readFile(preview);
+        QVERIFY(!before.isEmpty());
+
+        QVERIFY(store.setPresetDocument(document(
+            QJsonArray{preset("deep", QJsonArray{op("merge", "/nest", nestedFragment(70))})})));
+        QSignalSpy errors(&store, &core::ProfileStore::errorOccurred);
+        QCOMPARE(store.generateRuntimeConfig(), QString());
+        QCOMPARE(errors.size(), 1);
+        QVERIFY2(errors.first().first().toString().contains(QLatin1String("deep"),
+                                                            Qt::CaseInsensitive),
+                 qPrintable(errors.first().first().toString()));
+        QCOMPARE(testsupport::readFile(preview), before);
+        QCOMPARE(testsupport::readFile(first), before);
+    }
+
+    // The legacy behaviour the pure composer now owns (F3): the port the user
+    // chose is the port the engine is launched on. ProfileStore supplies only the
+    // default, so this is the end-to-end proof that handing the resolution to
+    // compose() did not quietly drop it.
+    void amixedPortRuntimeOverrideStillReachesTheGeneratedRuntime() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.createLocalProfile("target", "proxies: []\nmode: rule\n"));
+        QCOMPARE(YAML::Load(testsupport::readFile(store.generateRuntimeConfig()).toStdString())
+                     ["mixed-port"].as<int>(),
+                 27890);
+
+        QVERIFY(store.setRuntimeOverrides(QJsonObject{{"mixed-port", 41234}}));
+        const YAML::Node config =
+            YAML::Load(testsupport::readFile(store.generateRuntimeConfig()).toStdString());
+        QCOMPARE(config["mixed-port"].as<int>(), 41234);
+        // Still nobody else's to choose: the secret and the controller are the
+        // application's in the same document.
+        QCOMPARE(config["external-controller"].as<std::string>(), std::string("127.0.0.1:29097"));
+    }
+
+    // setRuntimeOverrides() refuses a port outside 1..65535, so a stored one got
+    // there some other way -- a hand-edited file, a restored archive. The store
+    // hands the composer the application default and the overrides object, and the
+    // composer is what decides between them, so the impossible value is dropped
+    // with a warning instead of being passed on as the default.
+    void anImpossiblePortInTheOverridesFileCannotReachTheEngine() {
+        core::ProfileStore store;
+        testsupport::writeFile(
+            store.dataDir() + "/runtime-overrides.json",
+            QJsonDocument(QJsonObject{{"mixed-port", 70000}}).toJson(QJsonDocument::Compact));
+        store.load();
+        QVERIFY(store.createLocalProfile("target", "proxies: []\nmode: rule\n"));
+        QSignalSpy errors(&store, &core::ProfileStore::errorOccurred);
+
+        const QString path = store.generateRuntimeConfig();
+        QVERIFY2(!path.isEmpty(), "an impossible port stopped the generation altogether");
+        QCOMPARE(YAML::Load(testsupport::readFile(path).toStdString())["mixed-port"].as<int>(),
+                 27890);
+        QCOMPARE(errors.size(), 1);
+        QVERIFY2(errors.first().first().toString().contains(QLatin1String("mixed-port")),
+                 qPrintable(errors.first().first().toString()));
     }
 
     void apresetForAnotherProfileDoesNotAffectThisOne() {

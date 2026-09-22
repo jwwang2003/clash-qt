@@ -171,6 +171,44 @@ QString warningText(const QVector<config::Diagnostic> &diagnostics) {
     return messages.join('\n');
 }
 
+/// What one preset file on disk turned out to be.
+///
+/// `Absent` is deliberately its own answer. "There is no file" is a first run;
+/// "the file is there and will not open" -- a permission change, a directory
+/// left at the path, a failing disk -- is a document that EXISTS and cannot be
+/// read, and answering both with an empty document is how every preset a user
+/// has disappears without a word being said about it.
+enum class PresetFileState { Absent, Unusable, Valid };
+
+/// Reads and fully validates one preset file. `reason` is filled in for
+/// `Unusable` and is the sentence a user is shown, so it names the cause rather
+/// than the file.
+PresetFileState readPresetFile(const QString &path, QJsonObject *document,
+                               config::PresetDocument *parsed, QString *reason) {
+    const QFileInfo info(path);
+    // A dangling symlink does not "exist" and is certainly not nothing either.
+    if (!info.exists() && !info.isSymLink()) return PresetFileState::Absent;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        *reason = file.errorString();
+        return PresetFileState::Unusable;
+    }
+    QJsonParseError parse{};
+    const QJsonDocument read = QJsonDocument::fromJson(file.readAll(), &parse);
+    if (!read.isObject()) {
+        *reason = ProfileStore::tr("it is not a JSON object (%1)").arg(parse.errorString());
+        return PresetFileState::Unusable;
+    }
+    QVector<config::Diagnostic> diagnostics;
+    if (!config::parsePresetDocument(read.object(), parsed, &diagnostics)) {
+        *reason = errorText(diagnostics);
+        return PresetFileState::Unusable;
+    }
+    *document = read.object();
+    return PresetFileState::Valid;
+}
+
 }  // namespace
 
 ProfileStore::ProfileStore(QObject *parent)
@@ -726,54 +764,95 @@ QVector<config::Diagnostic> ProfileStore::lastPresetDiagnostics() const {
     return presetDiagnostics_;
 }
 
+// Loads the persisted presets, or explains what stopped it. Nothing here writes:
+// a bad file is left exactly where it is, because overwriting it would destroy
+// the only evidence of what went wrong and nobody has asked for a save.
+//
+// The one rule the rest of it serves: an empty document is adopted only when
+// there is genuinely nothing to adopt. Every other outcome -- unreadable
+// primary, missing primary with a recovery copy beside it, both files unusable
+// while presets are already loaded -- either recovers or keeps what it has, and
+// says so.
 void ProfileStore::loadPresets() {
-    presetDocument_ = config::emptyPresetDocument();
-    presets_ = {};
-    presetDiagnostics_.clear();
-
-    QFile file(dataDir() + '/' + kPresetsFile);
-    if (!file.open(QIODevice::ReadOnly)) return;  // a first run has no presets, and that is fine
-
-    QVector<config::Diagnostic> diagnostics;
-    QJsonParseError parse{};
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parse);
+    const QString primaryPath = dataDir() + '/' + kPresetsFile;
+    QJsonObject document;
     config::PresetDocument parsed;
-    if (document.isObject() &&
-        config::parsePresetDocument(document.object(), &parsed, &diagnostics)) {
-        presetDocument_ = document.object();
+    QString reason;
+    const PresetFileState primary = readPresetFile(primaryPath, &document, &parsed, &reason);
+
+    if (primary == PresetFileState::Valid) {
+        presetDocument_ = document;
         presets_ = parsed;
-        presetDiagnostics_ = diagnostics;
+        presetDiagnostics_.clear();
         return;
     }
-    if (!document.isObject()) {
+
+    QVector<config::Diagnostic> diagnostics;
+    if (primary == PresetFileState::Unusable) {
         diagnostics.append({QStringLiteral("error"), QStringLiteral("presets"), {},
-                            tr("%1 is not a JSON object: %2")
-                                .arg(QLatin1String(kPresetsFile), parse.errorString())});
+                            tr("%1 could not be read: %2")
+                                .arg(QLatin1String(kPresetsFile), reason)});
     }
 
-    // The stored document is unusable. The last-good copy is tried in its place
-    // and the bad file is left exactly where it is: overwriting it here would
-    // destroy the only evidence of what went wrong, and the user has not asked
-    // for anything to be saved.
-    QFile lastGood(dataDir() + '/' + kPresetsLastGoodFile);
-    if (lastGood.open(QIODevice::ReadOnly)) {
-        const QJsonDocument recovered = QJsonDocument::fromJson(lastGood.readAll());
-        config::PresetDocument recoveredPresets;
-        QVector<config::Diagnostic> ignored;
-        if (recovered.isObject() &&
-            config::parsePresetDocument(recovered.object(), &recoveredPresets, &ignored)) {
-            presetDocument_ = recovered.object();
-            presets_ = recoveredPresets;
-            diagnostics.append({QStringLiteral("warning"), QStringLiteral("presets"), {},
-                                tr("Recovered the last good preset document; %1 is unusable.")
-                                    .arg(QLatin1String(kPresetsFile))});
-            presetDiagnostics_ = diagnostics;
-            emit errorOccurred(warningText(diagnostics));
-            return;
-        }
+    // The last-good copy stands in for a primary that is unusable AND for one
+    // that has gone missing: it is written from the bytes of a save that
+    // succeeded, so it is a whole document either way, and the newest one known
+    // to load.
+    QJsonObject recoveredDocument;
+    config::PresetDocument recoveredPresets;
+    QString recoveryReason;
+    const PresetFileState lastGood =
+        readPresetFile(dataDir() + '/' + kPresetsLastGoodFile, &recoveredDocument,
+                       &recoveredPresets, &recoveryReason);
+
+    // Nothing on disk at all, and nothing in memory to lose: a first run. The
+    // empty document is the right answer and there is nothing to report.
+    const bool inMemory = presetDocument_ != config::emptyPresetDocument();
+    if (primary == PresetFileState::Absent && lastGood == PresetFileState::Absent && !inMemory) {
+        presetDocument_ = config::emptyPresetDocument();
+        presets_ = {};
+        presetDiagnostics_.clear();
+        return;
     }
-    diagnostics.append({QStringLiteral("warning"), QStringLiteral("presets"), {},
-                        tr("No usable preset document was found; no presets are applied.")});
+
+    if (lastGood == PresetFileState::Valid) {
+        presetDocument_ = recoveredDocument;
+        presets_ = recoveredPresets;
+        diagnostics.append(
+            {QStringLiteral("warning"), QStringLiteral("presets"), {},
+             primary == PresetFileState::Absent
+                 ? tr("%1 is missing; the presets were recovered from %2. The next save "
+                      "restores both copies.")
+                       .arg(QLatin1String(kPresetsFile), QLatin1String(kPresetsLastGoodFile))
+                 : tr("Recovered the last good preset document; %1 is unusable. The next save "
+                      "replaces it.")
+                       .arg(QLatin1String(kPresetsFile))});
+        presetDiagnostics_ = diagnostics;
+        emit errorOccurred(QStringList{errorText(diagnostics), warningText(diagnostics)}
+                               .join('\n')
+                               .trimmed());
+        return;
+    }
+    if (lastGood == PresetFileState::Unusable) {
+        diagnostics.append({QStringLiteral("error"), QStringLiteral("presets"), {},
+                            tr("%1 could not be read either: %2")
+                                .arg(QLatin1String(kPresetsLastGoodFile), recoveryReason)});
+    }
+
+    // Neither copy is usable. Presets already loaded are KEPT rather than
+    // dropped: they are the user's, they are still valid, and this call was
+    // asked to load a document -- not to throw one away because a disk answered
+    // badly. A save made from here writes them back over both files.
+    if (inMemory) {
+        diagnostics.append(
+            {QStringLiteral("warning"), QStringLiteral("presets"), {},
+             tr("Kept the presets already loaded; no usable preset document is on disk.")});
+    } else {
+        presetDocument_ = config::emptyPresetDocument();
+        presets_ = {};
+        diagnostics.append({QStringLiteral("warning"), QStringLiteral("presets"), {},
+                            tr("No usable preset document was found; no presets are applied.")});
+    }
     presetDiagnostics_ = diagnostics;
     emit errorOccurred(QStringList{errorText(diagnostics), warningText(diagnostics)}
                            .join('\n')
@@ -875,7 +954,12 @@ config::ControllerFields ProfileStore::controllerFieldsFor(const QString &dataDi
     config::ControllerFields controller;
     controller.externalController = QLatin1String(kController);
     controller.secret = secret_;
-    controller.mixedPort = runtimeOverrides_.value("mixed-port").toInt(kMixedPort);
+    // The application default, and nothing more. Whether the user's stored
+    // mixed-port override beats it is a question about values, and values are
+    // composed in core/config/config_composer.cpp -- which is handed the same
+    // overrides object. Resolving it here as well used to be the only reason
+    // compose() honoured the override at all.
+    controller.mixedPort = kMixedPort;
     controller.externalUi = dataDir + "/ui";
     controller.externalUiUrl = QLatin1String(kDashboardUrl);
     controller.storeSelected = true;

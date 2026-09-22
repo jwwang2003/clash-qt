@@ -134,6 +134,66 @@ private slots:
         QCOMPARE(sourceOf(preview, "/"), QStringLiteral("legacy-chain"));
     }
 
+    // The port the editor shows has to be the port the engine will be launched
+    // on, and the answer to "who chose it?" has to be the user rather than the
+    // application. Both come from the composer now, not from a value ProfileStore
+    // resolved on its way in (F3).
+    void thePreviewShowsThePortTheUserChoseAndCreditsTheOverride() {
+        core::ProfileStore store;
+        store.load();
+        QVERIFY(store.createLocalProfile("target", "proxies: []\nmode: rule\n"));
+
+        QSignalSpy ready(&store, &core::ProfileStore::effectiveConfigPreviewReady);
+        store.requestEffectiveConfigPreview();
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 5000);
+        const auto byDefault = ready.first().first().value<ComposeResult>();
+        QVERIFY2(byDefault.ok, qPrintable(byDefault.yaml));
+        QCOMPARE(YAML::Load(byDefault.yaml.toStdString())["mixed-port"].as<int>(), 27890);
+        QCOMPARE(sourceOf(byDefault, "/mixed-port"), QStringLiteral("controller"));
+
+        QVERIFY(store.setRuntimeOverrides(QJsonObject{{"mixed-port", 41234}}));
+        ready.clear();
+        store.requestEffectiveConfigPreview();
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 5000);
+        const auto chosen = ready.first().first().value<ComposeResult>();
+        QVERIFY2(chosen.ok, qPrintable(chosen.yaml));
+        QCOMPARE(YAML::Load(chosen.yaml.toStdString())["mixed-port"].as<int>(), 41234);
+        QCOMPARE(sourceOf(chosen, "/mixed-port"), QStringLiteral("override"));
+    }
+
+    // A preset whose merge cannot be applied in full is a failed preview, not a
+    // preview of a truncated document (F2). The editor needs the reason, and it
+    // must not be handed YAML it could mistake for the answer.
+    void apreviewOfAmergeTooDeepToApplyFailsWithTheReason() {
+        core::ProfileStore store;
+        store.load();
+        QString yaml = QStringLiteral("proxies: []\nnest:\n");
+        QString indent = QStringLiteral("  ");
+        QJsonObject fragment{{"marker", "deep"}};
+        for (int i = 0; i < 70; ++i) {
+            yaml += indent + QStringLiteral("k:\n");
+            indent += QStringLiteral("  ");
+            fragment = QJsonObject{{"k", fragment}};
+        }
+        yaml += indent + QStringLiteral("marker: shallow\n");
+        QVERIFY(store.createLocalProfile("target", yaml.toUtf8()));
+        QVERIFY(store.setPresetDocument(
+            document(QJsonArray{preset("deep", QJsonArray{op("merge", "/nest", fragment)})})));
+
+        QSignalSpy ready(&store, &core::ProfileStore::effectiveConfigPreviewReady);
+        store.requestEffectiveConfigPreview();
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 5000);
+        const auto preview = ready.first().first().value<ComposeResult>();
+        QVERIFY2(!preview.ok, "a merge past the recursion guard was previewed as a success");
+        QVERIFY(preview.yaml.isEmpty());
+        bool told = false;
+        for (const core::config::Diagnostic &diagnostic : preview.diagnostics)
+            if (diagnostic.severity == QLatin1String("error") &&
+                diagnostic.message.contains(QLatin1String("deep"), Qt::CaseInsensitive))
+                told = true;
+        QVERIFY2(told, "the failure did not say what was wrong with the document");
+    }
+
     void anExplicitUidPreviewsThatProfileNotTheSelectedOne() {
         core::ProfileStore store;
         store.load();

@@ -285,6 +285,30 @@ private slots:
         QCOMPARE(parsed.global[0].id, QStringLiteral("sentinel"));
     }
 
+    // A merge value nested past the composer's recursion guard is a STRUCTURALLY
+    // valid document: every operation names a legal path, a legal op and a legal
+    // JSON value, and how deep a merge may recurse is a property of composing it,
+    // not of the format. It is refused at compose time instead, with the whole
+    // candidate (see config-composer). Pinned here so the division stays
+    // deliberate: if the format ever does gain a depth rule, this case says where
+    // to look.
+    void adeeplyNestedMergeValueIsAValidDocumentAndIsJudgedAtComposeTime() {
+        QJsonObject value{{"marker", "deep"}};
+        for (int i = 0; i < 100; ++i) value = QJsonObject{{"k", value}};
+        PresetDocument parsed;
+        QVector<Diagnostic> diagnostics;
+        QVERIFY2(accepts(QJsonObject{{"version", 1},
+                                     {"global", QJsonArray{preset("deep", QJsonArray{
+                                                                              op("merge", "/nest",
+                                                                                 value)})}}},
+                         &parsed, &diagnostics),
+                 qPrintable(firstError(diagnostics)));
+        QCOMPARE(parsed.global.size(), 1);
+        QCOMPARE(parsed.global[0].operations.size(), 1);
+        QCOMPARE(parsed.global[0].operations[0].kind, OperationKind::Merge);
+        QVERIFY(diagnostics.isEmpty());
+    }
+
     // ----------------------------------------------------------- round trip
 
     void encodingAndReparsingIsAFixedPoint() {

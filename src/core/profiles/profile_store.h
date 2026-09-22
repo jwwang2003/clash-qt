@@ -108,6 +108,12 @@ public:
     /// The document as persisted: normalised, so two saves of equivalent input
     /// produce equal objects. Never invalid -- an unreadable document on disk is
     /// recovered or replaced before it is ever returned from here.
+    ///
+    /// load() adopts the empty document only when there is nothing anywhere to
+    /// adopt. A primary file that is missing, unopenable or unusable is recovered
+    /// from the last-good copy; when neither copy can be read, presets already
+    /// loaded are KEPT. Every outcome but a genuine first run leaves a reason on
+    /// lastPresetDiagnostics() and reports through errorOccurred().
     QJsonObject presetDocument() const;
 
     /// Validates, then persists atomically. Returns false and changes NOTHING --
