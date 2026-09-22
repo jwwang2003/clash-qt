@@ -34,6 +34,7 @@ endforeach()
 # W03 is the only journey that builds the real shell, so it needs the UI sources
 # and the QML module. src/ui/sources.cmake cannot be include()d from here: every
 # path in it is relative to its own directory.
+if(CLASH_QT_BUILD_APP)
 qt_add_executable(w03-routing-controls-tests w03_routing_controls_test.cpp
         "${PROJECT_SOURCE_DIR}/src/ui/pages/backups/backup_page.cpp"
         "${PROJECT_SOURCE_DIR}/src/ui/pages/connections/connections_page.cpp"
@@ -89,14 +90,17 @@ add_test(NAME app-smoke COMMAND app-smoke-tests)
 set_tests_properties(app-smoke PROPERTIES
     RUN_SERIAL TRUE TIMEOUT 600
     ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_APP_BINARY=$<TARGET_FILE:clash-qt>;CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>;CLASH_QT_SERVICE_SOCKET=${CMAKE_BINARY_DIR}/test-data/app-smoke/helper.socket")
+clash_qt_label(w03-routing-controls  workflow integration app ui)
+clash_qt_label(app-smoke             workflow integration app packaging)
+clash_qt_isolate_test(w03-routing-controls)
+clash_qt_isolate_test(app-smoke)
+endif()
 
 clash_qt_label(w01-first-launch      workflow integration app)
 clash_qt_label(w02-subscription-update workflow integration app config)
-clash_qt_label(w03-routing-controls  workflow integration app ui)
 clash_qt_label(w04-restore           workflow integration app)
 clash_qt_label(w05-recovery          workflow integration app)
-clash_qt_label(app-smoke             workflow integration app packaging)
-foreach(name w01-first-launch w02-subscription-update w03-routing-controls w04-restore w05-recovery app-smoke)
+foreach(name w01-first-launch w02-subscription-update w04-restore w05-recovery)
     clash_qt_isolate_test(${name})
 endforeach()
 

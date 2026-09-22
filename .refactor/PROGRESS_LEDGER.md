@@ -1466,3 +1466,31 @@ shared/backend/module lanes and W02 split functions. Architecture checks already
 inherited the qualification runner's isolated data directory; they now also get
 explicit per-entry CLASH_QT_DATA_DIR for direct CTest use, just like every other
 entry. This final registration change will be included in the final clean clone.
+
+### Headless registration correction
+
+Release benchmark setup with CLASH_QT_BUILD_APP=OFF exposed unguarded W03/app-smoke
+registrations: Qt6::Widgets and the clash-qt executable were absent but referenced.
+Coordinator gated those two desktop-only entries at their registration site; four
+headless journeys and W02-real-core remain available. This is a build registration
+fix, not a re-baselined dependency. The final clean clone includes it.
+
+### Fresh W02 readiness race closed
+
+W02's old Running/process-count checks observed the outgoing core while validation
+was pending; the worker reproduced the original 2-vs-1 failure under load. The test
+now records coreReady completion generation and requires newer readiness, no pending
+restart and exactly the refreshed active config before process/applied-config checks.
+Fixed real-core runs: 5 idle and 8 loaded; fixture 3 idle and 2 loaded. Old-position
+and wrong-retention inversions fail; other redundant predicate inversions are not
+claimed as proven. Only W02 test source changed. Details in
+ evidence/p4/w02-readiness-report.md.
+
+Package preflight on frozen fresh-2 staged successfully. Native Cocoa launch with
+explicit isolated data/helper, no module override or developer dependency paths,
+loaded the bundle-relative module and stayed alive; no Homebrew/Anaconda images.
+The offscreen probe initially failed because the production bundle ships Cocoa,
+not offscreen; no native-GPU correctness claim is inferred. Installed-SDK consumer
+built separately (QtCore + system libraries only), drove matching pinned engine,
+confirmed stop and independently reported actual image unmapping. Full final Make
+qualification will run on a new clone including W02 and headless registration fixes.

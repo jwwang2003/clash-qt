@@ -194,3 +194,12 @@ and w05_recovery_test.cpp. It preserves native-work ownership, enforces no early
 kill and gates on the fixture's refusal marker. No tolerance weakening. Other
 workers own no overlapping file. Active: transport fix, read-only ABI recheck,
 termination deadline fix. Full repo build still waits for the source barrier.
+
+## Fresh-clone integration finding — W02 readiness assertion
+
+Fresh-2 make test54/54; integration19/20. W02 asserted exactly one process at line940
+before its own replacement-settled gate and saw two (running core plus validation
+is a possible phase). A bounded Opus worker owns only w02_subscription_update_test.cpp
+to establish actual replacement readiness before process/applied-config assertions,
+without weakening them. Other source writers remain closed; final auditor is read-only
+and waits for qualification artifacts. A new clean clone will re-run the full gate.

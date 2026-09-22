@@ -85,6 +85,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <vector>
 
 #include "support/fake_core.h"
 #include "support/loopback_server.h"
@@ -232,6 +234,65 @@ quint16 reserveFreePort() {
     probe.close();
     return port;
 }
+
+// ------------------------------------------------------- the ready ledger
+
+/// Every readiness the managed core announced, WITH the generation it carried.
+///
+/// wf::JourneyObserver records coreReady's endpoint and drops its Completion,
+/// and the completion is the half a replacement needs. coreReady is "the
+/// managed core answered GET /version with 200", not "a process started"
+/// (observer.h), and it is the terminal outcome of an operation that bumped the
+/// generation itself, so it carries the POST-bump value (backend-r2 A1,
+/// mihomo_backend.cpp:840 stamps `startGeneration_` at the bump). A readiness
+/// stamped STRICTLY NEWER than the generation a refresh replaced can therefore
+/// only have come from the incoming engine.
+///
+/// This is why the case does not reason from a process count. `pgrep` says how
+/// many children exist, never which engine they are: for most of a reload the
+/// single live child is the OUTGOING one, and an assertion that counts it is
+/// green for the wrong reason.
+class ReadyLedger final : public cb::BackendObserver {
+  public:
+    struct Entry {
+        cb::Generation generation;
+        cb::Endpoint endpoint;
+    };
+
+    explicit ReadyLedger(wf::AssembledApp &app) : backend_(*app.backend) {
+        backend_.addObserver(this);
+    }
+    ~ReadyLedger() override { backend_.removeObserver(this); }
+
+    ReadyLedger(const ReadyLedger &) = delete;
+    ReadyLedger &operator=(const ReadyLedger &) = delete;
+
+    /// The newest readiness stamped after `generation`, or nothing.
+    std::optional<Entry> readyAfter(cb::Generation generation) const {
+        for (auto entry = entries_.rbegin(); entry != entries_.rend(); ++entry)
+            if (cb::number(entry->generation) > cb::number(generation)) return *entry;
+        return std::nullopt;
+    }
+
+    int count() const { return static_cast<int>(entries_.size()); }
+
+    QString transcript() const {
+        QStringList out;
+        for (const Entry &entry : entries_)
+            out << QStringLiteral("ready(generation=%1,port=%2)")
+                       .arg(cb::number(entry.generation))
+                       .arg(entry.endpoint.port);
+        return out.isEmpty() ? QStringLiteral("none") : out.join(QStringLiteral(", "));
+    }
+
+    void coreReady(const cb::Completion &completion, const cb::Endpoint &endpoint) noexcept override {
+        entries_.push_back({completion.generation, endpoint});
+    }
+
+  private:
+    wf::ModuleBackend &backend_;
+    std::vector<Entry> entries_;
+};
 
 }  // namespace
 
@@ -831,6 +892,10 @@ class W02SubscriptionUpdateTest : public QObject {
         auto osProxy = std::make_shared<wf::ProxyConfig>();
         wf::AssembledApp app(proxyLog, osProxy);
         QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
+        // Registered before anything is started, so the FIRST engine's readiness
+        // is on record too: the refresh below is told apart from it by the
+        // generation each one carries, not by arrival order.
+        ReadyLedger ready(app);
         app.bootstrap(binary);
         QVERIFY2(app.startupErrors.isEmpty(),
                  qPrintable(app.startupErrors.join(QLatin1Char('\n'))));
@@ -928,45 +993,93 @@ class W02SubscriptionUpdateTest : public QObject {
                  qPrintable(subscription.redactedTranscript()));
         QVERIFY2(wf::waitFor([&launched] { return launched.size() >= 2; }, readiness),
                  qPrintable(report(app, subscription)));
-        QVERIFY2(wf::waitFor([&app] { return app.backend->state() == cb::CoreState::Running; },
-                             readiness),
+
+        // THE HANDOFF IS WAITED FOR BEFORE ANYTHING IS COUNTED.
+        //
+        // "Running" is not "the refresh landed", and neither is "a second start
+        // was requested". RuntimeCoordinator calls backend.start() and only
+        // then emits coreStartRequested, and the host answers that start by
+        // validating the candidate in a SEPARATE child while the outgoing core
+        // keeps running (lifecycle.h:76-85). Measured at the instant the second
+        // start is seen, every run of this arm reports: state Running,
+        // isConnected() true, generation UNCHANGED, one readiness on record,
+        // isRestartPending() true and TWO paths in activeConfigPaths() - the
+        // outgoing core's and the candidate being validated. Every one of those
+        // describes the engine that is going away.
+        //
+        // So an assertion placed there is reading the OUTGOING generation. A
+        // count of one is the outgoing child, not the refreshed one; a count of
+        // two is that child plus the validator, and that is the pair a fresh
+        // clone recorded at this line (`liveProcesses 2, expected 1`, log
+        // /tmp/clash-qt-p4.w0Y8Uo/fresh-2-logs/make-test-integration.log). The
+        // same instant produces either number depending only on how the
+        // validator's few tens of milliseconds line up with the probe, which is
+        // why the count was not the defect: its POSITION was.
+        //
+        // The gate below is the handoff itself, in the host's own published
+        // terms, and it is strictly stronger than the settle it replaces:
+        //
+        //   * the incoming engine answered GET /version ITSELF, stamped with a
+        //     generation newer than the one the refresh replaced;
+        //   * it announced the generated controller address;
+        //   * nothing is in flight - no validation child, no held launch, no
+        //     configuration parse (isRestartPending(), lifecycle.h:133);
+        //   * the ONLY configuration the host still has to keep is the
+        //     refreshed one, so the retiring child and the validation candidate
+        //     are both released (activeConfigPaths(), contract 5.1);
+        //   * and the generation has stopped moving while Running and attached,
+        //     which is what the previous version of this case waited for on its
+        //     own. It was right about the generation - an earlier version
+        //     captured the outgoing one and the incoming engine's
+        //     managed-to-attached handoff (backend-r3 B2) then bumped it under
+        //     the rejected-update assertion; the observed run is in
+        //     /tmp/.../w02/logs/w02-real-diag.log, `states 1,2,3,1,2`,
+        //     generation 4 where 3 was captured - but it ran AFTER the
+        //     assertions that needed it.
+        //
+        // A refresh that never produced a new engine fails here, and it fails
+        // naming the clause that stayed open.
+        cb::Generation settled = generationBefore;
+        QString gap;
+        QVERIFY2(awaitReplacement(app, ready, generationBefore, launched.last(), readiness,
+                                  &settled, &gap),
+                 qPrintable(QStringLiteral("the refreshed engine never took over: %1. It was "
+                                           "generation %2 before the refresh and is %3 now. "
+                                           "%4 | readiness: %5 | logs: %6")
+                                .arg(gap)
+                                .arg(cb::number(generationBefore))
+                                .arg(cb::number(app.backend->generation()))
+                                .arg(report(app, subscription), ready.transcript(),
+                                     coreLog(app).join(QLatin1Char('\n')))));
+        QVERIFY2(cb::number(settled) > cb::number(generationBefore),
+                 "a refresh that replaced the engine did not advance the generation");
+        QVERIFY2(app.backend->state() == cb::CoreState::Running,
                  qPrintable(QStringLiteral("the pinned engine did not come back after a refresh. "
                                            "%1 | logs: %2")
                                 .arg(report(app, subscription),
                                      coreLog(app).join(QLatin1Char('\n')))));
+
+        // Now the file the REFRESHED engine was launched from, and the count.
         const QByteArray refreshedConfig = wf::readTextFile(launched.last());
         QVERIFY(refreshedConfig.contains("w02-real-v2"));
         QCOMPARE(topLevelScalar(refreshedConfig, "mixed-port"), QByteArray::number(mixedPort));
+        QVERIFY2(app.backend->activeConfigPaths().contains(launched.last()),
+                 qPrintable(QStringLiteral("the engine is running %1, not the refreshed %2")
+                                .arg(app.backend->activeConfigPaths().join(QLatin1Char(' ')),
+                                     launched.last())));
+        // The configuration the FIRST engine was launched from is not something
+        // anything still has to keep: the child that was running it is gone.
+        QVERIFY2(!app.backend->activeConfigPaths().contains(live),
+                 qPrintable(QStringLiteral("the superseded configuration %1 is still active")
+                                .arg(live)));
+        // One child - and because of the gate above this is now a statement
+        // about the REPLACEMENT. The gate says which engine is live; this says
+        // the one it replaced was not left behind, which is the part only the
+        // operating system can answer.
         QCOMPARE(wf::liveProcessesOf(binary), 1);
-        // SETTLED, and settled is not "Running and connected".
-        //
-        // A refresh replaces the engine, so for a while BOTH descriptions are
-        // true of the outgoing generation: it is still Running and this
-        // process is still attached to its controller. An earlier version of
-        // this case waited for exactly that and captured the generation - and
-        // then the incoming engine's managed-to-attached handoff (backend-r3
-        // B2: an endpoint change invalidates outstanding work) bumped it, so
-        // the rejected-update assertion below failed against a number that had
-        // nothing to do with the rejected update. The observed run is in
-        // /tmp/.../w02/logs/w02-real-diag.log: `states 1,2,3,1,2`, generation
-        // 4 where 3 was captured.
-        //
-        // So the wait is stated as what it means: the generation must ADVANCE
-        // past the one the refresh replaced, and then stop moving while the
-        // engine is Running and attached. That is strictly more than the old
-        // wait asked for - a refresh that never produced a new generation now
-        // fails here instead of passing.
-        cb::Generation settled = generationBefore;
-        QVERIFY2(awaitSettledGeneration(app, cb::number(generationBefore) + 1, readiness, &settled),
-                 qPrintable(QStringLiteral(
-                                "the refreshed engine never settled on a new generation: it was "
-                                "%1 before the refresh and is %2 now. %3 | logs: %4")
-                                .arg(cb::number(generationBefore))
-                                .arg(cb::number(app.backend->generation()))
-                                .arg(report(app, subscription),
-                                     coreLog(app).join(QLatin1Char('\n')))));
-        QVERIFY2(cb::number(settled) > cb::number(generationBefore),
-                 "a refresh that replaced the engine did not advance the generation");
+        // Two engines came up over this journey, and the count above proves
+        // only one of them is still running.
+        QCOMPARE(ready.count(), 2);
 
         // ---- 5. an invalid update leaves the running engine alone ---------
         const QByteArray liveBytes = wf::readTextFile(profile.filePath);
@@ -1089,6 +1202,78 @@ class W02SubscriptionUpdateTest : public QObject {
             if (!app.backend->drain()) return false;
             const std::uint64_t now = cb::number(app.backend->generation());
             if (now == previous && now >= atLeast &&
+                app.backend->state() == cb::CoreState::Running && app.backend->isConnected()) {
+                *out = app.backend->generation();
+                return true;
+            }
+            previous = now;
+        }
+        return false;
+    }
+
+    /// Which clause of the replacement handoff is still open, or empty when the
+    /// refreshed engine has taken over.
+    ///
+    /// Every clause is something the HOST publishes about the work it is doing,
+    /// not an inference from quiet time: a readiness the incoming engine
+    /// announced under its own generation, the restart-pending flag the reload
+    /// gate itself consults, and the retention set contract section 5.1
+    /// defines. `expected` is the configuration the refresh generated, and the
+    /// retention set is compared to it EXACTLY - a retiring child's
+    /// configuration, a validation candidate and a held launch all show up
+    /// there (core_process.cpp:587-595), so "exactly this one" is the statement
+    /// that none of them is left.
+    static QString replacementGap(wf::AssembledApp &app, const ReadyLedger &ready,
+                                  cb::Generation replaced, const QString &expected) {
+        const std::optional<ReadyLedger::Entry> latest = ready.readyAfter(replaced);
+        if (!latest)
+            return QStringLiteral("no engine newer than generation %1 has answered GET /version, "
+                                  "so this process is still talking to the one the refresh "
+                                  "replaces (readiness: %2)")
+                .arg(cb::number(replaced))
+                .arg(ready.transcript());
+        if (latest->endpoint.port != wf::kGeneratedControllerPort)
+            return QStringLiteral("the replacement announced port %1, not the generated "
+                                  "controller address %2")
+                .arg(latest->endpoint.port)
+                .arg(wf::kGeneratedControllerPort);
+        if (app.backend->isRestartPending())
+            return QStringLiteral("a validation child, a held launch or a configuration parse is "
+                                  "still outstanding");
+        const QStringList active = app.backend->activeConfigPaths();
+        if (active != QStringList{expected})
+            return QStringLiteral("the host still has to keep [%1]; the refreshed configuration "
+                                  "alone is %2")
+                .arg(active.join(QLatin1Char(' ')), expected);
+        return {};
+    }
+
+    /// Waits for the refreshed engine to take over, and reports the generation
+    /// it settled on.
+    ///
+    /// The quiet window, the liveness probe and the Running/attached conditions
+    /// are awaitSettledGeneration()'s, for the reasons documented there - the
+    /// same-address reload that leaves a stale "Connection refused" behind is
+    /// exactly what a refresh produces. What this adds is WHICH engine those
+    /// conditions are about: the settle alone is satisfied by a generation that
+    /// merely stopped moving, and replacementGap() is what says the engine it
+    /// stopped moving on is the incoming one. `*gap` carries the last open
+    /// clause out for the failure message, so a budget expiry names the thing
+    /// that never happened.
+    static bool awaitReplacement(wf::AssembledApp &app, const ReadyLedger &ready,
+                                 cb::Generation replaced, const QString &expected, int budgetMs,
+                                 cb::Generation *out, QString *gap) {
+        QElapsedTimer elapsed;
+        elapsed.start();
+        std::uint64_t previous = cb::number(app.backend->generation());
+        *gap = QStringLiteral("the replacement never started");
+        while (elapsed.elapsed() < budgetMs) {
+            app.backend->refreshVersion();
+            if (!wf::drainPast(250)) return false;
+            if (!app.backend->drain()) return false;
+            const std::uint64_t now = cb::number(app.backend->generation());
+            *gap = replacementGap(app, ready, replaced, expected);
+            if (gap->isEmpty() && now == previous && now > cb::number(replaced) &&
                 app.backend->state() == cb::CoreState::Running && app.backend->isConnected()) {
                 *out = app.backend->generation();
                 return true;
