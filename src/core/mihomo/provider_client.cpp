@@ -15,10 +15,6 @@ namespace {
 
 QString basePath(bool rules) { return rules ? "/providers/rules" : "/providers/proxies"; }
 
-QString endpointKey(const Endpoint &endpoint) {
-    return endpoint.httpBase() + QChar(0) + endpoint.secret;
-}
-
 QDateTime parseDate(const QString &value) {
     auto date = QDateTime::fromString(value, Qt::ISODateWithMs);
     if (!date.isValid()) date = QDateTime::fromString(value, Qt::ISODate);
@@ -34,15 +30,22 @@ quint64 positiveNumber(const QJsonValue &value) {
 
 ProviderClient::ProviderClient(MihomoClient *client, QObject *parent)
     : QObject(parent), client_(client), network_(new QNetworkAccessManager(this)) {
-    connect(client_, &MihomoClient::endpointChanged, this, [this] {
-        ++epoch_;
-        const auto replies = network_->findChildren<QNetworkReply *>();
-        for (auto *reply : replies) reply->abort();
-    });
+    if (client_ != nullptr) client_->addSessionParticipant(this);
 }
 
-bool ProviderClient::sameEndpoint(const Endpoint &endpoint) const {
-    return endpointKey(endpoint) == endpointKey(client_->endpoint());
+ProviderClient::~ProviderClient() {
+    // The client outlives this object in MihomoBackendImpl's declaration order,
+    // so a participant that did not deregister would be retired after it died.
+    if (client_ != nullptr) client_->removeSessionParticipant(this);
+}
+
+void ProviderClient::retireSession() {
+    // The epoch moves BEFORE the abort, exactly as MihomoClient's own does:
+    // finished() can run synchronously inside abort(), and a reply retired by a
+    // bump that had not happened yet would settle as live data.
+    ++epoch_;
+    const auto replies = network_->findChildren<QNetworkReply *>();
+    for (auto *reply : replies) reply->abort();
 }
 
 QNetworkReply *ProviderClient::request(const QString &path, bool put) {
@@ -66,20 +69,24 @@ void ProviderClient::settle(const QString &key, bool superseded, const QString &
 }
 
 QString ProviderClient::fetch(bool rules) {
-    const Endpoint endpoint = client_->endpoint();
     const quint64 epoch = epoch_;
     const QString key = QString::number(epoch) + ':' + basePath(rules);
     // Coalesced, not rejected: the caller joins the outstanding operation and is
     // handed its key. Minting one id per submission would mint two and issue
-    // both, which is exactly what this set exists to prevent.
+    // both, which is exactly what this set exists to prevent. The epoch in the
+    // key is what keeps that scoped to the CURRENT session.
     if (pending_.contains(key)) return key;
     pending_.insert(key);
     emit busyChanged(true);
     auto *reply = request(basePath(rules));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, rules, endpoint, key, epoch] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, rules, key, epoch] {
         reply->deleteLater();
         finish(key);
-        if (epoch != epoch_ || !sameEndpoint(endpoint)) { settle(key, true, {}); return; }
+        // The epoch, and ONLY the epoch. Comparing the address instead - which
+        // is what the removed sameEndpoint() did - accepted a reply owed by an
+        // engine that had been replaced at the address it already held, because
+        // a replacement preserves host, port and secret exactly.
+        if (epoch != epoch_) { settle(key, true, {}); return; }
         KeyScope scope(this, key);
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {
@@ -132,7 +139,6 @@ QString ProviderClient::healthCheck(const QString &name) { return operate(false,
 
 QString ProviderClient::operate(bool rules, const QString &name, bool healthCheck) {
     if (name.isEmpty()) return {};
-    const Endpoint endpoint = client_->endpoint();
     const quint64 epoch = epoch_;
     const QString path = basePath(rules) + '/' + QString::fromLatin1(QUrl::toPercentEncoding(name)) +
                          (healthCheck ? "/healthcheck" : "");
@@ -142,10 +148,10 @@ QString ProviderClient::operate(bool rules, const QString &name, bool healthChec
     emit busyChanged(true);
     auto *reply = request(path, !healthCheck);
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, rules, name, healthCheck, endpoint, key, epoch] {
+            [this, reply, rules, name, healthCheck, key, epoch] {
         reply->deleteLater();
         finish(key);
-        if (epoch != epoch_ || !sameEndpoint(endpoint)) { settle(key, true, {}); return; }
+        if (epoch != epoch_) { settle(key, true, {}); return; }
         KeyScope scope(this, key);
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {

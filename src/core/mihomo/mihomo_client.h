@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <vector>
+
 #include <QHash>
 #include <QJsonObject>
 #include <QObject>
@@ -23,6 +26,31 @@ class MihomoClient : public QObject {
     Q_OBJECT
 
 public:
+    /// A collaborator whose own transport work belongs to this client's
+    /// SESSION rather than to its address.
+    ///
+    /// ProviderClient owns a second QNetworkAccessManager, so nothing this
+    /// class aborts reaches it, and it used to learn of an invalidation from
+    /// endpointChanged - which a replacement at the same address deliberately
+    /// does not emit. A signal is the wrong seam for it twice over: the
+    /// subscription order decides whether the participant retires before or
+    /// after the OWNER has advanced its generation, and ProviderClient is
+    /// constructed before MihomoBackendImpl connects anything. So retirement is
+    /// an explicit call made at one known point in beginSession(), after
+    /// invalidating() has been announced and BEFORE any reply is aborted.
+    class SessionParticipant {
+      public:
+        virtual ~SessionParticipant() = default;
+        /// Retires everything outstanding against the session that is ending.
+        /// It must not issue new work and must not emit anything that would
+        /// make an owner invalidate a second time.
+        virtual void retireSession() = 0;
+    };
+    /// Registered participants are retired by every session boundary, in
+    /// registration order. Neither call takes ownership.
+    void addSessionParticipant(SessionParticipant *participant);
+    void removeSessionParticipant(SessionParticipant *participant);
+
     explicit MihomoClient(QObject *parent = nullptr);
 
     /// Points this client at a controller. A DIFFERENT address retires the
@@ -39,6 +67,28 @@ public:
     /// streams. It NEVER terminates the controller - detaching is not a kill
     /// switch - and, unlike setEndpoint, it issues nothing afterwards.
     void detach();
+    /// Retires the current session WITHOUT announcing an invalidation of its
+    /// own: the caller is the owner that has ALREADY advanced its generation.
+    ///
+    /// This is what a managed start, a managed failure or a stop uses. Those
+    /// invalidate everything outstanding, but they are not client events, and
+    /// re-emitting invalidating() here would ask the owner to bump a second
+    /// time for one logical boundary - the recursive path this seam exists to
+    /// avoid. The epochs move before anything is aborted, the participants are
+    /// retired and an outstanding TUN change is cancelled.
+    ///
+    /// The STREAMS are not: a lifecycle event changes no address, and the
+    /// boundary that replaces a subscription is the attach() a new engine's
+    /// readiness produces. See the body.
+    ///
+    /// It does NOT clear the endpoint, the connected flag or the live view: a
+    /// lifecycle event decides none of those, and the snapshot re-issue its
+    /// owner owes is what re-establishes the truth.
+    void retireSession(const QString &reason);
+    /// The identity of the current transport session: monotonic, and advanced
+    /// by every boundary, including a replacement at an unchanged address that
+    /// endpointChanged() deliberately does not report.
+    quint64 sessionEpoch() const noexcept { return sessionEpoch_; }
     /// The controller this client was POINTED AT, and an invalid endpoint until
     /// something points it somewhere. It is never the discovery default on its
     /// own account: see detachedEndpoint().
@@ -132,6 +182,25 @@ signals:
     void errorOccurred(const QString &message);
 
 private:
+    /// Whether the ADDRESS moved as well as the session.
+    enum class SessionChange : std::uint8_t { Session, Endpoint };
+    /// Whether the boundary is announced to observers. Silent is the owner-
+    /// driven path (retireSession): the owner has already bumped.
+    enum class SessionAnnounce : std::uint8_t { Announce, Silent };
+    /// Whether the STREAMS belong to the session that is ending. They do on
+    /// every replacement; they do not on a plain disconnect, where the sockets
+    /// are the current session's and re-dial themselves.
+    enum class SessionStreams : std::uint8_t { Retire, Keep };
+    /// THE one invalidation path. Every boundary - endpoint change, detach,
+    /// same-address replacement, disconnect, owner-driven retirement - advances
+    /// the epochs, announces, retires the participants, cancels an outstanding
+    /// TUN change and only THEN aborts, in that order and nowhere else.
+    void beginSession(SessionChange change, SessionAnnounce announce, SessionStreams streams,
+                      const QString &reason);
+    /// Re-opens every stream whose subscription is live, on the epoch the
+    /// boundary just advanced. The pointer IS the subscription, so a stream
+    /// that was open is replaced rather than dropped.
+    void restartStreams();
     QNetworkReply *get(const QString &path);
     quint64 beginOperation();
     void settle(quint64 operation, bool superseded, const QString &error);
@@ -172,6 +241,16 @@ private:
     quint64 currentOperation_ = 0;
     quint64 endpointEpoch_ = 0;
     quint64 requestEpoch_ = 0;
+    /// Bumped by every session boundary, and what the STREAMS are gated on. It
+    /// is deliberately not endpointEpoch_: a replacement at the same address
+    /// moves the session without moving the address, and a socket gated on the
+    /// address would go on publishing the retired engine's frames as the new
+    /// session's telemetry. It is not requestEpoch_ either - that advances on a
+    /// plain disconnect, where the socket is the current session's and its own
+    /// reconnect is what heals the stream.
+    quint64 streamEpoch_ = 0;
+    quint64 sessionEpoch_ = 0;
+    std::vector<SessionParticipant *> participants_;
     bool connected_ = false;
     bool tunChangePending_ = false;
     bool tunRequested_ = false;

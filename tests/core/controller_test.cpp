@@ -260,6 +260,102 @@ private slots:
         QVERIFY(client.setTunEnabled(true) != 0);
     }
 
+    // The SAME boundary, driven by the owner instead of by an attachment.
+    //
+    // A managed start, a managed failure and a stop all invalidate outstanding
+    // work by the contract's own definition, and none of them is a client
+    // event: nothing here changes address or connectivity. retireSession() is
+    // how the owner performs that boundary, and the thing it must NOT do is
+    // announce an invalidation of its own - invalidating() is what makes the
+    // owner bump, so re-emitting it here would ask for a second bump, and a
+    // second retirement, for one logical boundary.
+    void anOwnerDrivenRetirementDoesNotAnnounceASecondInvalidation() {
+        TestController server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        core::MihomoClient client;
+        QSignalSpy invalidations(&client, &core::MihomoClient::invalidating);
+        QSignalSpy changed(&client, &core::MihomoClient::endpointChanged);
+        QSignalSpy settled(&client, &core::MihomoClient::requestSettled);
+        QSignalSpy connections(&client, &core::MihomoClient::connectedChanged);
+        QSignalSpy cleared(&client, &core::MihomoClient::trafficSample);
+        client.setEndpoint(server.endpoint());
+        QTRY_VERIFY(client.isConnected());
+
+        const int announced = invalidations.size();
+        const int endpoints = changed.size();
+        const int transitions = connections.size();
+        const int clears = cleared.size();
+        const quint64 session = client.sessionEpoch();
+
+        // What the session that is about to be retired still owes.
+        const int probes = server.paths.count("/version");
+        server.delays["/version"] = 200;
+        server.statuses["/version"] = "503 Unavailable";
+        const quint64 stale = client.fetchVersion();
+        QVERIFY(stale != 0);
+        QTRY_COMPARE(server.paths.count("/version"), probes + 1);
+
+        client.retireSession(QStringLiteral("the managed core was replaced"));
+
+        QVERIFY2(invalidations.size() == announced,
+                 "an owner-driven retirement announced an invalidation of its own: the owner "
+                 "bumps on that signal, so one boundary would become two");
+        QVERIFY2(client.sessionEpoch() > session,
+                 "the session did not move, so nothing the previous one owed was retired");
+        QVERIFY2(changed.size() == endpoints,
+                 "a lifecycle retirement published an endpoint change; it changes no address");
+        QVERIFY2(connections.size() == transitions && client.isConnected(),
+                 "a lifecycle retirement decided connectivity, which only the controller can");
+        QVERIFY2(cleared.size() == clears,
+                 "a lifecycle retirement cleared the live view instead of leaving the "
+                 "re-issue its owner owes to re-establish it");
+
+        // Retired, not dropped: one terminal event, marked, with nothing to
+        // report to anyone.
+        bool sawStale = false;
+        for (const auto &row : settled) {
+            if (row.at(0).toULongLong() != stale) continue;
+            sawStale = true;
+            QVERIFY2(row.at(1).toBool(), "a reply owed by the retired session settled as live work");
+            QVERIFY(row.at(2).toString().isEmpty());
+        }
+        QVERIFY2(sawStale, "the retired session's request never settled at all");
+
+        // And the retired reply, when it finally lands, is nobody's.
+        QTest::qWait(250);
+        QVERIFY(client.isConnected());
+        QCOMPARE(connections.size(), transitions);
+    }
+
+    void anOwnerDrivenRetirementCancelsAnOutstandingTunChange() {
+        TestController server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        server.responses["/configs"] = R"({"mode":"rule","tun":{"enable":false}})";
+        server.responses["PATCH /configs"] = {};
+        server.statuses["PATCH /configs"] = "204 No Content";
+        server.delays["PATCH /configs"] = 180;
+        core::MihomoClient client;
+        QSignalSpy completed(&client, &core::MihomoClient::tunChangeFinished);
+        client.setEndpoint(server.endpoint());
+        QTRY_VERIFY(client.isConnected());
+        QVERIFY(client.setTunEnabled(true) != 0);
+        QTRY_VERIFY(std::any_of(server.requests.cbegin(), server.requests.cend(),
+                                [](const QByteArray &request) {
+                                    return request.startsWith("PATCH /configs ");
+                                }));
+
+        client.retireSession(QStringLiteral("the managed core failed"));
+        // Exactly once, and as a cancellation rather than as a protocol error
+        // the engine never committed: the adapter classifies it by the fact of
+        // the retirement, never by this text.
+        QCOMPARE(completed.size(), 1);
+        QVERIFY(!client.isTunChangePending());
+        QVERIFY(completed.first().at(2).toString().contains("failed"));
+        QTest::qWait(230);
+        QCOMPARE(completed.size(), 1);
+        QVERIFY(client.setTunEnabled(true) != 0);
+    }
+
     void nestedGroupsRemainNodes() {
         TestController server;
         QVERIFY(server.listen(QHostAddress::LocalHost));

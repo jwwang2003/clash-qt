@@ -7,14 +7,13 @@
 #include <QSet>
 #include <QVector>
 
+#include "core/mihomo/mihomo_client.h"
 #include "core/types.h"
 
 class QNetworkAccessManager;
 class QNetworkReply;
 
 namespace core {
-
-class MihomoClient;
 
 struct Provider {
     QString name;
@@ -28,17 +27,38 @@ struct Provider {
     QDateTime expires;
 };
 
-class ProviderClient : public QObject {
+/// Provider REST, on a network manager of its OWN.
+///
+/// That second manager is why this class is a session participant rather than a
+/// listener: nothing MihomoClient aborts reaches these replies, and the signal
+/// it used to listen to - endpointChanged - is deliberately not emitted when an
+/// engine is replaced at the address it already held. Its epoch therefore never
+/// moved across a replacement, so a retired reply settled as live data, and a
+/// fetch submitted afterwards coalesced onto the request the retired process
+/// owed and issued nothing at all.
+class ProviderClient : public QObject, public MihomoClient::SessionParticipant {
     Q_OBJECT
 
 public:
     explicit ProviderClient(MihomoClient *client, QObject *parent = nullptr);
+    ~ProviderClient() override;
+
+    /// Every operation outstanding against the session that is ending is
+    /// abandoned, and the coalescing epoch moves first, so a submission made
+    /// afterwards cannot join one of them. Called by MihomoClient at the one
+    /// point in a boundary where it is safe (see beginSession); it issues
+    /// nothing and announces nothing, because the owner has already bumped.
+    void retireSession() override;
 
     // Each call returns the COALESCING key of the operation it now shares.
     // pending_ is keyed by (epoch, operation identity), not by submission: an
-    // identical operation already outstanding under the same epoch issues
+    // identical operation already outstanding under the SAME epoch issues
     // nothing and mints nothing, and the caller is told which outstanding
     // operation it joined. Empty means nothing was submitted at all.
+    //
+    // The epoch is the session's, never the address: a duplicate coalesces only
+    // onto work of the CURRENT session, and the first submission after a
+    // boundary always issues.
     QString fetch(bool rules);
     QString update(bool rules, const QString &name);
     QString healthCheck(const QString &name);
@@ -58,7 +78,6 @@ signals:
 
 private:
     QNetworkReply *request(const QString &path, bool put = false);
-    bool sameEndpoint(const Endpoint &endpoint) const;
     void finish(const QString &key);
     void settle(const QString &key, bool superseded, const QString &error);
     QString operate(bool rules, const QString &name, bool healthCheck);

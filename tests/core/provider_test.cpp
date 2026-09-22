@@ -105,6 +105,68 @@ private slots:
         QTRY_COMPARE(errors.size(), 2);
     }
 
+    // The address is not the session.
+    //
+    // ProviderClient used to learn of an invalidation from
+    // MihomoClient::endpointChanged, which a replacement at an unchanged
+    // address deliberately does not emit, and its reply guard then compared
+    // the ADDRESS - which a replacement preserves exactly. So its epoch never
+    // moved across a replacement: the retired process's reply was accepted as
+    // live data, and a fetch submitted afterwards was handed the retired
+    // request's key and issued nothing at all.
+    void aReplacementAtTheSameAddressRetiresProviderWork() {
+        ProviderServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        server.responses["/providers/proxies"] =
+            R"({"providers":{"obsolete":{"vehicleType":"HTTP"}}})";
+        server.delays["/providers/proxies"] = 250;
+        core::MihomoClient client;
+        const core::Endpoint endpoint{"127.0.0.1", server.serverPort(), "secret"};
+        client.setEndpoint(endpoint);
+        core::ProviderClient providers(&client);
+        QSignalSpy settled(&providers, &core::ProviderClient::requestSettled);
+        QSignalSpy errors(&providers, &core::ProviderClient::errorOccurred);
+        QStringList received;
+        connect(&providers, &core::ProviderClient::providersReceived, this,
+                [&](bool, const auto &items) { if (!items.isEmpty()) received << items.first().name; });
+
+        const auto issued = [&] {
+            int count = 0;
+            for (const QByteArray &request : server.requests)
+                if (request.startsWith("GET /providers/proxies HTTP/")) ++count;
+            return count;
+        };
+        const QString retired = providers.fetch(false);
+        QVERIFY(!retired.isEmpty());
+        QTRY_COMPARE(issued(), 1);
+
+        // The engine behind the address is replaced: byte-identical endpoint,
+        // a different process.
+        client.setEndpoint(endpoint);
+        server.responses["/providers/proxies"] = R"({"providers":{"fresh":{"vehicleType":"HTTP"}}})";
+        server.delays["/providers/proxies"] = 0;
+
+        const QString fresh = providers.fetch(false);
+        QVERIFY2(fresh != retired,
+                 "a fetch submitted after the replacement was handed the key of the request "
+                 "the RETIRED process owed");
+        QTRY_COMPARE(issued(), 2);
+        QTRY_COMPARE(received, QStringList{"fresh"});
+
+        // The retired reply is still on its way, and belongs to nobody.
+        QTest::qWait(300);
+        QCOMPARE(received, QStringList{"fresh"});
+        QCOMPARE(errors.size(), 0);
+        bool sawRetired = false;
+        for (const auto &row : settled) {
+            if (row.at(0).toString() != retired) continue;
+            sawRetired = true;
+            QVERIFY2(row.at(1).toBool(), "the retired provider reply settled as live work");
+            QVERIFY(row.at(2).toString().isEmpty());
+        }
+        QVERIFY2(sawRetired, "the retired provider request never settled at all");
+    }
+
     void staleResponseIsIgnoredWhenReturningToSameEndpoint() {
         ProviderServer first, second;
         QVERIFY(first.listen(QHostAddress::LocalHost));

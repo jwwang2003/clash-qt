@@ -95,6 +95,13 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     /// which is where a module factory already is.
     std::uint64_t producedSequence() const noexcept { return sequence_; }
     std::uint64_t deliverySequence() const noexcept { return deliveringSequence_; }
+
+    /// Runnables this backend has submitted to a pool it OWNS and not yet seen
+    /// exit. Published for the same reason the two sequences above are: across
+    /// a module boundary the consumer has to know whether code in the module's
+    /// image is still executing before it unmaps that image, and no published
+    /// backend-r4 operation can tell it. Nothing in the facade changes.
+    int pendingNativeWork() const noexcept { return process_.pendingNativeWork(); }
     /// Readiness-probe completions delivered after their probe was cancelled.
     /// Contract section 5.2 requires the probe to disconnect before aborting, so
     /// this must always be 0; published here because the rule is otherwise
@@ -250,6 +257,20 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     // identity
     cb::RequestId nextRequest() noexcept;
     void bumpGeneration() noexcept;
+    /// The other half of every bump this class makes ITSELF - a managed start,
+    /// a managed failure, a stop. Those invalidate outstanding work by the
+    /// contract's own definition (section 2), but they are not client events,
+    /// so nothing used to retire the work: a reply or a provider operation the
+    /// collaborators still owed settled Ok, carrying the retired session's
+    /// payload, under a generation that had already moved.
+    ///
+    /// It calls MihomoClient::retireSession(), which does NOT emit
+    /// invalidating(): that signal is what makes this class bump, and
+    /// re-entering the bump from inside the retirement it caused is the
+    /// recursive path this seam exists to avoid. The bump has already happened
+    /// when this runs, so every completion the retirement produces is stamped
+    /// against the new generation and marked Superseded.
+    void retireTransport(const QString &reason);
     /// Contract obligation that comes with ONE global generation: a bump that is
     /// not an endpoint change re-issues the snapshot set, because fetchRules and
     /// fetchConfigs have no recovery poll.
@@ -259,8 +280,11 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
                              const QString &second = {}, bool flag = false);
     void capture(Kind kind, const std::function<void(Payload &)> &fill);
     void settleRest(quint64 operation, bool superseded, const QString &error);
-    void publish(const Pending &request, cb::CompletionStatus status, const cb::ErrorInfo &error,
-                 const Payload &payload);
+    /// `requested` is what the collaborator settled; the status actually
+    /// published is downgraded to Superseded when the request's own generation
+    /// has been left behind, so no path can publish retired work as Ok.
+    void publish(const Pending &request, cb::CompletionStatus requested,
+                 const cb::ErrorInfo &error, const Payload &payload);
     void publishProviderBusy();
 
     cb::Ownership ownershipOf(const Endpoint &endpoint) const;

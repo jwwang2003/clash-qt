@@ -41,51 +41,52 @@ Endpoint MihomoClient::detachedEndpoint() {
     return endpoint;
 }
 
-void MihomoClient::setEndpoint(const Endpoint &endpoint) {
-    if (endpoint_.host == endpoint.host && endpoint_.port == endpoint.port &&
-        endpoint_.secret == endpoint.secret) {
-        // The same controller ADDRESS, and a new session on it: a reload rebinds
-        // the replacement engine to the port the retired one held, so every
-        // reply still owed by that address is owed by a process that has gone.
-        // Left "current", those replies land AFTER the replacement has answered
-        // - a refused connection then calls setConnected(false) and clears the
-        // live view the new session just populated, and the UI reports a healthy
-        // engine as disconnected until the next poll.
-        //
-        // The REQUESTS moved on, not the attachment, so requestEpoch_ is what
-        // advances: the endpoint is unchanged and publishing endpointChanged for
-        // it would be a lie. Bump, announce, THEN abort, for the reason spelled
-        // out below - and finish any outstanding TUN change immediately after
-        // invalidating(), which is what lets a consumer classify the
-        // cancellation as a supersession instead of matching on its text.
-        ++requestEpoch_;
-        emit invalidating();
-        finishTunChange(lastTunEnabled_,
-                        tr("TUN change cancelled because the controller was replaced."));
-        lastTunEnabled_ = false;
-        for (auto *reply : network_->findChildren<QNetworkReply *>())
-            if (reply->isRunning()) reply->abort();
-        // Neither connected_ nor the live view is cleared: the replacement is
-        // reachable at the address we are already on, and refreshState() - the
-        // re-issue this path owes - is what confirms or denies it. The streams
-        // are left to their own reconnect, which re-dials the same address.
-        refreshState();
+void MihomoClient::addSessionParticipant(SessionParticipant *participant) {
+    if (participant == nullptr) return;
+    if (std::find(participants_.begin(), participants_.end(), participant) != participants_.end())
         return;
-    }
-    ++endpointEpoch_;
-    // Bump, announce, THEN abort. finished() may run synchronously inside
-    // abort(), so an observer told afterwards would already have accepted the
-    // very reply the bump was meant to discard.
-    emit invalidating();
-    finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller changed."));
+    participants_.push_back(participant);
+}
+
+void MihomoClient::removeSessionParticipant(SessionParticipant *participant) {
+    const auto it = std::find(participants_.begin(), participants_.end(), participant);
+    if (it != participants_.end()) participants_.erase(it);
+}
+
+void MihomoClient::beginSession(SessionChange change, SessionAnnounce announce,
+                                SessionStreams streams, const QString &reason) {
+    // 1. THE EPOCHS MOVE FIRST, before anything is announced and long before
+    //    anything is aborted. finished() may run synchronously inside abort(),
+    //    so a reply retired by a bump that had not happened yet would be
+    //    accepted as live - the ordering rule section 2 of the contract calls
+    //    mandatory, and the reason this function exists as one place.
+    ++sessionEpoch_;
+    ++requestEpoch_;
+    if (change == SessionChange::Endpoint) ++endpointEpoch_;
+    if (streams == SessionStreams::Retire) ++streamEpoch_;
+    // 2. The owner learns of the boundary and advances ITS generation, so
+    //    everything that follows is already stamped by the new one. Silent is
+    //    the path where the owner is what called us.
+    if (announce == SessionAnnounce::Announce) emit invalidating();
+    // 3. The participants retire their own outstanding work. They own network
+    //    managers this class cannot reach, and they must be retired before any
+    //    abort here can deliver a completion.
+    for (SessionParticipant *participant : participants_) participant->retireSession();
+    // 4. The confirmed TUN change is cancelled as a SUPERSESSION rather than
+    //    left to time out or to be classified by the text of its message.
+    finishTunChange(lastTunEnabled_, reason);
     lastTunEnabled_ = false;
-    endpoint_ = endpoint;
-    // Abort after changing the epoch: finished() may run synchronously in abort().
+    // 5. Only now.
     for (auto *reply : network_->findChildren<QNetworkReply *>())
         if (reply->isRunning()) reply->abort();
-    setConnected(false);
-    clearLiveState();
-    emit endpointChanged();
+}
+
+void MihomoClient::restartStreams() {
+    // The pointer IS the subscription (see openStream), so a live stream is
+    // replaced rather than dropped: closeStream disconnects this object from
+    // the retired socket first, which is what stops a frame or a drop owed by
+    // the retired session from reaching the replacement's handlers at all. The
+    // epoch the boundary advanced is the second line of defence behind it.
     if (trafficSocket_) {
         closeTrafficStream();
         openTrafficStream();
@@ -103,17 +104,69 @@ void MihomoClient::setEndpoint(const Endpoint &endpoint) {
         closeMemoryStream();
         openMemoryStream();
     }
+}
+
+void MihomoClient::retireSession(const QString &reason) {
+    // The STREAMS are kept, and deliberately.
+    //
+    // A lifecycle bump changes no address: the sockets belong to the
+    // attachment, which is exactly where it was. The boundary that replaces
+    // them is the attach() that follows a managed core's readiness - a
+    // replacement at the address the retired engine held - and that is where
+    // the hazard actually lives, because that is the moment a DIFFERENT
+    // process starts answering at the same port. Retiring them here as well
+    // would close and re-dial a live subscription on every start, stop and
+    // failure, which is work a shutdown pays for and which changes nothing a
+    // consumer can observe.
+    beginSession(SessionChange::Session, SessionAnnounce::Silent, SessionStreams::Keep, reason);
+}
+
+void MihomoClient::setEndpoint(const Endpoint &endpoint) {
+    if (endpoint_.host == endpoint.host && endpoint_.port == endpoint.port &&
+        endpoint_.secret == endpoint.secret) {
+        // The same controller ADDRESS, and a new session on it: a reload rebinds
+        // the replacement engine to the port the retired one held, so every
+        // reply still owed by that address is owed by a process that has gone.
+        // Left "current", those replies land AFTER the replacement has answered
+        // - a refused connection then calls setConnected(false) and clears the
+        // live view the new session just populated, and the UI reports a healthy
+        // engine as disconnected until the next poll.
+        //
+        // The REQUESTS and the STREAMS moved on, not the attachment, so the
+        // endpoint epoch is what stays put: publishing endpointChanged for an
+        // endpoint that did not change would be a lie, and the physical address
+        // is not what identifies a session. beginSession does the rest in the
+        // one order that is safe.
+        beginSession(SessionChange::Session, SessionAnnounce::Announce, SessionStreams::Retire,
+                     tr("TUN change cancelled because the controller was replaced."));
+        // The sockets belong to the process that has gone. Left running they
+        // are the live subscription: their frames would be published as the
+        // REPLACEMENT's telemetry - no consumer rule can reject those, they are
+        // stamped with the current generation - and their eventual death would
+        // report the healthy replacement as disconnected and clear the view it
+        // had just populated. Replaced, not dropped: the subscription survives
+        // and re-dials the address we are still on.
+        restartStreams();
+        // Neither connected_ nor the live view is cleared: the replacement is
+        // reachable at the address we are already on, and refreshState() - the
+        // re-issue this path owes - is what confirms or denies it.
+        refreshState();
+        return;
+    }
+    beginSession(SessionChange::Endpoint, SessionAnnounce::Announce, SessionStreams::Retire,
+                 tr("TUN change cancelled because the controller changed."));
+    endpoint_ = endpoint;
+    setConnected(false);
+    clearLiveState();
+    emit endpointChanged();
+    restartStreams();
     refreshState();
 }
 
 void MihomoClient::detach() {
-    ++endpointEpoch_;
-    emit invalidating();
-    finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller changed."));
-    lastTunEnabled_ = false;
+    beginSession(SessionChange::Endpoint, SessionAnnounce::Announce, SessionStreams::Retire,
+                 tr("TUN change cancelled because the controller changed."));
     endpoint_ = detachedEndpoint();
-    for (auto *reply : network_->findChildren<QNetworkReply *>())
-        if (reply->isRunning()) reply->abort();
     setConnected(false);
     clearLiveState();
     closeTrafficStream();
@@ -146,13 +199,14 @@ void MihomoClient::setConnected(bool connected) {
     if (connected_ == connected) return;
     connected_ = connected;
     if (!connected) {
-        emit invalidating();
-        finishTunChange(lastTunEnabled_, tr("TUN change cancelled because the controller disconnected. Its state could not be confirmed."));
-        lastTunEnabled_ = false;
-        // An old in-flight snapshot must not repopulate the just-cleared offline UI.
-        ++requestEpoch_;
-        for (auto *reply : network_->findChildren<QNetworkReply *>())
-            if (reply->isRunning()) reply->abort();
+        // An old in-flight snapshot must not repopulate the just-cleared
+        // offline UI. The STREAMS are kept: this is not a replacement, the
+        // sockets are this session's own, and their reconnect is what heals
+        // them - gating them on an epoch that moved here would leave a
+        // recovered stream permanently ignored.
+        beginSession(SessionChange::Session, SessionAnnounce::Announce, SessionStreams::Keep,
+                     tr("TUN change cancelled because the controller disconnected. Its state "
+                        "could not be confirmed."));
         clearLiveState();
     }
     emit connectedChanged(connected);
@@ -745,24 +799,33 @@ QWebSocket *MihomoClient::openStream(const QString &path,
         *backoff = std::min(*backoff * 2, kReconnectMaxMs);
     };
 
-    const quint64 epoch = endpointEpoch_;
+    // THE SESSION, NOT THE ADDRESS.
+    //
+    // This used to be endpointEpoch_, which a replacement at the same address
+    // does not move - so a frame written by the engine that had gone was
+    // published as the REPLACEMENT's telemetry, stamped with the replacement's
+    // own generation, where no consumer rule can reject it. The same gate let
+    // the retired socket's death run setConnected(false) and clear the view the
+    // replacement had just populated. Every boundary that retires the streams
+    // moves this epoch, and it moves BEFORE the sockets are replaced.
+    const quint64 epoch = streamEpoch_;
     connect(socket, &QWebSocket::textMessageReceived, this,
             [this, handler, epoch](const QString &message) {
-                if (epoch == endpointEpoch_) (this->*handler)(message);
+                if (epoch == streamEpoch_) (this->*handler)(message);
             });
     connect(socket, &QWebSocket::connected, this, [this, backoff, epoch, path] {
         *backoff = kReconnectMinMs;
-        if (epoch == endpointEpoch_ && path == "/traffic") refreshState();
+        if (epoch == streamEpoch_ && path == "/traffic") refreshState();
     });
     connect(socket, &QWebSocket::disconnected, this, [this, path, epoch, reconnect] {
-        if (epoch != endpointEpoch_) return;
+        if (epoch != streamEpoch_) return;
         if (path == "/traffic") setConnected(false);
         if (path == "/connections") emit connectionsUpdated({}, 0, 0);
         reconnect();
     });
     connect(socket, &QWebSocket::errorOccurred, this,
             [this, socket, path, epoch, reconnect](QAbstractSocket::SocketError) {
-                if (epoch != endpointEpoch_) return;
+                if (epoch != streamEpoch_) return;
                 if (path == "/traffic") setConnected(false);
                 emit errorOccurred(tr("Stream %1 failed: %2").arg(path, socket->errorString()));
                 reconnect();

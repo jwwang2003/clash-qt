@@ -103,6 +103,23 @@ void aFailedValidationLeavesTheRunningConfigurationIntact(BackendDriver &driver)
 /// (backend-r2, answer 1).
 void aDuplicateProviderRequestIsCoalesced(BackendDriver &driver);
 
+/// Attaching to the address we are ALREADY on is a session boundary, not a
+/// no-op: a reload rebinds the replacement engine to the port the retired one
+/// held, so the physical address is not what identifies a session. The
+/// generation moves, everything the retired session owed is marked Superseded
+/// and carries no payload, and a submission made afterwards gets an id of its
+/// own and is really issued - it may not coalesce onto work the retired process
+/// owed. What must NOT happen is an endpointChanged for an endpoint that did
+/// not change, or a connected/live-state clear the replacement would undo.
+void aReplacementAtTheSameAddressOpensANewSession(BackendDriver &driver);
+
+/// A generation bump that is not a client event at all - a managed start, a
+/// failure, a stop - retires outstanding work just as an endpoint change does:
+/// REST and provider completions owed under the generation it left behind are
+/// Superseded with no payload, a submission made after it cannot coalesce onto
+/// them, and a duplicate of the CURRENT generation still coalesces.
+void aLifecycleBumpRetiresOutstandingWork(BackendDriver &driver);
+
 /// The TUN completion reports what the controller says afterwards, not what
 /// was asked for - in both directions. No real TUN device is ever created: the
 /// read-back is a loopback fixture's answer or a staged one.

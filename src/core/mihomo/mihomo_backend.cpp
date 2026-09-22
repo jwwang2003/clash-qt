@@ -369,8 +369,12 @@ void MihomoBackendImpl::connectCollaborators() {
         });
     });
     QObject::connect(&process_, &CoreProcess::failed, context, [this](const QString &reason) {
-        // A managed failure invalidates outstanding work.
+        // A managed failure invalidates outstanding work. A failed validation
+        // reaches this same handler, and it is a bump like any other: whatever
+        // the retired session still owed is retired with it.
         bumpGeneration();
+        retireTransport(QCoreApplication::translate(
+            "core::MihomoBackend", "TUN change cancelled because the managed core failed."));
         scheduleSnapshotReissue();
         const cb::Completion completion = completionFor(
             startRequest_, generation_, cb::CompletionStatus::Failed,
@@ -564,6 +568,18 @@ void MihomoBackendImpl::bumpGeneration() noexcept {
     generation_ = static_cast<cb::Generation>(cb::number(generation_) + 1);
 }
 
+void MihomoBackendImpl::retireTransport(const QString &reason) {
+    // backend-r3 B2 on the silent path. MihomoClient cancels an outstanding TUN
+    // change inside retireSession() exactly as it does on the three signalling
+    // paths, and recording it HERE is what classifies that cancellation as a
+    // supersession rather than as a protocol error the engine never committed.
+    if (tunRequest_ != cb::RequestId::Invalid) tunSuperseded_ = true;
+    // The client retires its own replies, its streams and every registered
+    // participant - ProviderClient owns a second network manager, so its work
+    // is reachable no other way.
+    client_.retireSession(reason);
+}
+
 void MihomoBackendImpl::scheduleSnapshotReissue() {
     if (snapshotReissueScheduled_) return;
     snapshotReissueScheduled_ = true;
@@ -646,10 +662,30 @@ void MihomoBackendImpl::settleRest(quint64 operation, bool superseded, const QSt
     publish(request, status, reported, payload);
 }
 
-void MihomoBackendImpl::publish(const Pending &request, cb::CompletionStatus status,
+void MihomoBackendImpl::publish(const Pending &request, cb::CompletionStatus requested,
                                 const cb::ErrorInfo &error, const Payload &payload) {
+    // A2, enforced HERE rather than trusted from the collaborator that settled.
+    //
+    // A completion submitted under a generation this class has since left is
+    // superseded by definition (section 2), whatever the collaborator made of
+    // it. Deriving the mark solely from the collaborator's own flag was how a
+    // bump that was not a client event - a managed start, a failure, a stop -
+    // published the retired session's payload as live data: the collaborator
+    // had nothing to compare against, because its own epoch had not moved.
+    // Retiring the transport (retireTransport) is what makes this rare; this is
+    // what makes it impossible.
+    const bool stale = cb::isSuperseded(request.generation, generation_);
+    const cb::CompletionStatus status =
+        (requested == cb::CompletionStatus::Ok && stale) ? cb::CompletionStatus::Superseded
+                                                         : requested;
+    const cb::ErrorInfo reported =
+        status == requested
+            ? error
+            : cb::ErrorInfo{cb::ErrorCode::Superseded,
+                            QCoreApplication::translate("core::MihomoBackend",
+                                                        "the generation moved on")};
     const cb::Completion completion =
-        completionFor(request.id, request.generation, status, error);
+        completionFor(request.id, request.generation, status, reported);
     const bool ok = status == cb::CompletionStatus::Ok;
     // A completion that is not Ok carries no payload: empty, never stale.
     const Kind kind = request.kind != Kind::Unknown ? request.kind
@@ -794,8 +830,12 @@ bool MihomoBackendImpl::usesPrivilegedService() const noexcept {
 cb::RequestId MihomoBackendImpl::start(const QString &configPath, const QString &workDir) noexcept {
     MutationScope guard(this);
     // A managed start invalidates outstanding work, so the bump precedes it and
-    // the snapshot set is re-issued afterwards.
+    // the snapshot set is re-issued afterwards. The retirement is what makes
+    // the invalidation real: without it the completions owed under the previous
+    // generation still arrived Ok, carrying the previous session's data.
     bumpGeneration();
+    retireTransport(QCoreApplication::translate(
+        "core::MihomoBackend", "TUN change cancelled because a managed core was started."));
     startRequest_ = nextRequest();
     startGeneration_ = generation_;
     const cb::RequestId request = startRequest_;
@@ -807,6 +847,8 @@ cb::RequestId MihomoBackendImpl::start(const QString &configPath, const QString 
 cb::RequestId MihomoBackendImpl::stop() noexcept {
     MutationScope guard(this);
     bumpGeneration();
+    retireTransport(QCoreApplication::translate(
+        "core::MihomoBackend", "TUN change cancelled because the core was stopped."));
     stopRequest_ = nextRequest();
     stopGeneration_ = generation_;
     process_.stop();

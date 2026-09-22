@@ -618,6 +618,177 @@ void aDuplicateProviderRequestIsCoalesced(BackendDriver &driver) {
     QVERIFY(backend.removeObserver(&observer));
 }
 
+// ----------------------------------------------------- the session boundary
+
+namespace {
+
+/// Asserts that `request` was retired: MARKED Superseded (A2), carrying no
+/// payload, and turned away by a conforming consumer. `what` names the
+/// boundary, so a failure says which one did not retire it.
+///
+/// `emptyPayload` is what "no payload" LOOKS like on that channel, because the
+/// observer records a span as its size: an emptied provider list is "0" and an
+/// emptied version is the empty string. The version channel is where the
+/// payload discriminates - it carries distinctive staged text - and the
+/// provider channel's evidence is the mark and the admission, since both
+/// worlds answer a provider fetch with an empty set.
+void assertRetired(const Observer &observer, const QString &channel, cb::RequestId request,
+                   const QString &emptyPayload, const char *what) {
+    const Observer::Record *record = observer.find(channel, request);
+    QVERIFY2(record != nullptr,
+             qPrintable(QStringLiteral("%1: nothing on %2 ever completed request %3. %4")
+                            .arg(QString::fromLatin1(what), channel)
+                            .arg(cb::number(request))
+                            .arg(observer.digest())));
+    QVERIFY2(record->completion.status == cb::CompletionStatus::Superseded,
+             qPrintable(QStringLiteral("%1: work owed by the retired session settled as live "
+                                       "data on %2 (status %3)")
+                            .arg(QString::fromLatin1(what), channel)
+                            .arg(static_cast<int>(record->completion.status))));
+    QVERIFY2(record->payload == emptyPayload,
+             qPrintable(QStringLiteral("%1: a retired completion carried a payload (%2): the "
+                                       "previous session's data was published as the new "
+                                       "session's")
+                            .arg(QString::fromLatin1(what), record->payload)));
+    QVERIFY2(!record->admitted,
+             qPrintable(QStringLiteral("%1: a conforming consumer would have acted on retired "
+                                       "work")
+                            .arg(QString::fromLatin1(what))));
+}
+
+/// Waits for `request` to complete on `channel` at all, retired or not.
+bool settled(BackendDriver &driver, const Observer &observer, const QString &channel,
+             cb::RequestId request) {
+    return driver.waitUntil(
+        [&] { return observer.find(channel, request) != nullptr; });
+}
+
+const QString kProvidersRules = QStringLiteral("providers/rules");
+const QString kVersion = QStringLiteral("version");
+
+}  // namespace
+
+void aReplacementAtTheSameAddressOpensANewSession(BackendDriver &driver) {
+    cb::MihomoBackend &backend = driver.backend();
+    QVERIFY(driver.stageVersion(0, distinctiveText(QStringLiteral("retired"))));
+    QVERIFY(attachAndConnect(driver, 0));
+
+    Observer observer(&driver);
+    QVERIFY(backend.addObserver(&observer));
+    QVERIFY(driver.hold(Channel::Providers));
+    QVERIFY(driver.hold(Channel::Version));
+
+    // What the engine that is about to be replaced still owes.
+    const cb::RequestId retiredProviders = backend.fetchProviders(true);
+    const cb::RequestId retiredVersion = backend.refreshVersion();
+    QVERIFY(retiredProviders != cb::RequestId::Invalid);
+    QVERIFY(retiredVersion != cb::RequestId::Invalid);
+
+    const cb::Generation before = backend.generation();
+    const std::size_t addresses = observer.endpoints.size();
+    const int clears = observer.liveStateClears;
+    const std::size_t transitions = observer.connects.size();
+
+    // The engine is replaced at the host, port and secret it already held.
+    backend.attach(driver.controller(0));
+    QVERIFY2(backend.generation() > before,
+             "re-attaching to a replaced engine left the generation where it was: physical "
+             "address equality was treated as session identity, so nothing the retired "
+             "process owed was invalidated");
+
+    // A submission made NOW belongs to the new session. It may not join work
+    // the retired process owed, and it must really be ISSUED - a coalesced
+    // no-op would hand back an id that never settles again.
+    const cb::RequestId freshProviders = backend.fetchProviders(true);
+    QVERIFY2(freshProviders != cb::RequestId::Invalid,
+             "the new session could not submit a provider fetch at all");
+    QVERIFY2(freshProviders != retiredProviders,
+             "a fetch submitted after the replacement was coalesced onto the request the "
+             "RETIRED process owed: it issued nothing, and the caller was handed the id of "
+             "work that is already dead");
+    // A duplicate of the CURRENT generation still coalesces: the boundary
+    // narrows the coalescing window, it does not remove it.
+    QCOMPARE(backend.fetchProviders(true), freshProviders);
+
+    QVERIFY(driver.release(Channel::Providers));
+    QVERIFY(driver.release(Channel::Version));
+    QVERIFY2(settled(driver, observer, kProvidersRules, retiredProviders),
+             qPrintable(QStringLiteral("the retired provider request never settled. %1")
+                            .arg(driver.describe())));
+    QVERIFY2(settled(driver, observer, kVersion, retiredVersion),
+             qPrintable(QStringLiteral("the retired version request never settled. %1")
+                            .arg(driver.describe())));
+    QVERIFY2(settled(driver, observer, kProvidersRules, freshProviders),
+             qPrintable(QStringLiteral("the fetch submitted after the replacement never "
+                                       "settled, so nothing was issued for it. %1")
+                            .arg(driver.describe())));
+
+    assertRetired(observer, kProvidersRules, retiredProviders, QStringLiteral("0"),
+                  "same-address replacement");
+    assertRetired(observer, kVersion, retiredVersion, QString(), "same-address replacement");
+    const Observer::Record *fresh = observer.find(kProvidersRules, freshProviders);
+    QVERIFY(fresh != nullptr);
+    QVERIFY2(fresh->completion.status == cb::CompletionStatus::Ok,
+             "the new session's own fetch did not settle as live work");
+    QVERIFY2(fresh->admitted, "a conforming consumer would have rejected the new session's "
+                              "own completion");
+
+    // The address did not change, and the replacement is reachable at it.
+    QVERIFY2(observer.endpoints.size() == addresses,
+             "an endpoint that did not change was published as an endpoint change");
+    QVERIFY2(observer.connects.size() == transitions,
+             "a replacement at the same address reported the live session as disconnected");
+    QVERIFY2(observer.liveStateClears == clears,
+             "a replacement at the same address cleared the live view it had just inherited");
+    QVERIFY(backend.isConnected());
+    QVERIFY(backend.removeObserver(&observer));
+}
+
+void aLifecycleBumpRetiresOutstandingWork(BackendDriver &driver) {
+    cb::MihomoBackend &backend = driver.backend();
+    QVERIFY(driver.stageVersion(0, distinctiveText(QStringLiteral("before-the-bump"))));
+    QVERIFY(attachAndConnect(driver, 0));
+
+    Observer observer(&driver);
+    QVERIFY(backend.addObserver(&observer));
+    QVERIFY(driver.hold(Channel::Providers));
+    QVERIFY(driver.hold(Channel::Version));
+
+    const cb::RequestId retiredProviders = backend.fetchProviders(true);
+    const cb::RequestId retiredVersion = backend.refreshVersion();
+    QVERIFY(retiredProviders != cb::RequestId::Invalid);
+    QVERIFY(retiredVersion != cb::RequestId::Invalid);
+    const cb::Generation before = backend.generation();
+
+    // A managed stop is a generation bump that no client event announces. The
+    // collaborators behind a real backend have no epoch of their own that
+    // moves here, which is exactly why this was the hole: their completions
+    // arrived Ok, carrying the previous session's payload, under a generation
+    // the backend had already left.
+    backend.stop();
+    QVERIFY2(backend.generation() > before, "a managed stop did not bump the generation");
+
+    const cb::RequestId freshProviders = backend.fetchProviders(true);
+    QVERIFY2(freshProviders != retiredProviders,
+             "a fetch submitted after a lifecycle bump was coalesced onto work of the "
+             "generation that bump retired");
+    QCOMPARE(backend.fetchProviders(true), freshProviders);
+
+    QVERIFY(driver.release(Channel::Providers));
+    QVERIFY(driver.release(Channel::Version));
+    QVERIFY2(settled(driver, observer, kProvidersRules, retiredProviders),
+             qPrintable(QStringLiteral("the retired provider request never settled. %1")
+                            .arg(driver.describe())));
+    QVERIFY2(settled(driver, observer, kVersion, retiredVersion),
+             qPrintable(QStringLiteral("the retired version request never settled. %1")
+                            .arg(driver.describe())));
+
+    assertRetired(observer, kProvidersRules, retiredProviders, QStringLiteral("0"),
+                  "managed stop");
+    assertRetired(observer, kVersion, retiredVersion, QString(), "managed stop");
+    QVERIFY(backend.removeObserver(&observer));
+}
+
 // -------------------------------------------------------------------- TUN
 
 void theTunCompletionIsAReadBackNotAnEcho(BackendDriver &driver) {

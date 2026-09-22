@@ -100,6 +100,17 @@ class Recorder final : public cb::BackendObserver {
     std::vector<bool> connections;
     struct StateEvent { cb::Generation generation; cb::CoreState state; cb::Ownership ownership; };
     std::vector<StateEvent> states;
+    /// Every traffic sample, with the generation it was stamped with. A stream
+    /// frame completes no request, so it arrives on no completion channel and
+    /// the only thing that can say which SESSION produced it is the number in
+    /// the frame itself.
+    struct Sample { cb::Generation generation; quint64 up; quint64 down; };
+    std::vector<Sample> samples;
+    bool sawSample(quint64 up) const {
+        for (const Sample &sample : samples)
+            if (sample.up == up) return true;
+        return false;
+    }
     int callbackCount = 0;
     int stoppedCount = 0;
     int liveStateClears = 0;
@@ -196,6 +207,10 @@ class Recorder final : public cb::BackendObserver {
     void errorOccurred(const cb::Completion &completion) noexcept override {
         note(completion.generation);
         failures.push_back(completion);
+    }
+    void trafficSample(cb::Generation generation, quint64 up, quint64 down) noexcept override {
+        note(generation);
+        samples.push_back({generation, up, down});
     }
 
   private:
@@ -519,6 +534,118 @@ class BackendRealContractTest : public QObject {
         }));
         QVERIFY(backend.isConnected());
         QCOMPARE(observer.connections.size(), transitions);
+        QVERIFY(!controller.sawUnexpectedRequest());
+        backend.removeObserver(&observer);
+    }
+
+    // --- the same boundary, for the subscription rather than for a request
+    //
+    // A stream is the one channel with NEITHER line of defence. A frame
+    // completes no request, so it carries no submit-time stamp to compare and
+    // no status to mark: it is published with whatever generation is current
+    // when it arrives. So a socket held by a session that has gone cannot be
+    // allowed to remain the live subscription - the only defence is that it
+    // stops being one.
+
+    void aRetiredSessionsStreamIsReplacedRatherThanInherited() {
+        testsupport::LoopbackServer controller;
+        QVERIFY(controller.listen());
+        scriptController(controller, R"({"version":"first-session"})");
+        controller.expectStream(QStringLiteral("/traffic"));
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+        backend.attach(endpointOf(controller));
+        backend.openTrafficStream();
+        QVERIFY2(controller.waitFor([&] {
+                     return controller.streamHandshakes(QStringLiteral("/traffic")) >= 1 &&
+                            backend.isConnected();
+                 }),
+                 qPrintable(controller.redactedTranscript()));
+        QVERIFY(controller.sendText(QStringLiteral("/traffic"), R"({"up":11,"down":11})"));
+        QVERIFY(controller.waitFor([&] { return observer.sawSample(11); }));
+
+        const int handshakes = controller.streamHandshakes(QStringLiteral("/traffic"));
+        const std::size_t transitions = observer.connections.size();
+        const int clears = observer.liveStateClears;
+
+        // The engine is replaced at the host and port it already held, and the
+        // process that has gone writes one last frame on its socket.
+        backend.attach(endpointOf(controller));
+        QVERIFY2(controller.sendText(QStringLiteral("/traffic"), R"({"up":999,"down":999})"),
+                 "the fixture had no socket left to write the retired frame on, so this case "
+                 "would prove nothing");
+
+        // The subscription is the pointer, not the socket: it survives the
+        // boundary and re-dials the address we are still on.
+        QVERIFY2(controller.waitFor([&] {
+                     return controller.streamHandshakes(QStringLiteral("/traffic")) > handshakes;
+                 }),
+                 qPrintable(QStringLiteral("the replacement never re-opened the stream, so the "
+                                           "retired session's socket WAS the live subscription: "
+                                           "%1")
+                                .arg(controller.redactedTranscript())));
+        QVERIFY(controller.sendText(QStringLiteral("/traffic"), R"({"up":7,"down":7})"));
+        QVERIFY2(controller.waitFor([&] { return observer.sawSample(7); }),
+                 "the replacement's own stream published nothing");
+
+        QVERIFY2(!observer.sawSample(999),
+                 "a frame written by the RETIRED session was published as the replacement's "
+                 "telemetry, stamped with the replacement's generation - where no consumer "
+                 "rule can reject it");
+        QVERIFY2(observer.connections.size() == transitions,
+                 "the retired session's socket produced a connection transition for the "
+                 "replacement");
+        QVERIFY2(observer.liveStateClears == clears,
+                 "the retired session's socket cleared the live view the replacement had just "
+                 "populated");
+        QVERIFY(backend.isConnected());
+        backend.removeObserver(&observer);
+    }
+
+    void aRetiredStreamDropCannotDisconnectTheNewSession() {
+        testsupport::LoopbackServer controller;
+        QVERIFY(controller.listen());
+        scriptController(controller, R"({"version":"first-session"})");
+        controller.expectStream(QStringLiteral("/traffic"));
+
+        core::MihomoBackendImpl backend;
+        Recorder observer(&backend);
+        backend.addObserver(&observer);
+        backend.attach(endpointOf(controller));
+        backend.openTrafficStream();
+        QVERIFY2(controller.waitFor([&] {
+                     return controller.streamHandshakes(QStringLiteral("/traffic")) >= 1 &&
+                            backend.isConnected();
+                 }),
+                 qPrintable(controller.redactedTranscript()));
+
+        const int handshakes = controller.streamHandshakes(QStringLiteral("/traffic"));
+        const std::size_t transitions = observer.connections.size();
+        const int clears = observer.liveStateClears;
+
+        // The replacement, and then the retired session's socket dying the way
+        // a process that has gone kills it: abortively, with no close frame.
+        backend.attach(endpointOf(controller));
+        QVERIFY2(controller.dropStream(QStringLiteral("/traffic")),
+                 "the fixture had no retired socket to drop");
+
+        QVERIFY2(controller.waitFor([&] {
+                     return controller.streamHandshakes(QStringLiteral("/traffic")) > handshakes;
+                 }),
+                 qPrintable(controller.redactedTranscript()));
+        QVERIFY(controller.sendText(QStringLiteral("/traffic"), R"({"up":5,"down":5})"));
+        QVERIFY2(controller.waitFor([&] { return observer.sawSample(5); }),
+                 "the stream did not resume after the retired socket died");
+
+        QVERIFY2(observer.connections.size() == transitions,
+                 "the death of the retired session's socket reported the healthy replacement "
+                 "as disconnected");
+        QVERIFY2(observer.liveStateClears == clears,
+                 "the death of the retired session's socket cleared the replacement's live "
+                 "view");
+        QVERIFY(backend.isConnected());
         QVERIFY(!controller.sawUnexpectedRequest());
         backend.removeObserver(&observer);
     }
@@ -1608,6 +1735,16 @@ class BackendRealContractTest : public QObject {
     void sharedDuplicateProviderRequestIsCoalesced_data() { shared::addSubjectRows(); }
     void sharedDuplicateProviderRequestIsCoalesced() {
         runShared(&scenarios::aDuplicateProviderRequestIsCoalesced);
+    }
+
+    void sharedReplacementAtTheSameAddressOpensANewSession_data() { shared::addSubjectRows(); }
+    void sharedReplacementAtTheSameAddressOpensANewSession() {
+        runShared(&scenarios::aReplacementAtTheSameAddressOpensANewSession);
+    }
+
+    void sharedLifecycleBumpRetiresOutstandingWork_data() { shared::addSubjectRows(); }
+    void sharedLifecycleBumpRetiresOutstandingWork() {
+        runShared(&scenarios::aLifecycleBumpRetiresOutstandingWork);
     }
 
     void sharedTunCompletionIsAReadBackNotAnEcho_data() { shared::addSubjectRows(); }

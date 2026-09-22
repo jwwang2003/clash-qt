@@ -261,6 +261,23 @@ void FakeBackend::completeRequest(const InFlight &request, RequestOutcome outcom
                                   const cb::ErrorInfo &error) {
     cb::CompletionStatus status = cb::CompletionStatus::Ok;
     cb::ErrorInfo reported = error;
+    // A2, for every bump that is not itself an abort. start(), stop() and a
+    // managed failure invalidate outstanding work without aborting it - the
+    // double has no socket to abort, and a held request is the test's control
+    // surface - so the retirement is applied HERE: an answer to a request
+    // submitted under a generation that has been left behind is marked
+    // Superseded and publishes no payload, rather than arriving as live data
+    // from a session that has gone. Note the ordering knob is untouched: an
+    // abort-then-bump inversion completes through abortInFlight(), before the
+    // generation moves, which is exactly the hazard it exists to reproduce.
+    if (cb::isSuperseded(request.generation, generation_)) {
+        status = cb::CompletionStatus::Superseded;
+        reported = {cb::ErrorCode::Superseded, QStringLiteral("the generation moved on")};
+        if (request.kind == RequestKind::SetTun) tunPending_ = false;
+        if (request.kind == RequestKind::UpdateGeo) geoPending_ = false;
+        deliverCompletion(request, completionFor(request.id, request.generation, status, reported));
+        return;
+    }
     if (outcome == RequestOutcome::Failure) {
         status = cb::CompletionStatus::Failed;
         if (!reported.isFailure()) reported = {cb::ErrorCode::Network, QStringLiteral("failed")};
@@ -494,7 +511,26 @@ cb::RequestId FakeBackend::attach(const cb::Endpoint &endpoint) noexcept {
     MutationScope guard(this);
     const cb::RequestId request = nextRequest();
     if (isAttached_ && cb::isSameEndpoint(attached_, endpoint)) {
+        // A NEW SESSION ON AN UNCHANGED ADDRESS, not a no-op.
+        //
+        // A reload rebinds the replacement engine to the port the retired one
+        // held, so everything still outstanding is owed by a process that has
+        // gone. This used to return early - no bump, no abort - which made the
+        // clause unrepresentable in the double: a held request settled Ok with
+        // the retired session's payload, and a submission made afterwards
+        // coalesced onto it because the coalescing key is generation-guarded
+        // and the generation had not moved.
+        //
+        // What does NOT happen, exactly as in MihomoClient: no endpointChanged
+        // for an endpoint that did not change, and no connected or live-state
+        // clear that the replacement would immediately undo. refreshState() is
+        // the re-issue this path owes, and the flag is what stops invalidate()
+        // scheduling a second one.
+        attachingEndpoint_ = true;
+        invalidate({cb::ErrorCode::Superseded,
+                    QStringLiteral("the controller was replaced at the same address")});
         refreshState();
+        attachingEndpoint_ = false;
         return request;
     }
     attachingEndpoint_ = true;
@@ -656,6 +692,10 @@ cb::RequestId FakeBackend::start(const QString &configPath, const QString &workD
     explicitStop_ = false;
     // A managed start invalidates outstanding work (contract section 2), and is
     // not an endpoint change, so it owes the snapshot set (backend-r2).
+    // Everything submitted under the generation this leaves behind is retired
+    // by completeRequest(), which marks it Superseded and publishes no payload:
+    // the double models a controller's ANSWER, so a request held here is still
+    // held, and what the bump changes is what its answer is worth.
     bumpGeneration();
     scheduleSnapshotReissue();
     serviceParsing_ = false;
@@ -830,7 +870,8 @@ cb::RequestId FakeBackend::stop() noexcept {
     const cb::RequestId request = nextRequest();
     explicitStop_ = true;
     stopRequest_ = request;
-    // A managed stop invalidates outstanding work and is not an endpoint change.
+    // A managed stop invalidates outstanding work and is not an endpoint
+    // change; see start() for where the invalidation is enforced.
     bumpGeneration();
     stopGeneration_ = generation_;
     scheduleSnapshotReissue();
@@ -897,7 +938,8 @@ bool FakeBackend::crashChild(int exitCode, const QString &lastLine) {
 void FakeBackend::failManaged(const cb::ErrorInfo &reason, cb::RequestId request) {
     failRequest_ = request;
     // A managed failure invalidates outstanding work (contract section 2) and is
-    // not an endpoint change.
+    // not an endpoint change. A failed validation arrives here too, and the
+    // running configuration is untouched by any of it.
     bumpGeneration();
     scheduleSnapshotReissue();
     serviceParsing_ = false;
