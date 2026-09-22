@@ -82,6 +82,19 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     /// True while a mutating call of this backend is on the stack. An observer
     /// invoked while this is true was delivered re-entrantly.
     bool isInsideMutatingCall() const noexcept { return mutatingDepth_ > 0; }
+
+    /// The sequence of the last event this backend PRODUCED, and the sequence
+    /// of the one it is delivering right now (0 outside a delivery).
+    ///
+    /// These are the numbers addObserver() already uses to admit an observer by
+    /// production rather than by arrival - "added during this delivery: it sees
+    /// only what came after it". They are published so a MODULE can apply the
+    /// same rule on the far side of a boundary, where the producing queue and
+    /// the observer list are no longer the same object. Nothing in the
+    /// published facade changes: this is the concrete dispatcher's own surface,
+    /// which is where a module factory already is.
+    std::uint64_t producedSequence() const noexcept { return sequence_; }
+    std::uint64_t deliverySequence() const noexcept { return deliveringSequence_; }
     /// Readiness-probe completions delivered after their probe was cancelled.
     /// Contract section 5.2 requires the probe to disconnect before aborting, so
     /// this must always be 0; published here because the rule is otherwise
@@ -264,6 +277,7 @@ class MihomoBackendImpl final : public cb::MihomoBackend {
     QHash<cb::BackendObserver *, std::uint64_t> observerAddedAt_;
     std::vector<Event> queue_;
     std::uint64_t sequence_ = 0;
+    std::uint64_t deliveringSequence_ = 0;
     int mutatingDepth_ = 0;
     bool delivering_ = false;
     bool drainScheduled_ = false;

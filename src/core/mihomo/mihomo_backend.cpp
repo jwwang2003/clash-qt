@@ -507,6 +507,10 @@ void MihomoBackendImpl::drain() {
     std::vector<Event> batch;
     batch.swap(queue_);
     for (const Event &event : batch) {
+        // Published while the callbacks run, so an observer that forwards this
+        // event across a module boundary can stamp it with the sequence it was
+        // PRODUCED under rather than one counted on arrival.
+        deliveringSequence_ = event.sequence;
         // A copy: an observer may add or remove observers from inside a callback.
         const std::vector<cb::BackendObserver *> snapshot = observers_;
         for (cb::BackendObserver *observer : snapshot) {
@@ -520,6 +524,7 @@ void MihomoBackendImpl::drain() {
             event.deliver(*observer);
         }
     }
+    deliveringSequence_ = 0;
     delivering_ = false;
     if (!queue_.empty()) scheduleDrain();
 }

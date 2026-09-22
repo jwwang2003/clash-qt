@@ -134,6 +134,13 @@ class FakeBackend final : public cb::MihomoBackend {
     // that sees this true was invoked re-entrantly, which the contract forbids.
     bool isInsideMutatingCall() const noexcept { return mutatingDepth_ > 0; }
     bool isDelivering() const noexcept { return delivering_; }
+    // The sequence of the last event PRODUCED, and of the one being delivered
+    // right now (0 outside a delivery). The same two numbers the real
+    // dispatcher publishes, for the same reason: a module forwarding these
+    // callbacks across a boundary has to stamp them with the sequence they were
+    // produced under, or the host admits an observer by arrival instead.
+    std::uint64_t producedSequence() const noexcept { return sequence_; }
+    std::uint64_t deliverySequence() const noexcept { return deliveringSequence_; }
 
     // ---- the request gate (attachment, control, telemetry, capabilities)
     void setRequestGate(Gate gate) noexcept { requestGate_ = gate; }
@@ -382,6 +389,7 @@ class FakeBackend final : public cb::MihomoBackend {
     QHash<cb::BackendObserver *, std::uint64_t> observerAddedAt_;
     std::vector<Event> queue_;
     std::uint64_t sequence_ = 0;
+    std::uint64_t deliveringSequence_ = 0;
     int mutatingDepth_ = 0;
     bool delivering_ = false;
     bool drainScheduled_ = false;
