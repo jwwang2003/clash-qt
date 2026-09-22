@@ -1446,3 +1446,14 @@ Coordinator now integrates the complete source/build/test/packaging wiring, then
 qualifies a fresh git clone using BUILD_DIR=build/p4. No build/dev writes. Final
 make test, integration, package, independent SDK consumer, packaged launch,
 marshalling measurements and whole-P4 independent audit remain to be recorded.
+
+### Fresh-clone facade finding
+
+Candidate ac3d8e6 cloned cleanly with the recorded mihomo gitlink; `make test
+BUILD_DIR=build/p4` built and passed 54/54. Qualification wrapper then found no
+LastTest.log under build/p4: CTest --preset dev retained its log directory at the
+*disposable clone's* build/dev despite --test-dir selecting build/p4 tests. No
+compilation used build/dev and the original working-tree build/dev was untouched.
+The facade now uses --test-dir with explicit output/no-tests options, equivalent
+to the presets without their fixed binary directory. A new clean clone will
+rerun all three Make gates; the first partial result is retained, not overwritten.

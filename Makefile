@@ -80,17 +80,17 @@ run: build
 	@$(CMAKE) -E env CLASH_QT_CORE_BINARY=$(CURDIR)/$(BUILD_DIR)/core/mihomo $(BUILD_DIR)/clash-qt
 
 test: build
-	@$(CTEST) --preset $(PRESET) --test-dir "$(BUILD_DIR)" --label-exclude "native|privileged|benchmark|real-core"
+	@$(CTEST) --test-dir "$(BUILD_DIR)" --output-on-failure --no-tests=error --label-exclude "native|privileged|benchmark|real-core"
 
 test-integration: build core
-	@$(CTEST) --preset $(PRESET) --test-dir "$(BUILD_DIR)" --label-regex "real-core|integration"
+	@$(CTEST) --test-dir "$(BUILD_DIR)" --output-on-failure --no-tests=error --label-regex "real-core|integration"
 
 test-native: build
 	@echo "test-native runs privileged and network tests that require an exclusive," && \
 	 echo "disposable host. Set CLASH_QT_NATIVE_HOST=1 to confirm this is not your" && \
 	 echo "working machine, then re-run." && \
 	 test -n "$(CLASH_QT_NATIVE_HOST)" && \
-	 $(CTEST) --preset $(PRESET) --test-dir "$(BUILD_DIR)" --label-regex "native|privileged"
+	 $(CTEST) --test-dir "$(BUILD_DIR)" --output-on-failure --no-tests=error --label-regex "native|privileged"
 
 # Depends on core as well as build: the engine target is deliberately not in ALL,
 # so a package built without it would ship without a managed engine.
