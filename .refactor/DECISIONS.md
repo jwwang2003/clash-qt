@@ -196,3 +196,60 @@ bus is invisible; a header-only dependency with no link edge is invisible to the
 rule; and only one configuration is checked, so Windows and Linux platform
 dependencies are unverified. Test-strategy item 5, replaceable implementations, is not
 implemented — it needs MOD-CORE's contract to exist first.
+
+---
+
+## D8 — COMPONENT-ABI adapts; the Qt contract stays host-side
+
+**The conflict.** G2 requires the engine to be a separately built, separately
+packaged shared library, and says a static-library-only test is insufficient. But
+`clash_backend` passes Qt types across what must become that boundary
+(`control.h:29`, `virtual RequestId setMode(const QString &mode)`), while
+`clashqt_com` deliberately links nothing — not even `Qt6::Core` — because a Qt
+type in a published signature defeats the point. `QString` cannot cross a module
+boundary: its layout and implicit sharing depend on the exact Qt build, and its
+memory would be allocated in one module and freed in another. The project also
+builds **no** `SHARED` or `MODULE` library today.
+
+So "publish a factory from `clash_backend`" described two incompatible designs.
+
+**Decision: option A.** The module exposes ABI-safe COM interfaces. A thin
+host-side shim holds COM pointers, marshals each call, and implements
+`MihomoBackend`. The UI and the Qt bridge are unchanged.
+
+**Why, on the evidence.**
+
+*Performance is not a discriminator.* The engine is already a separate child
+process reached over a loopback controller, so the **data plane never crosses the
+boundary**. What crosses is lifecycle (a few calls per session), control
+(human-rate), and telemetry (bounded by mihomo's emission rate). And the bridge
+**already** materialises every `Span` into an owned Qt container for queued
+delivery — so most of the marshalling cost is already being paid. The real costs
+are JSON parsing and Qt signal delivery, unchanged either way.
+
+*Robustness favours A.* `MihomoBackend` already has two implementations, real and
+fake; a module-backed third joins them and **the same contract suite runs against
+all three**, which is G2's "fake and production modules satisfy common contracts"
+for free. A boundary bug is contained in one shim rather than spread across 66
+call sites. And non-re-entrant observer delivery — the rule that cost amendment
+A2 and produced a live defect — is currently guaranteed by the Qt event loop;
+across a raw ABI it would have to be re-established.
+
+**Two binding constraints.**
+
+1. **The module stays a thin supervisor over the existing process edge.** It must
+   never marshal proxy traffic. Object pointers never cross into Go.
+2. **Telemetry marshalling is measured, not assumed.** A connections snapshot can
+   be hundreds of entries; naive per-string allocation is the one plausible
+   regression. One buffer per snapshot with fixed-layout structs indexing into
+   it, and a case in the `benchmark` lane before the claim is made.
+
+**Stated plainly, because "component" implies more than it delivers:** a loaded
+module shares the process. Neither this design nor its alternative gives crash
+isolation — if the module faults, the application dies. The boundary buys
+replaceability and versioning. The real isolation in this system is that mihomo
+is already a separate process, and that is not changing.
+
+**Open for P4's first worker to answer, not to assume:** whether the fake backend
+also becomes module-backed. If it does not, the module path has exactly one
+implementation and the common-contract claim is weaker than it sounds.
