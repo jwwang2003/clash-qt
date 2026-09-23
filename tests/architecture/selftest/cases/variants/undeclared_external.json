@@ -1,0 +1,102 @@
+{
+  "_about": "Variant of the ALLOWED case with Qt6::Qml removed from synth_config's 'external' allowlist while the target still links it. An external dependency that is not forbidden is still not free: it has to be declared, or the allowlist only ever documents what someone remembered. Expected: UNDECLARED-EXTERNAL.",
+  "ignore_external": [
+    "Qt6::Platform"
+  ],
+  "forbidden_external": [
+    "Qt6::Widgets",
+    "Qt6::Quick",
+    "Qt6::Graphs"
+  ],
+  "modules": {
+    "synth_types": {
+      "deps": [],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_yaml": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_config": {
+      "_note": "Qt6::Qml is allowed -- Qml is not Quick, and core runs profile scripts through QJSEngine. Qt6::Network is listed only because Qt6::Qml re-exports it.",
+      "deps": [
+        "synth_types",
+        "synth_yaml"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Qml",
+        "Qt6::QmlIntegration",
+        "Qt6::Network"
+      ]
+    },
+    "synth_telemetry": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_platform": {
+      "_note": "Qt6::Gui PUBLIC is allowed for a platform adapter: a public header puts QKeySequence in its signature. Gui is not Widgets.",
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Gui"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui"
+      ]
+    },
+    "synth_impl": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Network"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui",
+        "Qt6::Network"
+      ]
+    }
+  },
+  "consumers": {
+    "synth_app": {
+      "deps": [
+        "synth_impl",
+        "synth_config",
+        "synth_telemetry"
+      ]
+    }
+  },
+  "include_rules": [],
+  "exceptions": [
+    {
+      "id": "SELFTEST-injected-platform-edge",
+      "class": "architecture",
+      "kind": "target_edge",
+      "from": "synth_impl",
+      "to": "synth_platform",
+      "owner": "SELFTEST",
+      "remove_in": "never",
+      "reason": "Stands in for the real baseline in which the component-private implementation links the OS adapter: an edge that exists, is named, owned, and therefore does not fail the check."
+    }
+  ]
+}

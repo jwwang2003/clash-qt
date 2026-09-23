@@ -14,10 +14,29 @@
 namespace platform {
 namespace {
 constexpr quint32 kMaximumFrame = 8 * 1024 * 1024;
-constexpr int kConnectTimeoutMs = 5000;
-constexpr int kRequestTimeoutMs = 30000;
 constexpr qsizetype kMaximumQueuedRequests = 8;
-}
+constexpr std::chrono::milliseconds kConnectTimeout{5000};
+constexpr std::chrono::milliseconds kRequestTimeout{30000};
+
+/// The production deadline: one single-shot QTimer, parented to the client so
+/// it keeps that object's thread affinity and lifetime.
+class TimerDeadline final : public RequestDeadline {
+public:
+    explicit TimerDeadline(QObject *owner) : timer_(new QTimer(owner)) {
+        timer_->setSingleShot(true);
+        QObject::connect(timer_, &QTimer::timeout, timer_, [this] {
+            if (expired_) expired_();
+        });
+    }
+    void setExpiredHandler(std::function<void()> handler) override { expired_ = std::move(handler); }
+    void start(std::chrono::milliseconds timeout) override { timer_->start(timeout); }
+    void stop() override { timer_->stop(); }
+
+private:
+    QTimer *timer_;
+    std::function<void()> expired_;
+};
+}  // namespace
 
 QString PrivilegedServiceClient::defaultSocketPath() {
     return QStringLiteral("/var/run/org.clash-qt.service/socket");
@@ -31,12 +50,14 @@ bool PrivilegedServiceClient::isSupported() {
 #endif
 }
 
-PrivilegedServiceClient::PrivilegedServiceClient(QObject *parent, const QString &socketPath)
-    : QObject(parent), socket_(new QLocalSocket(this)), deadline_(new QTimer(this)),
+PrivilegedServiceClient::PrivilegedServiceClient(QObject *parent, const QString &socketPath,
+                                                 RequestDeadline *deadline)
+    : QObject(parent), socket_(new QLocalSocket(this)),
+      ownedDeadline_(deadline ? nullptr : std::make_unique<TimerDeadline>(this)),
+      deadline_(deadline ? deadline : ownedDeadline_.get()),
       socketPath_(socketPath.isEmpty() ? defaultSocketPath() : socketPath) {
     socket_->setReadBufferSize(kMaximumFrame + 4);
-    deadline_->setSingleShot(true);
-    connect(deadline_, &QTimer::timeout, this, [this] {
+    deadline_->setExpiredHandler([this] {
         failConnection(hasActive_ ? tr("Privileged service request timed out: %1").arg(active_.operation)
                                   : tr("Connecting to the privileged service timed out."));
     });
@@ -71,6 +92,12 @@ PrivilegedServiceClient::PrivilegedServiceClient(QObject *parent, const QString 
     });
 }
 
+PrivilegedServiceClient::~PrivilegedServiceClient() {
+    // An injected deadline may outlive this client; it must not call back into it.
+    deadline_->stop();
+    deadline_->setExpiredHandler({});
+}
+
 bool PrivilegedServiceClient::isConnected() const { return socket_->state() == QLocalSocket::ConnectedState; }
 bool PrivilegedServiceClient::isBusy() const { return hasActive_ || !queue_.isEmpty(); }
 QString PrivilegedServiceClient::connectionError() const { return connectionError_; }
@@ -87,7 +114,7 @@ void PrivilegedServiceClient::connectToService() {
     closing_ = false;
     connectionError_.clear();
     input_.clear();
-    deadline_->start(kConnectTimeoutMs);
+    deadline_->start(kConnectTimeout);
     socket_->connectToServer(socketPath_);
 }
 
@@ -138,7 +165,7 @@ void PrivilegedServiceClient::sendNext() {
     QByteArray frame(4, Qt::Uninitialized);
     qToBigEndian<quint32>(static_cast<quint32>(payload.size()), frame.data());
     frame.append(payload);
-    deadline_->start(kRequestTimeoutMs);
+    deadline_->start(kRequestTimeout);
     if (socket_->write(frame) != frame.size()) failConnection(tr("Could not send the privileged service request."));
 }
 

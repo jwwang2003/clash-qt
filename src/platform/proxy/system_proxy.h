@@ -1,6 +1,10 @@
 #pragma once
 
+#include <functional>
+#include <memory>
+
 #include <QString>
+#include <QStringList>
 #include <QMetaType>
 
 namespace platform {
@@ -46,6 +50,39 @@ public:
 
     /// Human-readable reason the last call failed; empty when it succeeded.
     static QString lastError();
+};
+
+/// The stateful half of SystemProxy: it owns the snapshots that decide whether
+/// this application still owns the OS proxy, and the runner every OS command
+/// goes through. The static functions above drive one shared instance with the
+/// real runner; a caller that must not touch the machine - a test - constructs
+/// its own with a substitute runner, and its ownership state dies with it.
+class SystemProxyBackend {
+public:
+    /// Runs `program` with `arguments`, writing its trimmed standard output to
+    /// `output` when that is not null, and returns whether it succeeded. An
+    /// empty runner means the real OS tool.
+    using CommandRunner =
+        std::function<bool(const QString &program, const QStringList &arguments, QString *output)>;
+
+    explicit SystemProxyBackend(CommandRunner runner = {});
+    ~SystemProxyBackend();
+    SystemProxyBackend(const SystemProxyBackend &) = delete;
+    SystemProxyBackend &operator=(const SystemProxyBackend &) = delete;
+
+    bool isSupported() const;
+    bool enable(const ProxyConfig &config);
+    bool disable();
+    bool restoreOwned();
+    bool ownsProxy();
+    ProxyConfig current();
+    SystemProxyState state();
+    bool isEnabled();
+    QString lastError() const;
+
+private:
+    struct Data;
+    std::unique_ptr<Data> d_;
 };
 
 }  // namespace platform

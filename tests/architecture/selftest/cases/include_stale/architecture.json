@@ -1,0 +1,28 @@
+{
+  "_about": "A baselined include site that no longer exists. Expected: STALE-INCLUDE-EXCEPTION. A baseline that is allowed to rot stops being a ratchet.",
+  "modules": {},
+  "consumers": {},
+  "forbidden_external": [],
+  "include_rules": [
+    {
+      "id": "COMPONENT-PRIVATE",
+      "applies_to": ["src/ui/**"],
+      "forbid_project_includes": ["core/mihomo/**"],
+      "message": "the UI must use the published component contract, not the component-private implementation headers"
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "SELFTEST-stale-include",
+      "class": "migration-baseline",
+      "kind": "include",
+      "rule": "COMPONENT-PRIVATE",
+      "owner": "SELFTEST",
+      "remove_in": "never",
+      "reason": "The file was cleaned up but the baseline still names it.",
+      "sites": [
+        { "file": "src/ui/pages/gone.cpp", "include": "core/mihomo/mihomo_client.h" }
+      ]
+    }
+  ]
+}

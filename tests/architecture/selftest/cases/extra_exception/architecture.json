@@ -1,0 +1,25 @@
+{
+  "_about": "The ratchet. The named exception still matches and must NOT fail; the second edge must fail with FORBIDDEN-EDGE for synth_yaml -> synth_platform.",
+  "ignore_external": ["Qt6::Platform"],
+  "forbidden_external": ["Qt6::Widgets", "Qt6::Quick", "Qt6::Graphs"],
+  "modules": {
+    "synth_types": { "deps": [], "external": ["Qt6::Core"] },
+    "synth_platform": { "deps": ["synth_types"], "external": ["Qt6::Gui"] },
+    "synth_impl": { "deps": ["synth_types"], "external": ["Qt6::Network"] },
+    "synth_yaml": { "deps": ["synth_types"], "external": [] }
+  },
+  "consumers": {},
+  "include_rules": [],
+  "exceptions": [
+    {
+      "id": "SELFTEST-injected-platform-edge",
+      "class": "architecture",
+      "kind": "target_edge",
+      "from": "synth_impl",
+      "to": "synth_platform",
+      "owner": "SELFTEST",
+      "remove_in": "never",
+      "reason": "The one baselined edge. It must keep passing while the new one fails."
+    }
+  ]
+}

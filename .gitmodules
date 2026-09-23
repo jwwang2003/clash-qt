@@ -1,0 +1,7 @@
+[submodule "3rdparty/mihomo"]
+	path = 3rdparty/mihomo
+	url = https://github.com/MetaCubeX/mihomo.git
+	branch = Meta
+[submodule "3rdparty/mitmproxy"]
+	path = 3rdparty/mitmproxy
+	url = https://github.com/mitmproxy/mitmproxy.git
