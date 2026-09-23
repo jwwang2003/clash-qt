@@ -352,7 +352,8 @@ class SubscriptionUpdateTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) QSKIP(qPrintable(portSkipReason(relay)));
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         FakeCore engine(engineDirectory());
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
@@ -423,7 +424,7 @@ class SubscriptionUpdateTest : public QObject {
             QCOMPARE(topLevelScalar(first, "mode"), QByteArrayLiteral("global"));
             QCOMPARE(topLevelScalar(first, "mixed-port"), QByteArrayLiteral("27891"));
             // ...the controller-owned fields were reasserted...
-            QCOMPARE(wf::controllerPortOf(launched.last()), wf::kGeneratedControllerPort);
+            QCOMPARE(wf::controllerPortOf(launched.last()), relay.port());
             QCOMPARE(nestedScalar(first, "tun", "enable"), QByteArrayLiteral("false"));
             // ...the subscription's own content came through...
             QVERIFY2(first.contains("office-v1"), "the running core was not launched from the "
@@ -459,7 +460,7 @@ class SubscriptionUpdateTest : public QObject {
             //   ...and the user's overrides still beat both.
             QCOMPARE(topLevelScalar(composed, "mode"), QByteArrayLiteral("global"));
             QCOMPARE(topLevelScalar(composed, "mixed-port"), QByteArrayLiteral("27891"));
-            QCOMPARE(wf::controllerPortOf(launched.last()), wf::kGeneratedControllerPort);
+            QCOMPARE(wf::controllerPortOf(launched.last()), relay.port());
             QVERIFY(composed.contains("office-v1"));
             // The configuration the BACKEND says it is running is the one just
             // asserted, not merely the one the coordinator generated.
@@ -523,7 +524,7 @@ class SubscriptionUpdateTest : public QObject {
             QCOMPARE(topLevelScalar(afterRefresh, "allow-lan"), QByteArrayLiteral("true"));
             QCOMPARE(topLevelScalar(afterRefresh, "mode"), QByteArrayLiteral("global"));
             QCOMPARE(topLevelScalar(afterRefresh, "mixed-port"), QByteArrayLiteral("27891"));
-            QCOMPARE(wf::controllerPortOf(launched.last()), wf::kGeneratedControllerPort);
+            QCOMPARE(wf::controllerPortOf(launched.last()), relay.port());
             QVERIFY(app->backend->activeConfigPaths().contains(launched.last()));
 
             // ---- 6. quit --------------------------------------------------
@@ -616,7 +617,8 @@ class SubscriptionUpdateTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) QSKIP(qPrintable(portSkipReason(relay)));
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         FakeCore engine(engineDirectory());
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
@@ -863,13 +865,16 @@ class SubscriptionUpdateTest : public QObject {
                                 .arg(reported.trimmed(), goVersion)));
 
         // ---- 2. the ports this arm needs ---------------------------------
-        // The generated controller address is fixed at 29097 by ProfileStore,
-        // and the real engine binds it itself - there is no relay to put in
-        // front of it. An occupied port is reported as the open gate it is,
-        // rather than skipped: the arm was explicitly requested.
+        // This arm keeps the SHIPPED controller port. The fixture arms above
+        // claim a free one and hand it to the store through
+        // core::kControllerPortVariable, but here the engine binds the port
+        // itself, so nothing can hold it on the engine's behalf and a claimed
+        // port would only move the race. An occupied port is reported as the
+        // open gate it is, rather than skipped: the arm was explicitly
+        // requested, and a skipped run exits 0 and is counted as a pass.
         {
             QTcpServer probe;
-            QVERIFY2(probe.listen(QHostAddress::LocalHost, wf::kGeneratedControllerPort),
+            QVERIFY2(probe.listen(QHostAddress::LocalHost, wf::kShippedControllerPort),
                      qPrintable(QStringLiteral(
                                     "GATE LEFT OPEN: 127.0.0.1:%1 is already in use (%2), and "
                                     "core::ProfileStore writes that address into every "
@@ -877,7 +882,7 @@ class SubscriptionUpdateTest : public QObject {
                                     "reached on it. A running clash-qt core is the usual reason. "
                                     "This arm does not assert something weaker in its place: stop "
                                     "the other core and re-run subscription-update-real-core.")
-                                    .arg(wf::kGeneratedControllerPort)
+                                    .arg(wf::kShippedControllerPort)
                                     .arg(probe.errorString())));
             probe.close();
         }
@@ -955,12 +960,12 @@ class SubscriptionUpdateTest : public QObject {
         const QByteArray generated = wf::readTextFile(live);
         QCOMPARE(topLevelScalar(generated, "mixed-port"), QByteArray::number(mixedPort));
         QCOMPARE(nestedScalar(generated, "tun", "enable"), QByteArrayLiteral("false"));
-        QCOMPARE(wf::controllerPortOf(live), wf::kGeneratedControllerPort);
+        QCOMPARE(wf::controllerPortOf(live), wf::kShippedControllerPort);
         QVERIFY2(wf::waitFor([&app] { return app.backend->isConnected(); }, readiness),
                  "the engine came up but its controller never answered this process");
         QVERIFY(app.backend->drain());
         QCOMPARE(static_cast<int>(app.events.readyEndpoints.size()), 1);
-        QCOMPARE(app.events.readyEndpoints.front().port, wf::kGeneratedControllerPort);
+        QCOMPARE(app.events.readyEndpoints.front().port, wf::kShippedControllerPort);
         QCOMPARE(wf::liveProcessesOf(binary), 1);
         // The engine says, in its own log, that it did not fetch a dashboard.
         const QString startupLog = coreLog(app).join(QLatin1Char('\n'));
@@ -975,7 +980,7 @@ class SubscriptionUpdateTest : public QObject {
                                            "and this arm can no longer show that it stayed on "
                                            "loopback: %1").arg(startupLog)));
         QVERIFY2(startupLog.contains(QStringLiteral("RESTful API listening at: 127.0.0.1:%1")
-                                         .arg(wf::kGeneratedControllerPort)),
+                                         .arg(wf::kShippedControllerPort)),
                  qPrintable(QStringLiteral("the engine did not bind the generated controller "
                                            "address: %1").arg(startupLog)));
 
@@ -1235,11 +1240,11 @@ class SubscriptionUpdateTest : public QObject {
                                   "replaces (readiness: %2)")
                 .arg(cb::number(replaced))
                 .arg(ready.transcript());
-        if (latest->endpoint.port != wf::kGeneratedControllerPort)
+        if (latest->endpoint.port != wf::kShippedControllerPort)
             return QStringLiteral("the replacement announced port %1, not the generated "
                                   "controller address %2")
                 .arg(latest->endpoint.port)
-                .arg(wf::kGeneratedControllerPort);
+                .arg(wf::kShippedControllerPort);
         if (app.backend->isRestartPending())
             return QStringLiteral("a validation child, a held launch or a configuration parse is "
                                   "still outstanding");
@@ -1300,14 +1305,17 @@ class SubscriptionUpdateTest : public QObject {
                  server.pendingReport());
     }
 
-    static QString portSkipReason(const wf::ControllerRelay &relay) {
-        return QStringLiteral(
-                   "This journey needs the generated controller address 127.0.0.1:%1, which is in "
-                   "use: %2. "
-                   "A running clash-qt core is the usual reason. Not asserted rather than "
-                   "asserted weakly.")
-            .arg(wf::kGeneratedControllerPort)
-            .arg(relay.errorString());
+    /// Takes a controller port the OS says is free, holds it in `relay`, and
+    /// makes core::ProfileStore generate that port. Empty on success.
+    ///
+    /// Asserted, never skipped: QtTest exits 0 when every case skipped and
+    /// CTest scores that exit as a pass, so the fixture arms used to report
+    /// success in a tenth of a second whenever something held the old fixed
+    /// port. The pinned-engine arm below cannot use this - the engine binds the
+    /// port itself, so nothing can hold it on the engine's behalf - and states
+    /// its own gate instead.
+    QString claimPort(wf::ControllerRelay &relay, quint16 upstream) {
+        return wf::claimControllerPort(relay, upstream, *environment_);
     }
 
     std::unique_ptr<ScopedEnvironment> environment_;

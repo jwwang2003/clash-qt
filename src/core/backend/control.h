@@ -3,7 +3,7 @@
 
 // BackendControl: the mutating operations the application performs against the
 // attached controller.
-// Contract: docs/module-api.md revision backend-r4, section 2.
+// Contract: docs/module-api.md, section 2.
 // TunChangeCompleted carries both a Generation and a CompletionStatus, so a
 // supersession can be marked as one and is never reported as a protocol error.
 //

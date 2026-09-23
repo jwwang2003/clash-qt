@@ -390,11 +390,20 @@ make test-native       # opt-in; needs a disposable host
 Both `--no-tests=error` and `--output-on-failure` are always passed: an empty
 selection is a failure, not a pass.
 
-The journey suites are serialised because they share the fixed controller port
-`127.0.0.1:29097` — the profile store writes that port into every generated
-configuration, so a journey cannot choose its own. Do not run journeys in
-parallel, and do not leave a core of your own listening there: a journey that
-cannot bind the port skips, and a skip is unavailable evidence, not a pass.
+The journey suites are serialised because each drives a real core over a real
+loopback controller. The profile store writes the controller port into every
+generated configuration, so a journey cannot pick one per request; it reads
+`CLASH_QT_CONTROLLER_PORT` instead, and the registered suites claim ports of
+their own through it. Unset, the store uses the shipped default `29097`, so
+nothing about a normal run changes.
+
+A journey that cannot bind its port **fails**, and says which port and which
+process holds it. It does not skip. It used to: a held port made four journeys
+report success in about a tenth of a second each, having run nothing, because a
+suite that skips every case still exits zero and CTest scores that as a pass.
+That is the worst failure a test lane can have — this is the only lane that sees
+a component which builds and links but that nothing wires up, and it was
+silently proving nothing whenever the port was busy.
 
 Every registered test gets its own `CLASH_QT_DATA_DIR`, and every widget suite
 runs offscreen. See [testing](testing.md) and `tests/README.md` for the full

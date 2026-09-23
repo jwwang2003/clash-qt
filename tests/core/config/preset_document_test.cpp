@@ -4,7 +4,7 @@
 // case here is the reason a compose case in config-composer never has to
 // defend against that shape.
 //
-// Contract: config-r1.
+// Contract: docs/configuration.md.
 #include <QtTest>
 #include <QJsonArray>
 #include <QJsonDocument>

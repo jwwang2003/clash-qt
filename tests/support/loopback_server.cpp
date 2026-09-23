@@ -97,6 +97,7 @@ struct LoopbackServer::Connection {
     bool websocket = false;
     bool closing = false;
     QString streamPath;
+    quint64 streamSerial = 0;  // handshake order; 0 until the upgrade succeeds
     quint8 fragmentOpcode = 0;
     QByteArray fragmentPayload;
 };
@@ -381,6 +382,7 @@ void LoopbackServer::upgradeToStream(Connection &connection, const RecordedReque
                              "Connection: Upgrade\r\nSec-WebSocket-Accept: " + accept + "\r\n\r\n");
     connection.websocket = true;
     connection.streamPath = request.path;
+    connection.streamSerial = ++nextStreamSerial_;
     handshakes_[request.path] = handshakes_.value(request.path) + 1;
     emit streamOpened(request.path);
 }
@@ -507,6 +509,21 @@ bool LoopbackServer::dropStream(const QString &path) {
     const auto sockets = streamSockets(path);
     for (QTcpSocket *socket : sockets) drop(socket);
     return !sockets.isEmpty();
+}
+
+bool LoopbackServer::dropOldestStream(const QString &path) {
+    QTcpSocket *oldest = nullptr;
+    quint64 serial = 0;
+    for (auto it = connections_.cbegin(); it != connections_.cend(); ++it) {
+        const Connection *connection = it.value();
+        if (!connection->websocket || connection->streamPath != path) continue;
+        if (oldest && connection->streamSerial >= serial) continue;
+        oldest = it.key();
+        serial = connection->streamSerial;
+    }
+    if (!oldest) return false;
+    drop(oldest);
+    return true;
 }
 
 QList<RecordedRequest> LoopbackServer::requests() const { return requests_; }

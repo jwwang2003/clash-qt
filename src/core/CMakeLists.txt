@@ -28,7 +28,7 @@ set_target_properties(clash_backend_bridge PROPERTIES AUTOMOC ON AUTOUIC OFF AUT
 target_include_directories(clash_backend_bridge PUBLIC "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(clash_backend_bridge PUBLIC clash_backend Qt6::Core)
 
-# Portable component object model, contract revision component-r1. Deliberately
+# Portable component object model. Deliberately
 # links nothing -- not even Qt6::Core -- because it is the foundation every
 # component boundary is expressed in; a Qt type in a published signature would
 # defeat the point. Verified: the archive has zero undefined symbols.

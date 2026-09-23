@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_H
 
 // MihomoBackend: the asynchronous facade the application talks to.
-// Contract: docs/module-api.md revision backend-r4.
+// Contract: docs/module-api.md.
 //
 // One object exposing five facets. A consumer that needs only part of the
 // surface takes a reference to the facet it needs - the runtime coordinator

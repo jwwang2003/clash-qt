@@ -7,8 +7,9 @@ Six instances are on record. Most were found by a human reading a diff, because
 nothing detects a reference that merely names a file -- a comment citing a
 document compiles exactly as well when the document is gone.
 
-Three rules. The first two are about surviving cutover, the third about not
-depending on the plan at all:
+Four rules. The first two are about naming something that still exists, the
+third about not depending on the plan at all, and the fourth about where a
+version number is allowed to live:
 
   RESOLVES   A path named in a shipping file must exist. A comment that points
              at a missing document is worse than no comment: it costs the
@@ -25,6 +26,20 @@ depending on the plan at all:
               go stale the moment the plan ends: a comment saying a migration
               "cannot start" without some library is actively misleading once
               the migration is over. Say what the thing is and why it is there.
+
+  ONE         A file does not declare which revision of a contract it
+  DECLARATION implements. Thirty headers once opened with "Contract:
+              docs/module-api.md revision backend-r4", so revising the contract
+              silently made thirty files wrong and nothing said so. Name the
+              document and the section -- both stable -- and let the document
+              state its own revision.
+
+              This is narrower than it first appears, and deliberately so.
+              Citing a rule by the revision that introduced it ("backend-r2 A1
+              requires the post-bump value") is provenance, it stays true
+              forever, and it is allowed. Only the declaration form is banned:
+              a Contract: or Specification: line claiming a revision for the
+              file that carries it.
 
 The scan is driven by `git ls-files`, never by globs. A pathspec like
 `CMakeLists.txt` matches only the root file and `*.cmake` never matches
@@ -63,17 +78,38 @@ REFERENCE = re.compile(
 PLANNING_DOC = re.compile(r"^docs/[A-Z0-9_]+\.md$")
 
 # A plan-position label: a single letter for the axis (goal, worker, phase,
-# decision, remediation) and an ordinal, standing alone as a word. Anchored on
+# decision) and an ordinal, standing alone as a word. R is deliberately absent:
+# r1..r4 are the contract's own revision shorthand, which prose may cite, and
+# the revision rule below governs where a revision may be DECLARED. Anchored on
 # non-word characters rather than \b, because \b would also match inside
 # identifiers like `clash_p1_helper`, and because git's own regex engine does
 # not implement \b at all -- a scan written with it silently matched nothing.
+#
+# Lower case counts, and so does a label used as a name fragment: the first
+# version of this rule matched only upper case and refused any trailing hyphen,
+# so a lower-case label used as a directory-name prefix in a shipping README
+# went unreported by the very check written to find it. A label is no less a
+# label for being part of a name.
 PLAN_LABEL = re.compile(
-    r"(?<![\w-])([GWPDR][0-9]{1,2})(?![\w-])"
+    r"(?<![\w-])([GWPDgwpd][0-9]{1,2})(?=-[A-Za-z]|[^\w-]|$)"
 )
+
+# A contract revision token, e.g. backend-r4, component-r1, config-r1, module-r1.
+REVISION = re.compile(r"(?<![\w-])((?:backend|component|config|module)-r[0-9]+)(?![\w-])")
+
+# The documents allowed to declare a revision: the ones that define them.
+REVISION_DEFINING = ("docs/module-api.md", "docs/configuration.md")
+
+# A line declaring what contract the file implements, as opposed to prose
+# citing a rule. Only this form may not carry a revision.
+DECLARATION = re.compile(r"(?:Contract|Specification)\s*:", re.IGNORECASE)
 
 # Contexts where those letter-digit pairs are ordinary text, not plan labels.
 PLAN_LABEL_EXEMPT = re.compile(
-    r"(0x[0-9A-Fa-f]*|[0-9]+ ?(?:px|pt|dpi)|D3D|W3C|R[0-9]+G[0-9]+B)"
+    # Percentiles read exactly like phase labels and are not one; p95 in a
+    # latency comment is the ordinary way to write it.
+    r"(0x[0-9A-Fa-f]*|[0-9]+ ?(?:px|pt|dpi)|[pP](?:50|75|90|95|99)"
+    r"|D3D|W3C|R[0-9]+G[0-9]+B)"
 )
 
 # In source and build files only the comment is prose, so only the comment is
@@ -128,7 +164,14 @@ def scan(root: Path) -> list[str]:
                 if not (root / ref).exists():
                     violations.append(f"{where}: names {ref}, which does not exist")
 
-            body = PLAN_LABEL_EXEMPT.sub("", prose_of(rel, line))
+            prose = prose_of(rel, line)
+            if rel not in REVISION_DEFINING and DECLARATION.search(prose):
+                for token in dict.fromkeys(REVISION.findall(prose)):
+                    violations.append(
+                        f"{rel}:{lineno}: declares revision {token}; name the "
+                        f"document and section, and let it state its own revision"
+                    )
+            body = PLAN_LABEL_EXEMPT.sub("", prose)
             for label in PLAN_LABEL.findall(body):
                 violations.append(
                     f"{rel}:{lineno}: comment says {label}, a position in the "

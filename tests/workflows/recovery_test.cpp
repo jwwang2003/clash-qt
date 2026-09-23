@@ -128,7 +128,8 @@ class RecoveryTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) QSKIP(qPrintable(skipReason(relay)));
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         const QString engineDir = engineDirectory();
         // Re-created rather than re-scripted for the restart below: FakeCore's
@@ -258,7 +259,8 @@ class RecoveryTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) QSKIP(qPrintable(skipReason(relay)));
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         FakeCore engine(engineDirectory());
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
@@ -324,7 +326,8 @@ class RecoveryTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) QSKIP(qPrintable(skipReason(relay)));
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         FakeCore engine(engineDirectory());
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
@@ -439,12 +442,16 @@ class RecoveryTest : public QObject {
                  controller.pendingReport());
     }
 
-    static QString skipReason(const wf::ControllerRelay &relay) {
-        return QStringLiteral(
-                   "This journey needs the generated controller address 127.0.0.1:%1, which "
-                   "is in use: %2. Not asserted rather than asserted weakly.")
-            .arg(wf::kGeneratedControllerPort)
-            .arg(relay.errorString());
+    /// Takes a controller port the OS says is free, holds it in `relay`, and
+    /// makes core::ProfileStore generate that port into every configuration
+    /// this case produces. Empty on success.
+    ///
+    /// The result is asserted, never skipped. QtTest exits 0 for a run in which
+    /// every case skipped and CTest reads that exit as a pass, so the three
+    /// cases below used to report success in a tenth of a second whenever
+    /// something held the old fixed port.
+    QString claimPort(wf::ControllerRelay &relay, quint16 upstream) {
+        return wf::claimControllerPort(relay, upstream, *environment_);
     }
 
     QStringList snapshots() const {

@@ -3,7 +3,7 @@
 
 // BackendAttachment: the controller this component talks to, which may be the
 // managed core's or any endpoint the user or discovery pointed us at.
-// Contract: docs/module-api.md revision backend-r4, sections 1, 2, 5.
+// Contract: docs/module-api.md, sections 1, 2, 5.
 // An aborted request's completion is MARKED Superseded rather than left for the
 // consumer to infer, and the snapshot re-issue obligation that follows every
 // generation bump is discharged by an endpoint change on its own.

@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_TELEMETRY_H
 
 // BackendTelemetry: snapshots, streams and providers.
-// Contract: docs/module-api.md revision backend-r4, sections 2, 7, 9.
+// Contract: docs/module-api.md, sections 2, 7, 9.
 // One global Generation, with the snapshot re-issue obligation that comes with
 // it. The fake backend owes that obligation exactly as the real one does, or
 // the two stop satisfying the same contract tests.

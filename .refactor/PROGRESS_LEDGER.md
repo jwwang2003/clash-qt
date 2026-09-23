@@ -1836,3 +1836,118 @@ what the real-core lane exists to find.
 Three separate intermittents are now open: this one, `routing-controls-journey`,
 and the held-port false green. None is fixed. The refactor should not proceed to
 P5 on the assumption that a green lane means a correct system.
+
+## The session-identity intermittent, and a hypothesis of mine that was wrong
+
+`backend-real-contract` failed about 1 run in 3. I proposed a cause before
+dispatching: `LoopbackServer::dropStream(path)` drops every socket on a path, so
+if the replacement session had already handshaken the fixture would kill it too
+and the disconnect would be the fixture's doing. It reads well and it was wrong.
+
+Instrumenting the drop showed `sockets=1` on all 70 runs, 8 of them failing. The
+fixture never dropped two sockets. The real split was in the baseline:
+
+    run 26 PASS | baseline transitions=1 isConnected=true | outcome transitions=1
+    run 27 FAIL | baseline transitions=0 isConnected=true | outcome transitions=0
+
+The recorded transition list was `[connected]` in every run, never a disconnect.
+`isConnected()` reads a member synchronously; the observer is told through the
+deferred publish queue. The readiness gate waited on the synchronous answer, so
+in about a fifth of runs the baseline was captured before the initial connect had
+been published, and the test then counted that late connect as if the drop had
+caused it. **A test defect, not a product defect and not a fixture defect.**
+
+The fix drains the pending events before the baseline and before the final
+counts. The two-socket hazard I hypothesised is real but had never fired, so it
+was closed as well with `dropOldestStream()`, which drops the longest-lived
+socket by recorded handshake order, plus a fixture case proving it spares the
+overlapping replacement.
+
+**Verified by mutation, including one that failed to fail.** Removing the epoch
+guard from both stream-death handlers stayed green 5/5, because `closeStream()`
+already disconnects the socket's signals and that guard is a second line of
+defence this path cannot reach -- worth knowing, and it would have been reported
+as success by a weaker process. The mutation that does reach it, turning the
+same-address branch's stream retirement into a keep and dropping the restart,
+went red 5/5 on exactly the target assertion. All mutations reverted; nothing
+under `src/core/mihomo` is modified. Independently re-measured here: 15/15.
+
+**A different intermittent remains.** `sharedReplacementAtTheSameAddressOpensANewSession`
+flakes about 1 in 25 on a different assertion, that a fetch submitted after the
+replacement never settles. It never calls the drop, and its observer is added
+after connect so it cannot race the same way. Open, undiagnosed, in
+`tests/contracts/backend/common/backend_common_cases.cpp:671`.
+
+## Release preparation found four things the refactor had not
+
+None of these are refactor debt; they are what a first public release asks that
+day-to-day development never does.
+
+1. **No licence at all.** The project was implicitly all-rights-reserved while
+   redistributing a GPL-3.0 engine. Now GPL-3.0, with the engine's licence text
+   shipped in the package and the provenance file answering the
+   corresponding-source obligation by naming the exact upstream revision.
+2. **The reference object model under `3rdparty/ref/` carries no licence** and
+   was tracked in the repository. It is unreferenced by the build. It is
+   excluded from the release, and the contract's provenance section now records
+   the independence of the design without redistributing the material.
+3. **The version was a string in one place and unreadable at runtime.** An
+   updater cannot ask "is there something newer than me?" without it. Declared
+   once in `project()` now, and propagated to the bundle and to the code.
+4. **The bundle claimed an OS it could not launch on.** No deployment target was
+   pinned, so the floor was whatever SDK the build machine had. Pinning 14.0
+   alone would have been worse than useless: the Qt frameworks and thirty QML
+   plugins deployed into the bundle are themselves built for 26.0, so the app
+   would have advertised 14.0 and failed to start. Packaging now measures every
+   Mach-O in the bundle and refuses to produce one that claims support it does
+   not have. It currently refuses, which is the correct answer for this Qt.
+
+## The false green is gone
+
+The workflow journeys no longer skip when they cannot take a controller port.
+Measured directly, port held:
+
+    before   first-launch ... Passed  0.12 sec   100% tests passed   (every case skipped)
+    after    first-launch ... Failed 10.57 sec   0% tests passed, 0 skipped
+
+The failure names the port and shells out to identify the process holding it, so
+the usual cause -- a core of your own still listening -- is on screen rather than
+inferred.
+
+The root cause was a port hardcoded in product code. `ProfileStore` writes the
+controller port into every generated configuration, so a journey could not pick
+one. It now reads `CLASH_QT_CONTROLLER_PORT`, the same seam class as the
+`CLASH_QT_DATA_DIR` the store already honours in that file, which also reaches
+the reopened stores a journey builds and the child processes it starts -- an
+instance setter would have reached neither. Unset, the shipped default 29097 is
+used, so nothing a user sees changes.
+
+Ten port-busy skips became failures. The skips that remain were read one at a
+time and left deliberately: platform capability, opt-in arms, and one safety
+refusal that would otherwise reach a real root helper. One journey still pins the
+shipped port on purpose, so something continues to prove the application writes
+29097 rather than merely whatever it was told.
+
+Both lanes green afterwards: `make test` 56/56, `make test-integration` 20/20,
+and five consecutive workflow-lane runs twice over with zero skipped cases.
+
+### An attribution I had to correct
+
+The worker reported `routing-controls-journey` as a regression introduced by the
+other worker's change to `tests/support/loopback_server.cpp`, on the evidence
+that ten lane runs before that change were clean.
+
+It is not a regression. The identical failure -- same suite, same assertion, same
+line, same "the settings toggle was never confirmed" transcript -- was captured
+here at 18:17 on 22 September. The file it was attributed to changed at 09:52 the
+next morning, fifteen hours later. Measured again now: 1 failure in 12.
+
+Two honest observers, one wrong conclusion, because "it was clean before I saw it
+fail" is not the same as "it was clean". The earlier evidence existed only
+because a failing run had been kept. **A flake's history is worth more than its
+latest reproduction**, and this is the second time in this project that a
+correct change was nearly blamed for a defect that predated it.
+
+Still open and undiagnosed: `routing-controls-journey` at roughly 1 in 12, and
+`sharedReplacementAtTheSameAddressOpensANewSession` at roughly 1 in 25. Neither
+is a false green now; both fail loudly when they fail.

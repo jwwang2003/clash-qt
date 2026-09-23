@@ -174,3 +174,30 @@ is enforced by a check, not by convention — see
 [docs/module-api.md](docs/module-api.md) for the contract itself.
 [docs/development.md](docs/development.md) covers working in the tree and
 [docs/testing.md](docs/testing.md) covers what each test lane proves.
+
+## Licence
+
+clash-qt is licensed under the **GNU General Public License, version 3**. The
+full text is in [LICENSE](LICENSE).
+
+    Copyright (C) 2026 JUN WEI WANG
+
+    This program is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version. It is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+    Public License for more details.
+
+### Bundled components
+
+The packaged application redistributes the [mihomo](https://github.com/MetaCubeX/mihomo)
+proxy engine, which is also GPL-3.0. It is shipped as a separate executable and
+run as its own process; it is not linked into this application. Its licence text
+ships beside it in the package, and `mihomo-provenance.json` records the exact
+upstream revision each build was produced from, so the corresponding source for
+any shipped binary is identifiable rather than merely asserted.
+
+Qt is used under the LGPL-3.0. The application links Qt dynamically and does not
+modify it, which is what that licence requires of a distributor.

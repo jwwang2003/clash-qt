@@ -383,6 +383,49 @@ private slots:
         delete socket;
     }
 
+    // Two sessions overlap on one path whenever an engine is replaced at the
+    // address it already held: the retired socket is still open when the
+    // successor dials back in. Killing the retired one may not take the
+    // successor with it.
+    void droppingTheOldestStreamSparesTheOverlappingReplacement() {
+        LoopbackServer server;
+        QVERIFY(server.listen(fixtureSecret()));
+        server.expectStream(QStringLiteral("/traffic"));
+
+        QWebSocket *retired = openStream(server, QStringLiteral("/traffic"));
+        QVERIFY2(server.waitFor([&server] { return server.openStreams(QStringLiteral("/traffic")) == 1; }),
+                 qPrintable(server.pendingReport()));
+        QWebSocket *replacement = openStream(server, QStringLiteral("/traffic"));
+        QVERIFY2(server.waitFor([&server] { return server.openStreams(QStringLiteral("/traffic")) == 2; }),
+                 qPrintable(server.pendingReport()));
+
+        QSignalSpy retiredGone(retired, &QWebSocket::disconnected);
+        QSignalSpy replacementGone(replacement, &QWebSocket::disconnected);
+        QVERIFY(server.dropOldestStream(QStringLiteral("/traffic")));
+        QVERIFY2(server.waitFor([&retiredGone] { return retiredGone.size() == 1; }),
+                 qPrintable(server.pendingReport()));
+        QCOMPARE(server.openStreams(QStringLiteral("/traffic")), 1);
+        QCOMPARE(replacementGone.size(), 0);
+
+        // Which one survived: the message goes to whatever socket is left, and
+        // it has to arrive on the replacement.
+        QSignalSpy messages(replacement, &QWebSocket::textMessageReceived);
+        QVERIFY(server.sendText(QStringLiteral("/traffic"), QStringLiteral("after-the-drop")));
+        QVERIFY2(server.waitFor([&messages] { return messages.size() == 1; }),
+                 qPrintable(server.pendingReport()));
+        QCOMPARE(messages.takeFirst().first().toString(), QStringLiteral("after-the-drop"));
+
+        // And with nothing on the path, there is nothing to drop.
+        QVERIFY(server.dropOldestStream(QStringLiteral("/traffic")));
+        QCOMPARE(server.openStreams(QStringLiteral("/traffic")), 0);
+        QVERIFY(!server.dropOldestStream(QStringLiteral("/traffic")));
+
+        retired->abort();
+        replacement->abort();
+        delete retired;
+        delete replacement;
+    }
+
     void closeReleasesEveryLiveSocket() {
         LoopbackServer server;
         QVERIFY(server.listen(fixtureSecret()));

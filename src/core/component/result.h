@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_COMPONENT_RESULT_H
 
 // Status codes for the portable component object model.
-// Contract: docs/module-api.md revision component-r1.
+// Contract: docs/module-api.md.
 //
 // Result is SIGNED on purpose. The reviewed design reference declares its status
 // type as an unsigned 32-bit integer and then tests failure with `value < 0`,

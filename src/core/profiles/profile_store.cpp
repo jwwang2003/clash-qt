@@ -40,7 +40,10 @@ constexpr auto kPresetsFile = "presets.json";
 // save succeeds, so it is not "the previous document" but "this document, in a
 // second place" -- which is what a corrupted or half-written presets.json needs.
 constexpr auto kPresetsLastGoodFile = "presets.last-good.json";
-constexpr auto kController = "127.0.0.1:29097";
+// Loopback, always: the controller carries the secret that commands the core,
+// so it is never offered beyond this machine. Only the port moves (see
+// kControllerPortVariable in the header).
+constexpr auto kControllerHost = "127.0.0.1";
 constexpr auto kDashboardUrl =
     "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip";
 constexpr int kMixedPort = 27890;
@@ -950,9 +953,20 @@ ProfileStore::RuntimeRequest ProfileStore::prepareRuntime() {
     return request;
 }
 
+quint16 ProfileStore::controllerPort() {
+    bool parsed = false;
+    const uint port = qEnvironmentVariable(kControllerPortVariable).toUInt(&parsed);
+    // Port 0 would tell the engine to pick one, which this application could
+    // then never find, so it is refused along with everything else unusable and
+    // the shipped default stands.
+    if (!parsed || port == 0 || port > 65535) return kDefaultControllerPort;
+    return static_cast<quint16>(port);
+}
+
 config::ControllerFields ProfileStore::controllerFieldsFor(const QString &dataDir) const {
     config::ControllerFields controller;
-    controller.externalController = QLatin1String(kController);
+    controller.externalController =
+        QString::fromLatin1(kControllerHost) + QLatin1Char(':') + QString::number(controllerPort());
     controller.secret = secret_;
     // The application default, and nothing more. Whether the user's stored
     // mixed-port override beats it is a question about values, and values are

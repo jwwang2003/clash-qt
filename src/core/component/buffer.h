@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_COMPONENT_BUFFER_H
 
 // IBuffer: the owned byte range used wherever data crosses a module boundary.
-// Contract: docs/module-api.md revision component-r1.
+// Contract: docs/module-api.md.
 
 #include <cstddef>
 

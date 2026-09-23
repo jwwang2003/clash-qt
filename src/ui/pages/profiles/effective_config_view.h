@@ -24,7 +24,7 @@ namespace ui {
 ///
 /// A preview is a pure read. It asks
 /// ProfileStore::requestEffectiveConfigPreview(), which composes asynchronously
-/// from an immutable snapshot and -- by contract revision config-r1 -- writes
+/// from an immutable snapshot and -- by the configuration contract -- writes
 /// no runtime or preview file, seeds nothing and launches nothing. This widget
 /// accordingly never touches the runtime-generation API, and its suite asserts
 /// that previewing leaves no runtime file behind.

@@ -1,5 +1,5 @@
 // Contract suite for the portable component object model.
-// Specification: docs/module-api.md, revision component-r1, acceptance for the
+// Specification: docs/module-api.md, acceptance for the
 // portable component base.
 //
 // Every case here is one the contract names. Each was validated by temporarily

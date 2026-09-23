@@ -650,11 +650,16 @@ certified explicitly under `module-r1`.
 
 ## Provenance
 
-This is an independent design of a reviewed object model. The reference tree
-under `3rdparty/ref/` is read-only, carries no licence file, is never modified and
-is never built, and no implementation is copied from it. No prefix, namespace,
-header path, target name or user-facing label of the reference appears in the
-published API.
+This is an independent design. A pre-existing object model was read during
+design as a source of prior art, and nothing was taken from it: no
+implementation was copied, and no prefix, namespace, header path, target name or
+user-facing label of that reference appears anywhere in the published API. That
+reference carried no licence, so it is not redistributed with this project and
+is not present in this repository; it was never modified and never built here.
+
+It is described below only to record what was deliberately done differently,
+because each difference is the reason a rule in this contract is written the way
+it is.
 
 Three defects in that reference are deliberately not reproduced, and each one is
 the reason a rule below is written the way it is:

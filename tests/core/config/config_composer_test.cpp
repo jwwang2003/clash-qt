@@ -4,7 +4,7 @@
 //
 // Every case here runs without a ProfileStore, without an event loop and
 // without a data directory, which is the whole reason the composition was
-// pulled out of ProfileStore::buildRuntime(). Contract: config-r1.
+// pulled out of ProfileStore::buildRuntime(). Contract: docs/configuration.md.
 #include <QtTest>
 #include <QDir>
 #include <QJsonArray>

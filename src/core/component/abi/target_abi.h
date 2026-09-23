@@ -3,7 +3,7 @@
 
 // The compile-time description of the binary target a translation unit was
 // built for, reduced to one 64-bit tag the handshake can compare.
-// Contract: docs/module-api.md revision module-r1.
+// Contract: docs/module-api.md.
 //
 // WHY A TAG AND NOT A VERSION NUMBER
 //   component-r1 is explicit that QueryInterface plus a C factory does not by

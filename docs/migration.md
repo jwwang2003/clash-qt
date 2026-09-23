@@ -289,26 +289,23 @@ that exists. Windows and Linux carry conditional code but zero compile or run
 evidence; the presence of a platform branch is not proof of installed desktop
 behaviour.
 
-## Reading old notes
+## If you find an older description
 
-A number of planning documents guided this work and are being removed. If you
-find one in an old branch or an old commit message, treat it as history rather
-than as a description of the system, and prefer the code. Specifically:
+Earlier branches and older commits contain descriptions of this system that no
+longer hold. Where prose and code disagree, the code is right, and two files are
+authoritative because they are checked rather than merely written:
+`tests/architecture/architecture.json` for which library may depend on which,
+and `tests/README.md` for what the suite actually covers.
 
-- The proposed folder structure never included the integrations tree that the
-  module boundary actually lives in.
-- Descriptions of the loader's location, of which library links which, and of
-  where the engine is built changed more than once during the work. The
-  authoritative statement is `tests/architecture/architecture.json`, which is
-  checked; prose is not.
-- Test-suite counts in old documents describe a suite roughly a fifth of the
-  current size. `tests/README.md` carries the current registry.
-- Acceptance claims for Windows and Linux in old plans are proposals, not
-  results.
-- Old links into `src/` almost all predate the moves in the table above.
+The specific things most often stated wrongly in older material: the module
+boundary lives in the integrations tree, which earlier structure proposals did
+not have; the loader, the link graph and the engine's build location each moved
+more than once; suite counts describe a suite about a fifth of the current size;
+and support claims for Windows and Linux were proposals rather than results.
+Links into `src/` in older material almost all predate the moves listed above.
 
-Comments in shipping code no longer identify anything by its position in a plan,
-and no shipping file may name a document the merge deletes. Both rules are
+Comments in shipping code do not identify anything by its position in a plan,
+and no shipping file may name a document that is not published. Both rules are
 checked; see the reference check in [testing.md](testing.md).
 
 ## Related documents

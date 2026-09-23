@@ -83,6 +83,8 @@ resolve_qml_links(\"$<TARGET_BUNDLE_DIR:clash-qt>\" \"${qt_qml_dir}\")
                 "$<TARGET_BUNDLE_DIR:clash-qt>"
             VERBATIM)
         qt6_generate_deploy_script(TARGET clash-qt OUTPUT_SCRIPT deploy_script CONTENT "
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
 # Remove an older staged engine before deployment/signing. The pinned build
 # output is installed afterwards and must never be rewritten by Qt or codesign.
 file(REMOVE \"\${QT_DEPLOY_PREFIX}/clash-qt.app/Contents/MacOS/mihomo\")
@@ -116,11 +118,28 @@ endif()
 # Installed AFTER the Qt deployment script on purpose: macdeployqt rewrites and
 # signs what it finds in the bundle, and the engine is a self-contained Go binary
 # that must not be processed as a Qt executable.
+# The engine is GPL-3.0 and is redistributed here, so its licence text ships
+# with it. The provenance file beside it records the exact upstream revision the
+# binary was built from, which is what makes the corresponding-source obligation
+# answerable: it names the source rather than merely asserting that some exists.
+# Shipping the binary without the licence would be a distribution defect, not a
+# packaging preference.
+set(clash_qt_engine_licence "${CMAKE_CURRENT_LIST_DIR}/../3rdparty/mihomo/LICENSE")
+if(NOT EXISTS "${clash_qt_engine_licence}")
+    message(FATAL_ERROR
+        "The engine's licence is missing at ${clash_qt_engine_licence}. It is "
+        "redistributed in the package and cannot be omitted; run 'make setup' "
+        "to initialise the submodule.")
+endif()
+
 if(APPLE)
     install(PROGRAMS "${CLASH_QT_CORE_BINARY}"
         DESTINATION "clash-qt.app/Contents/MacOS")
     install(FILES "${CLASH_QT_CORE_DIR}/mihomo-provenance.json"
         DESTINATION "clash-qt.app/Contents/Resources")
+    install(FILES "${clash_qt_engine_licence}"
+        DESTINATION "clash-qt.app/Contents/Resources"
+        RENAME "mihomo-LICENSE.txt")
     # Qt deployment runs before the Go engine is copied. Seal the completed
     # developer bundle afterwards without re-signing the pinned engine itself.
     # Ad-hoc signing needs no certificate or trust-store change. Unlike a tool
@@ -133,9 +152,23 @@ execute_process(COMMAND \"${clash_qt_codesign}\" --force --sign -
 execute_process(COMMAND \"${clash_qt_codesign}\" --verify --deep --strict
     \"\${_bundle}\"
     COMMAND_ERROR_IS_FATAL ANY)
+# A signed bundle that cannot launch is still a broken bundle. The frameworks
+# and QML plugins deployed above carry their own minimum macOS, independent of
+# the one this project sets, and the real floor is the highest of them. Checked
+# here rather than in the ordinary build because it constrains what may be
+# DISTRIBUTED: a developer build that only ever runs on the machine that made it
+# is fine, and a package handed to someone else is not.
+execute_process(COMMAND \"${Python3_EXECUTABLE}\"
+    \"${CMAKE_CURRENT_LIST_DIR}/../scripts/build/check_bundle_minimum.py\"
+    --bundle \"\${_bundle}\"
+    --declared \"${CMAKE_OSX_DEPLOYMENT_TARGET}\"
+    COMMAND_ERROR_IS_FATAL ANY)
 ")
 else()
     install(PROGRAMS "${CLASH_QT_CORE_BINARY}" DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES "${CLASH_QT_CORE_DIR}/mihomo-provenance.json"
         DESTINATION ${CMAKE_INSTALL_DATADIR}/clash-qt)
+    install(FILES "${clash_qt_engine_licence}"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/clash-qt
+        RENAME "mihomo-LICENSE.txt")
 endif()

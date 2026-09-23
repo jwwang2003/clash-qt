@@ -619,6 +619,12 @@ class BackendRealContractTest : public QObject {
                             backend.isConnected();
                  }),
                  qPrintable(controller.redactedTranscript()));
+        // isConnected() is the synchronous flag; the observer learns of the
+        // same transition through the deferred publish queue. Reading the
+        // baseline without draining that queue caught the FIRST connect still
+        // in flight in 8 runs out of 40, and the count then grew by one for a
+        // reason that had nothing to do with the drop below.
+        QVERIFY(backend.drainPendingEvents());
 
         const int handshakes = controller.streamHandshakes(QStringLiteral("/traffic"));
         const std::size_t transitions = observer.connections.size();
@@ -626,8 +632,12 @@ class BackendRealContractTest : public QObject {
 
         // The replacement, and then the retired session's socket dying the way
         // a process that has gone kills it: abortively, with no close frame.
+        //
+        // The OLDEST socket, not every socket on the path: the replacement may
+        // already have dialled back in, and killing it here would produce the
+        // disconnect this case exists to rule out.
         backend.attach(endpointOf(controller));
-        QVERIFY2(controller.dropStream(QStringLiteral("/traffic")),
+        QVERIFY2(controller.dropOldestStream(QStringLiteral("/traffic")),
                  "the fixture had no retired socket to drop");
 
         QVERIFY2(controller.waitFor([&] {
@@ -637,6 +647,9 @@ class BackendRealContractTest : public QObject {
         QVERIFY(controller.sendText(QStringLiteral("/traffic"), R"({"up":5,"down":5})"));
         QVERIFY2(controller.waitFor([&] { return observer.sawSample(5); }),
                  "the stream did not resume after the retired socket died");
+        // Anything the drop published is delivered before the counts are read,
+        // so a disconnect cannot pass by merely being slower than the sample.
+        QVERIFY(backend.drainPendingEvents());
 
         QVERIFY2(observer.connections.size() == transitions,
                  "the death of the retired session's socket reported the healthy replacement "

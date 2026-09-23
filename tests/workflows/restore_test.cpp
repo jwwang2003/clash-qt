@@ -130,15 +130,14 @@ class RestoreTest : public QObject {
         // land.
         controller.route("GET", "/sub", subscription(backedUpSubscriptionBody()));
 
+        // The relay takes a port the OS says is free and holds it, and the
+        // profile store is told to generate that one, so this journey cannot
+        // collide with another run or with the developer's own core. Failing
+        // rather than skipping: a journey that does not run is not a pass.
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral(
-                                 "This journey needs the generated controller address "
-                                 "127.0.0.1:%1, which is in use: %2. Not asserted rather than "
-                                 "asserted weakly.")
-                                 .arg(wf::kGeneratedControllerPort)
-                                 .arg(relay.errorString())));
-        }
+        const QString portFailure =
+            wf::claimControllerPort(relay, controller.port(), *environment_);
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         const QString engineDir = engineDirectory();
         FakeCore engine(engineDir);

@@ -82,6 +82,16 @@ CASES: dict[str, tuple[dict[str, str], bool, str]] = {
         {"src/thing.cpp": 'const char *k = "G2";\nint w05_count = 0;\n'},
         False, "",
     ),
+    "lowercase-label-in-a-name": (
+        # The form that once escaped: lower case, and used as a name fragment
+        # rather than standing alone. Still a plan label.
+        {"docs/guide.md": "Build it with: cmake -B build/p4-consumer\n"},
+        True, "position in the plan",
+    ),
+    "percentiles-are-not-labels": (
+        {"src/timing.cpp": "// mean, median and p95 interval over five seconds\n"},
+        False, "",
+    ),
     "markdown-heading-is-prose": (
         # `#` opens a heading, not a comment. Reading only what follows a
         # comment marker would exempt every line of every document.
@@ -90,6 +100,21 @@ CASES: dict[str, tuple[dict[str, str], bool, str]] = {
     ),
     "hex-and-units-are-not-labels": (
         {"src/thing.cpp": "// 0xD3 at 16px, D3D path, W3C spec, R8G8B8\n"},
+        False, "",
+    ),
+    "declares-own-revision": (
+        {"src/backend.h": "// Contract: docs/module-api.md revision backend-r4.\n"},
+        True, "declares revision backend-r4",
+    ),
+    "cites-a-revision-in-prose": (
+        # Provenance, not a declaration: which revision introduced a rule stays
+        # true after the contract moves on. Banning this would delete history
+        # and force a rewrite of every file that explains why a rule exists.
+        {"src/backend.cpp": "// backend-r2 A1 requires the post-bump value here.\n"},
+        False, "",
+    ),
+    "defining-document-may-declare": (
+        {"docs/module-api.md": "**Current revisions: `backend-r4`.**\n"},
         False, "",
     ),
     "untracked-is-out-of-scope": (

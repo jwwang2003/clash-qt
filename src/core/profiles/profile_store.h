@@ -20,6 +20,30 @@ class QTimer;
 
 namespace core {
 
+// The loopback port every generated runtime configuration names in
+// `external-controller`, and therefore the port this application probes for
+// readiness and talks to its own core over. Unchanged for existing
+// installations: this is the value the application has always written.
+inline constexpr quint16 kDefaultControllerPort = 29097;
+
+// The environment variable that moves that port, in the same spirit as
+// kDataDirVariable moves the data directory: one process on the machine may
+// need the port somewhere else, and the store is the only thing that decides
+// where it goes.
+//
+// WHY THIS SEAM EXISTS. generateRuntimeConfig() rewrites `external-controller`
+// in every configuration it produces, AFTER the profile and the user overrides
+// have been applied, so nothing downstream can choose the port -- and a single
+// hardcoded one makes the store unusable whenever anything else on the machine
+// already listens there. That is not hypothetical: with the port nailed down,
+// the journey suites could only skip when a developer's own core held it, and a
+// skipped journey exits 0 and is scored as a pass, so the one lane that can see
+// an unwired component reported success while proving nothing.
+//
+// Unset, malformed or out of range means the default above, so a user who never
+// sets it sees exactly the behaviour the application has always had.
+inline constexpr auto kControllerPortVariable = "CLASH_QT_CONTROLLER_PORT";
+
 /// Traffic allowance reported by a subscription's `subscription-userinfo` header.
 struct SubscriptionInfo {
     quint64 upload = 0;
@@ -73,6 +97,17 @@ public:
     /// samples it per request, so a later change affects later generations only.
     void setSeedDir(const QString &dir);
     QString seedDir() const;
+
+    /// The port the next generated configuration will name in
+    /// `external-controller`: kControllerPortVariable when it holds a usable
+    /// port, kDefaultControllerPort otherwise.
+    ///
+    /// Read per generation rather than cached, so the value a caller set is the
+    /// value the next configuration carries. Public because a test that has to
+    /// meet the core on that port needs to ask for it rather than repeat the
+    /// number, and because the one journey that pins the shipped default needs
+    /// something to compare against.
+    static quint16 controllerPort();
 
     void load();
     void setMaintenanceMode(bool enabled);

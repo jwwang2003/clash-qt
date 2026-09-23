@@ -1,5 +1,23 @@
 cmake_minimum_required(VERSION 3.21)
-project(clash-qt LANGUAGES CXX)
+# The version is declared once, here. Everything else derives from it: the bundle
+# strings below, and CLASH_QT_VERSION for code that has to state which build it
+# is. A second literal elsewhere is a version that will disagree with this one
+# the first time only one of them is bumped.
+# Pinned before project(), which is where the compiler is probed and the value
+# has to already be set. Without it the floor is whatever SDK the build machine
+# happens to have, so the app silently refuses to launch on anything older than
+# the machine that built it, and two builds of the same commit can disagree
+# about who can run them.
+#
+# 14.0 is not a preference, it is the floor Qt imposes: the Qt frameworks this
+# links against are themselves built for 14.0, so a lower number here compiles
+# and then fails to launch on the machines it claims to support. Raise it only
+# when the Qt being linked requires more.
+if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum macOS version")
+endif()
+
+project(clash-qt VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -69,12 +87,21 @@ if(CLASH_QT_BUILD_APP)
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_GUI_IDENTIFIER "org.clash-qt.desktop"
         MACOSX_BUNDLE_BUNDLE_NAME "clash-qt"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1.0"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        # The build number. Finder shows the short string; an updater compares
+        # this one, and it must not go backwards between releases.
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
     if(WIN32)
         set_target_properties(clash-qt PROPERTIES WIN32_EXECUTABLE TRUE)
     endif()
+
+    # So the running app can state its own version. An update check cannot ask
+    # "is there something newer than me?" without it, and a bug report that
+    # names a version is worth several that do not.
+    target_compile_definitions(clash-qt PRIVATE
+        CLASH_QT_VERSION="${PROJECT_VERSION}")
 
     include(cmake/Packaging.cmake)
 endif()

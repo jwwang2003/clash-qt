@@ -1,7 +1,7 @@
 #ifndef CLASHQT_CORE_COMPONENT_ABI_ABI_H
 #define CLASHQT_CORE_COMPONENT_ABI_ABI_H
 
-// Umbrella for the backend module ABI, revision module-r1. A consumer may
+// Umbrella for the backend module ABI. A consumer may
 // include this or any single header below it.
 //
 // These headers are the ONLY thing a foreign module has to compile against.

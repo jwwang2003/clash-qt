@@ -3,7 +3,7 @@
 
 // The versioned command/event protocol carried over the two fixed vtables in
 // backend_abi.h, and the fixed record layouts telemetry uses.
-// Contract: docs/module-api.md revision module-r1.
+// Contract: docs/module-api.md.
 //
 // WHY A COMMAND PROTOCOL RATHER THAN SIXTY VTABLE SLOTS
 //   module-r1 permits it, and backend-r4 has 61 operations and 25 events. Sixty

@@ -157,9 +157,13 @@ candidates with the selected engine while the applied core remains alive.
 | Recovery | `recovery` | Crash/reconnect/restart and confirmed bounded shutdown; refusing child must announce its refusal before timing |
 | Executable smoke | `app-smoke` | Shipped binary, module selection, isolated helper/controller routing, single instance, startup wiring and data-directory precedence |
 
-Journeys using generated configs are `RUN_SERIAL` because their controller uses
-port 29097. Do not run separate journey processes against that port concurrently.
-Port-unavailable skips are unavailable evidence, not passes. The subscription
+Journeys using generated configs are `RUN_SERIAL` because each drives a real
+core over a real controller. The port comes from `CLASH_QT_CONTROLLER_PORT`,
+which the profile store reads when composing a configuration; unset, it is the
+shipped default `29097`. A journey that cannot bind its port fails and names the
+holder. It does not skip — a suite that skips every case still exits zero, which
+CTest scores as a pass, so a held port used to turn this lane green while it
+proved nothing. The subscription
 journey's two CTest entries select their respective function sets so the other
 lane is not counted as a skip. The real-core lane requires the build's executable
 and matching provenance/hash; missing artifacts fail.

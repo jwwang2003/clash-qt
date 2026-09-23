@@ -1,6 +1,6 @@
 #pragma once
 
-// Pure configuration composition, contract revision config-r1.
+// Pure configuration composition.
 //
 // Everything here is a function of its arguments. No filesystem, no network, no
 // process, no QObject, no clock, no environment. That is the whole point: the

@@ -3,7 +3,7 @@
 
 // Shared vocabulary of the MihomoBackend facade: request identity, generations,
 // outcomes, and the value types that cross the boundary.
-// Contract: docs/module-api.md revision backend-r4.
+// Contract: docs/module-api.md.
 //
 // Four rules of that contract are load-bearing in this file and are restated
 // where they apply: a completion is stamped with the generation its operation

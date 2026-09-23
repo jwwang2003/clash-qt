@@ -37,9 +37,15 @@
 //   * liveProcessesOf / awaitNoLiveProcess - an oracle for "the owned child
 //     exited" that does not ask the object under test. A leaked process is a
 //     test failure, so it is asked of the operating system.
-//   * ControllerRelay - the fixed controller address core::ProfileStore writes
-//     into every configuration it generates, bridged onto the loopback
-//     fixture's ephemeral port.
+//   * ControllerRelay / claimControllerPort - the controller address
+//     core::ProfileStore writes into every configuration it generates, bridged
+//     onto the loopback fixture's ephemeral port. The address is CLAIMED rather
+//     than assumed: the relay binds a port the operating system says is free
+//     and holds it, and core::kControllerPortVariable makes the store generate
+//     that port, so journeys cannot collide on one number. A port that cannot
+//     be taken FAILS the journey - QtTest exits 0 for a skip-only run and CTest
+//     calls that a pass, which is how a busy port used to turn four journeys
+//     green while proving nothing.
 //
 // Everything here is header-only: tests/workflows has no library of its own and
 // the four suites must not acquire a shared compiled artefact that could drift
@@ -60,6 +66,7 @@
 #include <QMutexLocker>
 #include <QPointer>
 #include <QProcess>
+#include <QStandardPaths>
 #include <QString>
 #include <QStringList>
 #include <QTcpServer>
@@ -91,6 +98,7 @@
 #include "integrations/component/module_backend.h"
 #include "integrations/component/module_loader.h"
 #include "platform/proxy/system_proxy_service.h"
+#include "support/scoped_environment.h"
 
 namespace workflows {
 
@@ -367,17 +375,18 @@ inline std::unique_ptr<ModuleBackend> openModuleBackend(ModuleLoader &loader,
 // ------------------------------------------------- the fixed controller port
 
 /// The address core::ProfileStore writes into every runtime configuration it
-/// generates. It is a PROTECTED field: `buildRuntime()` overwrites whatever the
-/// profile and the user overrides said, after applying them, so a journey that
-/// launches a core through the real profile store cannot choose where that core
-/// is expected to answer. Duplicated here as a literal on purpose - the
-/// constant is private to profile_store.cpp - and every journey that relies on
-/// it re-reads the generated file and compares, so a production change to the
-/// address fails a workflow loudly instead of turning it into a silent skip.
-inline constexpr quint16 kGeneratedControllerPort = 29097;
+/// generates when nothing moves it. It is a PROTECTED field: `buildRuntime()`
+/// overwrites whatever the profile and the user overrides said, after applying
+/// them, so the only way to change it is core::kControllerPortVariable.
+/// Duplicated here as a literal on purpose - reading
+/// core::ProfileStore::controllerPort() instead would move this expectation
+/// with production and assert nothing - and the one journey that pins the
+/// shipped default re-reads the generated file and compares, so a production
+/// change to the address fails a workflow loudly.
+inline constexpr quint16 kShippedControllerPort = 29097;
 
-/// A transparent TCP bridge from a fixed port onto testsupport::LoopbackServer's
-/// ephemeral one.
+/// A transparent TCP bridge from the controller port the generated
+/// configuration names onto testsupport::LoopbackServer's ephemeral one.
 ///
 /// WHY THIS EXISTS. The shared loopback fixture binds port 0, which is right for
 /// every suite that writes its own configuration. A complete journey does not
@@ -387,10 +396,9 @@ inline constexpr quint16 kGeneratedControllerPort = 29097;
 /// recording, gating and redaction beside it, this relays bytes: the fixture
 /// keeps doing all of that, one hop away.
 ///
-/// A fixed port is a shared machine resource. listen() returning false is not a
-/// fixture bug - it usually means the developer's own core, or another workflow
-/// suite, already holds it - and the caller SKIPS with that reason rather than
-/// asserting something weaker.
+/// listen() failing is a FAILURE at every call site, never a skip: see
+/// claimControllerPort() below for why, and use it rather than calling listen()
+/// directly.
 class ControllerRelay {
   public:
     ControllerRelay() = default;
@@ -399,7 +407,7 @@ class ControllerRelay {
     ControllerRelay(const ControllerRelay &) = delete;
     ControllerRelay &operator=(const ControllerRelay &) = delete;
 
-    bool listen(quint16 target, quint16 port = kGeneratedControllerPort) {
+    bool listen(quint16 target, quint16 port) {
         target_ = target;
         QObject::connect(&server_, &QTcpServer::newConnection, &context_, [this] { accept(); });
         if (!server_.listen(QHostAddress::LocalHost, port)) {
@@ -490,6 +498,96 @@ inline quint16 controllerPortOf(const QString &configPath) {
         return static_cast<quint16>(value.mid(colon + 1).toUInt());
     }
     return 0;
+}
+
+/// Which process is listening on `port`, as the operating system reports it, or
+/// empty where it cannot be asked.
+///
+/// A bare "address already in use" leaves a developer guessing; the whole cost
+/// of an occupied controller port is the minutes spent finding out what holds
+/// it, so the failure below names it. Best effort by design - no lsof, or a
+/// listener owned by another user, degrades the message rather than the verdict.
+inline QString portHolder(quint16 port) {
+#if defined(Q_OS_WIN)
+    Q_UNUSED(port);
+    return {};
+#else
+    const QString lsof = QStandardPaths::findExecutable(QStringLiteral("lsof"),
+                                                        {QStringLiteral("/usr/sbin"),
+                                                         QStringLiteral("/usr/bin"),
+                                                         QStringLiteral("/bin")});
+    if (lsof.isEmpty()) return {};
+    QProcess probe;
+    probe.start(lsof, {QStringLiteral("-nP"), QStringLiteral("-iTCP:%1").arg(port),
+                       QStringLiteral("-sTCP:LISTEN")});
+    if (!probe.waitForStarted(3000) || !probe.waitForFinished(5000)) {
+        probe.kill();
+        probe.waitForFinished(2000);
+        return {};
+    }
+    const QString report = QString::fromUtf8(probe.readAllStandardOutput()).trimmed();
+    if (report.isEmpty()) return {};
+    // The header line plus the holders, on one line, so it survives CTest's
+    // per-line output handling.
+    return report.split(QLatin1Char('\n')).join(QStringLiteral(" | "));
+#endif
+}
+
+/// Why a journey cannot use `port`, as a FAILURE message.
+///
+/// NOT A SKIP, and that is the point of this whole seam. QtTest exits 0 for a
+/// run in which every case skipped, and CTest scores that exit as a pass, so a
+/// journey that skipped on a busy port reported success while proving nothing -
+/// and this is the only lane that can see a component that builds and links but
+/// that nothing wires up. The suite's rule is that a skip is not a pass, so an
+/// unavailable port is reported as the unavailable evidence it is.
+inline QString controllerPortFailure(const ControllerRelay &relay, quint16 port) {
+    QString message = QStringLiteral(
+                          "this journey could not take the controller port 127.0.0.1:%1: %2. "
+                          "It is NOT skipped: a journey that does not run proves nothing, and "
+                          "this lane is the only one that sees an unwired component.")
+                          .arg(port)
+                          .arg(relay.errorString());
+    const QString holder = portHolder(port);
+    if (!holder.isEmpty()) message += QStringLiteral(" Held by: %1.").arg(holder);
+    else message += QStringLiteral(" No listener could be identified, so the port is held by "
+                                   "another user or was released between the two probes.");
+    message += QStringLiteral(
+        " A running clash-qt core is the usual reason; stop it and re-run.");
+    return message;
+}
+
+/// Takes a controller port nobody else can be holding and points every
+/// core::ProfileStore in this process at it. Empty on success, the failure
+/// message otherwise.
+///
+/// WHY A CLAIMED PORT RATHER THAN THE SHIPPED ONE. The relay binds 0, so the
+/// operating system hands out a port it knows is free and then the relay KEEPS
+/// it - there is no window in which something else can take it - and
+/// core::kControllerPortVariable makes the profile store generate that port
+/// instead of 29097. Journeys therefore cannot collide with each other, with a
+/// second run, or with the developer's own core. The variable is set through
+/// the scoped environment, so it is restored when the test ends rather than
+/// leaking into the next one.
+inline QString claimControllerPort(ControllerRelay &relay, quint16 upstream,
+                                   testsupport::ScopedEnvironment &environment) {
+    if (!relay.listen(upstream, 0)) return controllerPortFailure(relay, 0);
+    environment.setEnvironment(core::kControllerPortVariable,
+                               QByteArray::number(relay.port()));
+    return {};
+}
+
+/// Takes the port the application SHIPS, without moving it. Empty on success,
+/// the failure message otherwise.
+///
+/// One journey has to do this, or nothing in this lane would still show that a
+/// real launch reaches a real core on the address the application actually
+/// writes - claimControllerPort() proves the seam, not the default. It is the
+/// one call that a busy 29097 can still stop, and when it does it now says so.
+inline QString claimShippedControllerPort(ControllerRelay &relay, quint16 upstream) {
+    if (!relay.listen(upstream, kShippedControllerPort))
+        return controllerPortFailure(relay, kShippedControllerPort);
+    return {};
 }
 
 // ------------------------------------------------------------ observation

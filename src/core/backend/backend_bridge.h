@@ -2,25 +2,24 @@
 #define CLASHQT_CORE_BACKEND_BACKEND_BRIDGE_H
 
 // BackendBridge: the Qt-native view of MihomoBackend.
-// Contract: docs/module-api.md revision backend-r4, sections 2, 7, 9.
+// Contract: docs/module-api.md, sections 2, 7, 9.
 //
 // WHY THIS EXISTS
-//   BackendObserver is a plain C++ sink with defaulted callbacks, which is what
-//   lets it cross a module boundary. The UI does not consume sinks: all 20 of
-//   its include sites and all 66 of its pointer-to-member references spell
-//   their subscription `connect(client_, &core::MihomoClient::someSignal, ...)`.
-//   Nothing in the four existing observers republishes proxies, rules, traffic,
-//   connections, logs, version, config, DNS, providers or errors, so the
-//   migration has nothing to connect to.
+//   BackendObserver is a plain C++ sink with defaulted callbacks. That is what
+//   lets it cross a module boundary: no QObject, no moc, no Qt type in any
+//   signature. The UI cannot consume such a sink -- it subscribes to everything
+//   through `connect()`, and a sink has nothing to connect to.
 //
-//   This class is the one adapter: one BackendObserver in, Qt signals out, and
-//   the UI's intent forwarded back to the five facets. It is deliberately the
-//   ONLY place in the tree that knows both vocabularies.
+//   This class is the one adapter between those two vocabularies: one
+//   BackendObserver in, Qt signals out, and the UI's intent forwarded back to
+//   the five facets. It is deliberately the ONLY place in the tree that knows
+//   both, so the module boundary stays free of Qt and the UI stays free of the
+//   sink protocol.
 //
-//   The signal set is derived from the call sites, not from taste. Every
-//   signature below is the shape the existing handler already accepts, so the
-//   migration is a rename of the emitter, not a rewrite of the handler. Where a
-//   shape could not be preserved the reason is stated on the signal.
+//   The signal set matches the shapes the UI already handles rather than an
+//   idealised redesign, so a reader comparing the two sides sees the same
+//   types on each. Where a shape could not be preserved, the reason is stated
+//   on the signal.
 //
 // ---------------------------------------------------------------------------
 // OWNERSHIP RULE FOR SPANS - the answer to contract section 9

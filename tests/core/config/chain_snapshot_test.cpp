@@ -8,7 +8,7 @@
 // chain. Snapshotting closes the window, and these cases are what say the
 // snapshot is actually frozen rather than merely named that.
 //
-// Contract: config-r1.
+// Contract: docs/configuration.md.
 #include <QtTest>
 #include <memory>
 #include <yaml-cpp/yaml.h>

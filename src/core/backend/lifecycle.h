@@ -3,7 +3,7 @@
 
 // BackendLifecycle: the managed core - a child process or a privileged lease
 // that THIS component started.
-// Contract: docs/module-api.md revision backend-r4, sections 1, 3, 4, 6.
+// Contract: docs/module-api.md, sections 1, 3, 4, 6.
 // StopCompleted carries a Generation stamped AFTER any bump its own operation
 // caused, and a CompletionStatus. The post-bump stamp is not a nicety: stamping
 // at submit time delivered coreFailed(N+1) ahead of stopCompleted(N), so a

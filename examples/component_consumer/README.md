@@ -11,10 +11,10 @@ library is linked into the consumer.
 From the repository root on macOS:
 
 ```sh
-make module PRESET=headless BUILD_DIR=build/p4-module
-cmake -S examples/component_consumer -B build/p4-consumer \
+make module PRESET=headless BUILD_DIR=build/module-headless
+cmake -S examples/component_consumer -B build/example-consumer \
   -DCMAKE_PREFIX_PATH="$(brew --prefix)"
-cmake --build build/p4-consumer
+cmake --build build/example-consumer
 ```
 
 The consumer is not added to the main CMake graph. To use an installed header set,
@@ -28,9 +28,9 @@ and DNS disabled, and no external providers or resource downloads:
 
 ```sh
 CLASH_QT_DATA_DIR=/absolute/path/to/isolated-data \
-  build/p4-consumer/component_consumer \
-  --module "$PWD/build/p4-module/modules/libclash_qt_backend_module.dylib" \
-  --engine "$PWD/build/p4-module/core/mihomo" \
+  build/example-consumer/component_consumer \
+  --module "$PWD/build/module-headless/modules/libclash_qt_backend_module.dylib" \
+  --engine "$PWD/build/module-headless/core/mihomo" \
   --config /absolute/path/to/fixture.yaml \
   --work-dir /absolute/path/to/isolated-work \
   --timeout-ms 30000

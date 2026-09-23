@@ -3,7 +3,7 @@
 
 // IObject, the base of every component interface, and the id lookup that binds a
 // C++ interface type to its published identifier.
-// Contract: docs/module-api.md revision component-r1.
+// Contract: docs/module-api.md.
 
 #include <cstdint>
 

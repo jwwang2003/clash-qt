@@ -3,7 +3,7 @@
 
 // The two vtables that carry backend-r4 across a module boundary, plus the
 // lifetime interface that makes unloading a module safe rather than forbidden.
-// Contract: docs/module-api.md revision module-r1.
+// Contract: docs/module-api.md.
 //
 // No Qt type, no standard-library container and no exception crosses anything
 // declared here. Payloads are raw bytes in the encoding of wire.h; results the

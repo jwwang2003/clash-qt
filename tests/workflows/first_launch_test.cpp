@@ -43,12 +43,22 @@
 // setTimings(): the readiness deadline this journey waits out below is the 10
 // seconds the module PUBLISHES through timings(), not a shrunken test value.
 //
-// THE FIXED CONTROLLER PORT. core::ProfileStore overwrites external-controller
-// in every configuration it generates, so a journey that starts a core through
-// it cannot choose where that core must answer. workflows::ControllerRelay
-// bridges the generated address onto the loopback fixture's ephemeral port; if
-// the address is already taken - the developer's own core is the usual reason -
-// the journey SKIPS and says so, because half a journey is not evidence.
+// THE CONTROLLER PORT. core::ProfileStore overwrites external-controller in
+// every configuration it generates, so a journey cannot choose where its core
+// must answer except through core::kControllerPortVariable.
+// workflows::ControllerRelay bridges the generated address onto the loopback
+// fixture's ephemeral port.
+//
+// The journey below is the one place in this lane that keeps the SHIPPED port,
+// 29097, so that something still shows a real launch reaching a real core on
+// the address the application actually writes. The control case underneath it
+// claims a free port instead, because it is about a controller that will not
+// answer and the number is immaterial to it.
+//
+// A port that cannot be taken FAILS this suite. It used to skip, and QtTest
+// exits 0 when every case skipped - CTest scored that as "100% tests passed" in
+// 0.12 s, against the eleven seconds the journey takes when it runs. Half a
+// journey is not evidence, and neither is none of one reported as a pass.
 
 #include <QtTest>
 
@@ -143,15 +153,11 @@ class FirstLaunchTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
 
+        // Pinned to the shipped port deliberately: see the note at the top of
+        // this file. A failure here is a busy 29097, named with its holder.
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral(
-                "This journey needs the generated controller address 127.0.0.1:%1, which is in "
-                "use: %2. A running clash-qt core is the usual reason. Not asserted rather "
-                "than asserted weakly.")
-                             .arg(wf::kGeneratedControllerPort)
-                             .arg(relay.errorString())));
-        }
+        const QString portFailure = wf::claimShippedControllerPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         // Held from the start, because the readiness claim below needs the FIRST
         // probe parked. `autoRelease` disarms it once that claim is made; a gate
@@ -227,9 +233,10 @@ class FirstLaunchTest : public QObject {
             QVERIFY2(QFileInfo::exists(launchedConfig),
                      "the coordinator started a core from a configuration that does not exist");
             // The protected controller field, read back out of the generated
-            // file. If production stops writing 29097 this fails HERE, with the
-            // reason, rather than as an unexplained readiness timeout.
-            QCOMPARE(wf::controllerPortOf(launchedConfig), wf::kGeneratedControllerPort);
+            // file. Nothing moved the port in this case, so if production stops
+            // writing 29097 this fails HERE, with the reason, rather than as an
+            // unexplained readiness timeout.
+            QCOMPARE(wf::controllerPortOf(launchedConfig), wf::kShippedControllerPort);
 
             // Validation runs in its own child; the launch is the second.
             QVERIFY(wf::waitFor([&engine] { return engine.invocationCount() >= 2; }));
@@ -263,7 +270,7 @@ class FirstLaunchTest : public QObject {
                                     .arg(controller.pendingReport(), app->events.transcript())));
             QVERIFY(app->backend->drain());
             QCOMPARE(static_cast<int>(app->events.readyEndpoints.size()), 1);
-            QCOMPARE(app->events.readyEndpoints.front().port, wf::kGeneratedControllerPort);
+            QCOMPARE(app->events.readyEndpoints.front().port, wf::kShippedControllerPort);
 
             // ---- 4. inspect status ---------------------------------------
             // The managed-to-attached handoff RuntimeCoordinator performs on
@@ -392,11 +399,9 @@ class FirstLaunchTest : public QObject {
         controller.route("GET", "/rules", LoopbackServer::Reply::json(R"({"rules":[]})"));
 
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral("The control case needs 127.0.0.1:%1: %2")
-                                 .arg(wf::kGeneratedControllerPort)
-                                 .arg(relay.errorString())));
-        }
+        const QString portFailure =
+            wf::claimControllerPort(relay, controller.port(), *environment_);
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         const QString engineDir = environment_->filePath(QStringLiteral("engine/.keep"));
         QDir().mkpath(QFileInfo(engineDir).absolutePath());

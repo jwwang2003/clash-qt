@@ -156,6 +156,11 @@ QString appBinary() { return qEnvironmentVariable("CLASH_QT_APP_BINARY"); }
 /// case that means to be attached somewhere, so a developer who happens to have
 /// a controller exported cannot change what any other case observes.
 ///
+/// CLASH_QT_CONTROLLER_PORT is removed for the same reason, and never put back:
+/// it moves the port core::ProfileStore writes into every configuration it
+/// generates, so an inherited one would send the shipped binary's own core to
+/// an address this harness knows nothing about.
+///
 /// CLASH_QT_MODULE_PATH is deliberately INHERITED, because it is what the
 /// registration stages for this suite and the shipped binary cannot start
 /// without it in a build tree (ModuleLoader's other candidate is the installed
@@ -169,6 +174,7 @@ QProcessEnvironment childEnvironment(const QString &dataDirOverride, const QStri
     environment.remove(QStringLiteral("CLASH_QT_CORE_BINARY"));
     environment.remove(QStringLiteral("CLASH_QT_CONTROLLER"));
     environment.remove(QStringLiteral("CLASH_QT_SECRET"));
+    environment.remove(QStringLiteral("CLASH_QT_CONTROLLER_PORT"));
     environment.insert(QStringLiteral("CLASH_QT_DATA_DIR"), dataDirOverride);
     environment.insert(QStringLiteral("CLASH_QT_SERVICE_SOCKET"), serviceSocket);
     if (!controller.isEmpty()) {

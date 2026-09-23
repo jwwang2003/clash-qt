@@ -2,9 +2,11 @@
 # coordinators over the real ProfileStore, the real filesystem, real loopback
 # networking and the compiled fake core -- they are journeys, not unit tests.
 #
-# RUN_SERIAL on every suite: they share the fixed controller port 29097, which
-# ProfileStore forces because it rewrites external-controller in every generated
-# config, so a journey cannot choose its own port.
+# RUN_SERIAL on every suite. The journeys no longer share one controller port --
+# each claims a free one and hands it to the profile store through
+# CLASH_QT_CONTROLLER_PORT -- but they still start real child processes, bind
+# real loopback sockets and count the engines running out of their own
+# directories, so two of them at once would read each other's machine.
 set(clash_qt_workflow_libs
     clash_test_support clash_backend_fake clash_app_runtime clash_app_lifecycle
     clash_app_backup clash_app_composition clash_module_host clash_profiles
@@ -78,8 +80,10 @@ add_test(NAME routing-controls-journey COMMAND routing-controls-journey-tests)
 # The offscreen platform and the software Quick backend are set HERE, not in the
 # parent. This journey builds the real shell, and the parent's env loops use
 # if(TEST ...), which is false for a subdirectory's test -- so naming it there
-# set nothing at all, silently. Same failure as the ordering bug fixed in
-# 447c381, recurring by scope instead of order.
+# set nothing at all, silently. The same block once sat ABOVE the add_test()
+# calls it named: the tests did not exist yet, if(TEST ...) was false for every
+# one of them, and it set nothing at all just as quietly. Scope instead of
+# order, same silence.
 set_tests_properties(routing-controls-journey PROPERTIES
     RUN_SERIAL TRUE TIMEOUT 300
     ENVIRONMENT "CLASH_QT_FAKE_CORE=$<TARGET_FILE:clash-qt-fake-core>;CLASH_QT_MODULE_PATH=$<TARGET_FILE:clash_qt_backend_module>;QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")

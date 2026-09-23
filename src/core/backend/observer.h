@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_OBSERVER_H
 
 // BackendObserver: the event sink, published instead of Qt signals.
-// Contract: docs/module-api.md revision backend-r4, sections 2, 7, 9.
+// Contract: docs/module-api.md, sections 2, 7, 9.
 // The consumer obligation below is an explicit Superseded mark rather than a
 // generation comparison; delivery rule 2 says why comparison alone cannot
 // catch what an abort produces.

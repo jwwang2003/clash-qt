@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_BACKEND_CAPABILITIES_H
 
 // BackendCapabilities: what this backend can do, queried rather than assumed.
-// Contract: docs/module-api.md revision backend-r4, sections 3, 4, 8, 9.
+// Contract: docs/module-api.md, sections 3, 4, 8, 9.
 //
 // Capabilities are INSTANCE methods. CoreProcess::serviceSupported() and
 // serviceAvailable() are static today, and a loaded module gets its own copy of

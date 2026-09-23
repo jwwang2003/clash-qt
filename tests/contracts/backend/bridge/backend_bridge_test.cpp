@@ -36,7 +36,7 @@ namespace {
 // registered. FakeBackend is `final` and cannot be subclassed, and it has no
 // producer for several contract events at all - logReceived has none, and the
 // stream samples only appear via a live-state clear. This driver exists so the
-// suite can state the one thing the migration most needs stated: EVERY signal
+// suite can state the one thing a signal adapter has to guarantee: EVERY signal
 // fires, with EXACTLY these arguments. The contract behaviours - ordering,
 // re-entrancy, supersession - are proved against the real fake below, where
 // realism is what matters.

@@ -143,7 +143,19 @@ public:
     // Splits one logical message across `fragments` WebSocket frames.
     bool sendFragmentedText(const QString &path, const QString &message, int fragments);
     bool closeStream(const QString &path, quint16 code = 1000);  // orderly close frame
-    bool dropStream(const QString &path);                        // abort, no close frame
+    bool dropStream(const QString &path);  // abort every socket on the path, no close frame
+    // Aborts ONLY the longest-lived socket on `path`, and returns false when
+    // there is none.
+    //
+    // WHY THIS EXISTS. Two sessions can overlap on one path: an engine replaced
+    // at the address it already held leaves its socket open while its successor
+    // has already dialled back in. "The retired session's socket" is then the
+    // older of the two, and dropStream() would abort the successor along with
+    // it - a test that meant to kill one process's socket would be killing the
+    // healthy session it was about to assert on. This drops exactly one socket
+    // whatever the path holds, so a third session appearing cannot quietly turn
+    // it back into "all of them".
+    bool dropOldestStream(const QString &path);
 
     // --- Observation --------------------------------------------------------
     QList<RecordedRequest> requests() const;
@@ -190,6 +202,9 @@ private:
     QHash<QString, LoopbackGate *> gates_;    // key: "METHOD /path"
     QStringList expectedStreams_;
     QHash<QString, int> handshakes_;          // path -> handshake count
+    // Handshake order, because connections_ is a hash and iterating it says
+    // nothing about which socket arrived first. dropOldestStream() needs that.
+    quint64 nextStreamSerial_ = 0;
     QList<RecordedRequest> requests_;
     bool unexpected_ = false;
     bool unauthenticated_ = false;

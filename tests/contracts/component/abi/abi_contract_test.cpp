@@ -1,4 +1,4 @@
-// The module ABI contract suite, revision module-r1.
+// The module ABI contract suite.
 //
 // WHAT THIS SUITE IS FOR, AND WHAT IT IS NOT FOR
 //   It asserts the BOUNDARY: the handshake, identity, lifetime accounting,

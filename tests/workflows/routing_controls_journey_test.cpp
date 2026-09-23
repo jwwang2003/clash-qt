@@ -171,15 +171,14 @@ class RoutingControlsJourneyTest : public QObject {
         LoopbackServer controller;
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
+        // A port the OS says is free, held by the relay and generated into the
+        // configuration through core::kControllerPortVariable. A port that
+        // cannot be taken fails this case: it used to skip, and a skip-only
+        // run exits 0 and is scored as a pass.
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral(
-                                 "This journey needs the generated controller address "
-                                 "127.0.0.1:%1, which is in use: %2. Not asserted rather than "
-                                 "asserted weakly.")
-                                 .arg(wf::kGeneratedControllerPort)
-                                 .arg(relay.errorString())));
-        }
+        const QString portFailure =
+            wf::claimControllerPort(relay, controller.port(), *environment_);
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         const QString engineDir = engineDirectory();
         FakeCore engine(engineDir);
@@ -495,11 +494,9 @@ class RoutingControlsJourneyTest : public QObject {
         QVERIFY(controller.listen(QString()));
         scriptController(controller);
         wf::ControllerRelay relay;
-        if (!relay.listen(controller.port())) {
-            QSKIP(qPrintable(QStringLiteral("This journey needs 127.0.0.1:%1: %2")
-                                 .arg(wf::kGeneratedControllerPort)
-                                 .arg(relay.errorString())));
-        }
+        const QString portFailure =
+            wf::claimControllerPort(relay, controller.port(), *environment_);
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
 
         FakeCore engine(engineDirectory());
         QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));

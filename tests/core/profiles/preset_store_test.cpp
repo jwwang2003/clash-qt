@@ -2,7 +2,8 @@
 // last-good recovery, and the fact that presets reach the generated runtime
 // configuration through the same composer the preview uses.
 //
-// Contract: config-r1.
+// Contract: docs/configuration.md, "The profile store's interface" and
+// "Recovery".
 #include <QtTest>
 #include <QDir>
 #include <QFile>
@@ -445,6 +446,42 @@ private slots:
         QVERIFY(config["secret"].as<std::string>() != "attacker");
         QCOMPARE(config["external-ui"].as<std::string>(),
                  (reopened.dataDir() + "/ui").toStdString());
+    }
+
+    // The controller port is the application's to choose, and exactly one thing
+    // may move it: core::kControllerPortVariable. A hardcoded port made the
+    // store unusable whenever anything else on the machine already listened
+    // there, which is how the journey suites came to skip -- and a skipped
+    // journey exits 0 and is counted as a pass.
+    //
+    // Both halves matter. A default that drifted would relocate the controller
+    // of every existing installation; a seam that did not reach the generated
+    // file would leave the journeys where they were.
+    void theControllerPortDefaultsToTheShippedOneAndOnlyTheEnvironmentMovesIt() {
+        QCOMPARE(core::ProfileStore::controllerPort(), core::kDefaultControllerPort);
+
+        core::ProfileStore shipped;
+        shipped.load();
+        QVERIFY(shipped.createLocalProfile("shipped", "proxies: []\n"));
+        QCOMPARE(YAML::Load(testsupport::readFile(shipped.generateRuntimeConfig()).toStdString())
+                     ["external-controller"].as<std::string>(),
+                 std::string("127.0.0.1:29097"));
+
+        environment_->setEnvironment(core::kControllerPortVariable, "29181");
+        QCOMPARE(core::ProfileStore::controllerPort(), quint16(29181));
+        // Read per generation, not cached at construction: the same store that
+        // just wrote the default writes the new port on its next generation.
+        QCOMPARE(YAML::Load(testsupport::readFile(shipped.generateRuntimeConfig()).toStdString())
+                     ["external-controller"].as<std::string>(),
+                 std::string("127.0.0.1:29181"));
+
+        // Nothing usable means the shipped port, so a user who never sets the
+        // variable -- and one who sets it to nonsense -- sees what the
+        // application has always done rather than a core nobody can reach.
+        for (const char *unusable : {"", " ", "0", "-1", "65536", "99999", "not-a-port"}) {
+            environment_->setEnvironment(core::kControllerPortVariable, unusable);
+            QCOMPARE(core::ProfileStore::controllerPort(), core::kDefaultControllerPort);
+        }
     }
 
     // A preset whose merge cannot be applied in full has no candidate

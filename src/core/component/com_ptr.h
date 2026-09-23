@@ -2,7 +2,7 @@
 #define CLASHQT_CORE_COMPONENT_COM_PTR_H
 
 // ComPtr<T>: the intrusive owning pointer for component interfaces.
-// Contract: docs/module-api.md revision component-r1.
+// Contract: docs/module-api.md.
 //
 // The two ways to take ownership are named, so they cannot be confused at a call
 // site:
