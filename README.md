@@ -25,7 +25,21 @@ make run        # launch what you just built
 ```
 
 `make` on its own prints the full list of commands, which is also what `make
-help` does. The engine is compiled from the `3rdparty/mihomo` submodule at
+help` does.
+
+To install what you built, rather than just run it from the build tree:
+
+```sh
+make package    # a self-contained bundle in build/dev/stage
+make install    # into /Applications, replacing the copy it supersedes
+make installed  # what is on this machine: app, data and privileged helper
+```
+
+Staging is not installing: `make package` leaves a bundle inside the build tree
+beside the developer build, which is how a machine ends up offering several
+copies of the application. [docs/installing.md](docs/installing.md) covers
+installing, upgrading, and removing each part — including the root-owned
+privileged helper, which survives deleting the application. The engine is compiled from the `3rdparty/mihomo` submodule at
 a pinned revision and recorded in a provenance file beside the binary; it is
 never downloaded at build time and never taken from `PATH`. See
 [docs/build.md](docs/build.md) for the presets, the individual targets and how to

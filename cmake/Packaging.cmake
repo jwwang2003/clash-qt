@@ -7,6 +7,13 @@ add_dependencies(clash-qt clash_qt_backend_module)
 # alone would leave an older copied module beside an unchanged executable.
 set_property(TARGET clash-qt APPEND PROPERTY LINK_DEPENDS
     "$<TARGET_FILE:clash_qt_backend_module>")
+# Needed in THIS scope: the install(CODE) strings below are assembled at
+# configure time, so a find_package() inside one of them runs too late and
+# in the wrong place. An empty interpreter there turns the bundle check into
+# `execute_process(COMMAND "")`, which fails as 'permission denied' and reads
+# like a file-mode problem rather than an unset variable.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
 if(APPLE)
     find_program(clash_qt_codesign NAMES codesign REQUIRED)
     # Copy before Qt deployment so the module's runtime dependencies are also
@@ -83,8 +90,6 @@ resolve_qml_links(\"$<TARGET_BUNDLE_DIR:clash-qt>\" \"${qt_qml_dir}\")
                 "$<TARGET_BUNDLE_DIR:clash-qt>"
             VERBATIM)
         qt6_generate_deploy_script(TARGET clash-qt OUTPUT_SCRIPT deploy_script CONTENT "
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
-
 # Remove an older staged engine before deployment/signing. The pinned build
 # output is installed afterwards and must never be rewritten by Qt or codesign.
 file(REMOVE \"\${QT_DEPLOY_PREFIX}/clash-qt.app/Contents/MacOS/mihomo\")

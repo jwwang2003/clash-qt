@@ -20,15 +20,25 @@ endif
 ifneq ($(strip $(CMAKE_PREFIX_PATH)),)
 PREFIX_ARG := -DCMAKE_PREFIX_PATH=$(CMAKE_PREFIX_PATH)
 endif
+# The oldest macOS the build claims to support. Left unset the project declares
+# its own intent, and packaging refuses if the Qt in use cannot honour it --
+# frameworks built for a newer system would make the bundle advertise support it
+# does not have and fail to launch. Set this to package for your own machine
+# with a Qt you did not choose the deployment target of:
+#     make package MACOS_MIN=26.0
+ifdef MACOS_MIN
+MACOS_MIN_ARG := -DCMAKE_OSX_DEPLOYMENT_TARGET=$(MACOS_MIN)
+endif
 BUILD_DIR ?= build/$(PRESET)
 JOBS ?= 8
+APPDIR ?= /Applications
 CMAKE ?= cmake
 CTEST ?= ctest
 GIT ?= git
 
 .DEFAULT_GOAL := help
 .PHONY: help doctor setup configure core module build run test test-integration \
-        test-native package clean
+        test-native package install installed uninstall clean
 
 help:
 	@echo "clash-qt developer commands.  Usage: make <command> [PRESET=dev|release|headless]"
@@ -45,10 +55,15 @@ help:
 	@echo "  test-integration  Build the local engine and run real component/core workflows."
 	@echo "  test-native       Native and privileged tests. Opt-in; needs a disposable host."
 	@echo "  package           Build and stage a platform distribution."
+	@echo "  install           Stage, then install into APPDIR (default /Applications)."
+	@echo "  installed         List what is installed: app, data and privileged helper."
+	@echo "  uninstall         Remove installed application bundles. Pass --data or"
+	@echo "                    --service to scripts/uninstall.sh for the rest."
 	@echo "  clean             Remove generated output for PRESET. Never touches source,"
 	@echo "                    user data or the submodule checkout."
 	@echo ""
 	@echo "Variables:  PRESET (default dev)   BUILD_DIR   JOBS (default 8)   CMAKE_PREFIX_PATH"
+	@echo "            APPDIR (default /Applications)   MACOS_MIN (oldest macOS to claim)"
 	@echo "Prerequisites: GNU Make >= 3.81, CMake >= 3.21, Ninja, Go, Git, Qt 6.9+, yaml-cpp."
 	@echo "Windows: use GNU Make from an initialised MSVC/Qt environment, not NMake."
 	@echo ""
@@ -61,7 +76,7 @@ setup:
 	@$(GIT) submodule update --init --recursive 3rdparty/mihomo && echo "setup: recorded submodules initialised."
 
 configure:
-	@$(CMAKE) --preset $(PRESET) -B "$(BUILD_DIR)" $(PREFIX_ARG)
+	@$(CMAKE) --preset $(PRESET) -B "$(BUILD_DIR)" $(PREFIX_ARG) $(MACOS_MIN_ARG)
 
 $(BUILD_DIR)/CMakeCache.txt:
 	@$(CMAKE) --preset $(PRESET) -B "$(BUILD_DIR)" $(PREFIX_ARG)
@@ -101,6 +116,20 @@ test-native: build
 # so a package built without it would ship without a managed engine.
 package: build core
 	@$(CMAKE) --install $(BUILD_DIR) --prefix $(BUILD_DIR)/stage && echo "package: staged in $(BUILD_DIR)/stage"
+
+# Staging is not installing. `package` leaves a bundle inside the build tree,
+# where it is one of several copies the machine can see; `install` moves one of
+# them into an Applications directory and removes the copy it replaces.
+install: package
+	@scripts/install.sh --from $(BUILD_DIR)/stage/clash-qt.app --to $(APPDIR)
+
+# Read-only by default: prints what is installed and changes nothing, because
+# the application is only one of the things an install leaves behind.
+installed:
+	@scripts/uninstall.sh --dir $(APPDIR)
+
+uninstall:
+	@scripts/uninstall.sh --app --dir $(APPDIR)
 
 clean:
 	@$(CMAKE) -E rm -rf $(BUILD_DIR) && echo "clean: removed $(BUILD_DIR) (source, user data and submodules untouched)."

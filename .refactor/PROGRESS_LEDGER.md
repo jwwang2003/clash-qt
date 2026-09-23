@@ -1951,3 +1951,55 @@ correct change was nearly blamed for a defect that predated it.
 Still open and undiagnosed: `routing-controls-journey` at roughly 1 in 12, and
 `sharedReplacementAtTheSameAddressOpensANewSession` at roughly 1 in 25. Neither
 is a false green now; both fail loudly when they fail.
+
+## Installing was never a step, so several applications accumulated
+
+The user noticed more than one clash-qt on the machine. They were right, and the
+reason was structural rather than accidental: `make package` stages a complete,
+self-contained bundle *inside the build tree*, beside the developer build, and
+nothing ever moved one out or removed one. There was no install target at all.
+Two bundles were what a normal workflow produced, and every extra `make package`
+into a fresh build directory would have added another.
+
+Added `make install`, `make installed`, `make uninstall`, backed by
+`scripts/install.sh` and `scripts/uninstall.sh`, and `docs/installing.md`.
+
+The part worth stating: an installed clash-qt is four things in three places
+with three lifetimes -- the bundle, the data directory, the preference files,
+and a root-owned helper with its own copy of the engine and a launch daemon.
+Deleting the application removes the first and leaves the rest, including a
+root-owned daemon that keeps running. On this machine the daemon is currently
+loaded, from a development build. `make installed` prints all four and changes
+nothing; removal is opt-in per part.
+
+Two decisions in the uninstaller are not conveniences:
+
+- The helper is removed through **its own `--uninstall`**, which boots the daemon
+  out before unlinking and refuses to remove a file that is not a root-owned
+  regular file. Deleting those paths directly leaves the daemon running against
+  images that no longer exist.
+- Bundles inside a build tree are **listed but never deleted**. They belong to
+  `make clean`. An uninstaller that removed them would take the user's build with
+  it, which is exactly the kind of helpfulness nobody asks for twice.
+
+### A check I reported as working, which had never run
+
+I wrote earlier that packaging now refuses to produce a bundle claiming an OS it
+cannot launch on, and that it "currently refuses, which is the correct answer".
+The script does refuse -- I verified it by running it directly against the staged
+bundle. The wiring did not: `make package` failed with
+
+    Abnormal exit with child return code: permission denied
+
+because the generated install script contained `execute_process(COMMAND "")`. The
+`find_package(Python3)` I added had landed inside the string that generates the Qt
+deploy script, so it executed in that script's own run rather than at configure
+time, and the interpreter variable was empty when the check was assembled. The
+error names a file mode, which is nothing to do with the cause.
+
+**I verified the component and called the feature verified.** The script was
+tested; the path from `make package` to the script never was. The same distinction
+this project keeps rediscovering -- a producer and a consumer, checked separately,
+never checked joined -- and this time I introduced it while building the detector
+for it. A check is not in place until the command a person actually runs fails
+because of it.
