@@ -28,15 +28,22 @@ project(clash-qt VERSION 0.1.0 LANGUAGES CXX)
 # LaunchServices kept registrations here for four build directories that had
 # been deleted, because unregistering is not something deleting a folder does.
 #
-# This marker tells Spotlight not to index the directory that contains it, which
-# stops both the indexing and the registration that follows from it. It is
-# written at the top of the build tree, so every preset underneath is covered.
+# This marker is Apple's documented request not to index a directory, written at
+# the top of the build tree so every preset underneath is covered, and before any
+# target is declared -- configuring alone is enough to produce the problem, since
+# CMake writes the bundle's Info.plist then, and a directory with an Info.plist
+# and an empty MacOS/ is already an application to Launchpad.
 #
-# Written HERE, before any target is declared, because configuring alone is
-# enough to produce the problem: CMake writes the bundle's Info.plist during
-# configure, and a directory with an Info.plist and an empty MacOS/ is already
-# an application as far as Launchpad is concerned -- a four-kilobyte one that
-# cannot launch. The marker has to exist before that skeleton does.
+# It is NOT sufficient on its own. Measured on macOS 26: with the marker in place
+# and older than the bundle, a freshly created clash-qt.app was indexed and
+# registered within seconds anyway. It is kept because it costs nothing and is
+# the documented mechanism, not because it solves this.
+#
+# What actually keeps the build tree out of Spotlight is adding it to the
+# Privacy list in System Settings, which has no scriptable equivalent --
+# mdutil works per volume, not per directory. Failing that, `make clean` removes
+# the bundles and `scripts/uninstall.sh --app` clears registrations left behind
+# by build directories that no longer exist. See docs/installing.md.
 if(APPLE)
     get_filename_component(clash_qt_build_root "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
     foreach(dir "${CMAKE_BINARY_DIR}" "${clash_qt_build_root}")

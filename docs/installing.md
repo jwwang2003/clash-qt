@@ -91,11 +91,31 @@ Configuring is enough to cause it. CMake writes the bundle's `Info.plist` during
 configure, and a directory holding an `Info.plist` and an empty `MacOS/` is
 already an application to Launchpad: a four-kilobyte one that cannot launch.
 
-The build tree now carries a `.metadata_never_index` marker, written before any
-target is declared, so nothing under it is indexed or registered. If you have
-older entries left over from before this, `scripts/uninstall.sh --app` clears
-registrations whose files no longer exist, and `make installed` lists them under
-*Known to macOS* with anything missing marked `<- registered but GONE`.
+The build tree carries a `.metadata_never_index` marker, written before any
+target is declared. **That marker is not enough on its own.** Measured on macOS
+26, with the marker in place and older than the bundle, a freshly created
+`clash-qt.app` was indexed and registered within seconds regardless. It is kept
+because it is the documented mechanism and costs nothing, not because it solves
+this.
+
+What reliably keeps the build tree out of Spotlight is adding it to the Privacy
+list: **System Settings → Spotlight → Spotlight Privacy**, then add the
+repository's `build` directory. There is no scriptable equivalent — `mdutil`
+disables indexing per volume, not per directory — so this is a one-time manual
+step, and it is the only thing that stops the entries appearing at all.
+
+Without it, the cleanup is:
+
+```sh
+make clean                      # removes the bundles themselves
+scripts/uninstall.sh --app      # clears registrations whose files are gone
+make installed                  # shows what macOS still believes is installed
+```
+
+`make installed` lists registrations under *Known to macOS*, marking anything
+whose files no longer exist with `<- registered but GONE`. Those accumulate on
+their own: deleting a build directory does not unregister what was inside it,
+and four such entries had survived here from directories deleted days earlier.
 
 ## What an installation actually consists of
 

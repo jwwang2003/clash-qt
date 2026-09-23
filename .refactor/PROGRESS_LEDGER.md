@@ -2003,3 +2003,40 @@ this project keeps rediscovering -- a producer and a consumer, checked separatel
 never checked joined -- and this time I introduced it while building the detector
 for it. A check is not in place until the command a person actually runs fails
 because of it.
+
+## Build artefacts appearing as installed applications
+
+The user reported two clash-qt entries in Applications. Nothing was installed:
+`/Applications` and `~/Applications` were both empty. What they were seeing were
+build artefacts, and the picture was worse than two.
+
+LaunchServices held **six** registrations, four of them for build directories
+deleted days earlier. Deleting a directory does not unregister what was inside
+it, so the entries survive their files and keep being offered by Launchpad,
+Spotlight and Open With. Unregistering the four dead ones cleared them.
+
+Configuring alone is enough to create one. CMake writes the bundle's Info.plist
+during configure, so `make configure` leaves a four-kilobyte `clash-qt.app`
+containing an Info.plist and an empty `MacOS/` -- an application, to macOS, that
+cannot launch. It is indexed and registered like any other.
+
+### A fix I claimed, then measured, and had to withdraw
+
+I added `.metadata_never_index` to the build tree, ran configure, checked after
+four seconds, found Spotlight and LaunchServices empty, and reported it fixed.
+It was not. Checking again after unrelated work, the entry was back. Tested
+properly -- marker in place, older than the bundle, bundle created fresh, waited
+until the index settled -- it was indexed and registered within seconds.
+
+**Four seconds of silence is not evidence of absence.** The check confirmed only
+that Spotlight had not caught up yet, and I read it as the marker working. The
+same shape as the skip-only run that exits zero: a green reading that means "not
+yet" rather than "no".
+
+The marker is kept, with the comment now saying it is necessary-but-insufficient
+and naming the measurement. There is no scriptable per-directory exclusion --
+`mdutil` works per volume -- so the only reliable answer is the Spotlight Privacy
+list in System Settings, a one-time manual step, and that is what the
+documentation now tells the user to do. Failing that, `make clean` removes the
+bundles and `scripts/uninstall.sh --app` clears registrations whose files are
+gone, which `make installed` lists and marks.
