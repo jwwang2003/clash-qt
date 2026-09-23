@@ -38,7 +38,7 @@ refactor branch by explicit reviewed file list before the merge:
 2. **This refactor's own working notes**, the whole of `.refactor/` — the progress
    ledger, published contract revisions, package dispatch records and handoffs.
    These are process artifacts, not product documentation. Their archive is the
-   `codex/refactor-v2` commit history, which the normal merge preserves.
+   `agent/refactor-v2` commit history, which the normal merge preserves.
 
 They are kept in `.refactor/` rather than `docs/refactor/` precisely so that no
 cleanup step has to remember to carve a subfolder out of the documentation set, and
@@ -60,7 +60,7 @@ until foundation acceptance, because the packages still in flight are specified 
 | --- | --- | --- |
 | `main` | `b50ff92` | Untouched pre-refactor baseline. No push, merge or reset performed. |
 | `legacy-v1` | `28ce5f4` | Frozen G4 archival snapshot. Pre-refactor code + all 13 `docs/` documents + `3rdparty/ref/fxcom` + recorded submodule gitlinks. |
-| `codex/refactor-v2` | `28ce5f4` → HEAD | Active refactor branch, created at the same snapshot. |
+| `agent/refactor-v2` | `28ce5f4` → HEAD | Active refactor branch, created at the same snapshot. |
 
 The snapshot was built through a temporary index and `git update-ref`, so the user's
 working tree and staged submodule additions were never disturbed. Every file the
@@ -1202,7 +1202,7 @@ none of the proofs were.
 ## P4 resumed — 2026-09-22, base `eb7bab1`
 
 Coordinator resumed from this ledger, D1–D8 and git log. Initial working tree
-clean on `codex/refactor-v2`. No changes to main, legacy-v1 or remotes.
+clean on `agent/refactor-v2`. No changes to main, legacy-v1 or remotes.
 Worker transport: installed Claude CLI, each dispatch explicitly `--model opus`,
 no fallback and no child agents. Availability probe resolved to `claude-opus-5`.
 Maximum three concurrent workers. Initial ABI, CFG-CORE and CFG-UI/W02 analyses

@@ -1,6 +1,6 @@
 # P4 qualification record
 
-Source candidate: `be851f5edf34a25d216df62fcd3d35ab52a08e9b` on `codex/refactor-v2`.
+Source candidate: `be851f5edf34a25d216df62fcd3d35ab52a08e9b` on `agent/refactor-v2`.
 Fresh clone: `/tmp/clash-qt-p4.w0Y8Uo/fresh-6`.
 Status: **P4 GO on macOS arm64**. Implementation/artifact gates and the independent
 whole-P4 audit passed. Qualified production source is the candidate above; later
