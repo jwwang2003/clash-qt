@@ -1,4 +1,7 @@
-build*/
-.cache/
+# Anchored to the repository root on purpose. An unanchored "build*/" also
+# matches nested directories such as scripts/build/, which silently excluded the
+# Make facade's helper scripts from the repository.
+/build*/
+/.cache/
 compile_commands.json
 .DS_Store

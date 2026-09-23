@@ -1,6 +1,0 @@
-<RCC>
-  <qresource prefix="/ui">
-    <file alias="chevron-down-light.png">../../assets/icons/chevron-down-light.png</file>
-    <file alias="chevron-down-dark.png">../../assets/icons/chevron-down-dark.png</file>
-  </qresource>
-</RCC>

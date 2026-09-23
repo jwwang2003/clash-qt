@@ -1,0 +1,467 @@
+// Recovery - a complete journey.
+//
+//   Exercise  Run core -> controller drops or child crashes -> attempt restart
+//             -> switch profile -> quit
+//   Outcome   State converges to the latest request, failure is reported,
+//             shutdown is bounded with accurate cleanup status
+//
+// THREE FAILURES, THREE JOURNEYS. The exercise names two different faults -
+// a controller that goes away and a child that dies - and they are not
+// interchangeable. A dead child is a dead core; a dead controller is not. The
+// second journey exists precisely to show that the application does not confuse
+// them, because reporting a blip as a crash is how a working core gets torn
+// down for nothing.
+//
+// WHAT DECIDES EACH CLAIM
+//
+//   "failure is reported"  the backend's own failure channel, with the
+//       contract's error code - CoreExited for a child that died, a transport
+//       failure for a controller that stopped answering - not merely "something
+//       changed".
+//   "state converges to the latest request"  the CONTENT of the configuration
+//       the surviving core was launched from. Each profile carries a marker key
+//       that survives generation, so "which profile is live" is read out of the
+//       file the child was handed rather than inferred from the store that was
+//       asked last.
+//   "shutdown is bounded"  a child that refuses SIGTERM. The quit must still
+//       complete, the escalation must happen inside the budget the backend
+//       PUBLISHES, and no process may survive. A quit that only completes
+//       because the child was cooperative proves nothing about the bound.
+//
+// THE ENGINE IS LOADED, NOT LINKED. The supervisor ships as a separately built
+// shared library, so these journeys drive
+// clashqt::integration::ModuleBackend over a session
+// clashqt::integration::ModuleLoader created from CLASH_QT_MODULE_PATH, exactly
+// as src/main.cpp does; nothing here names core/mihomo/** any more. The
+// termination bound below is therefore the module's PUBLISHED 3 s terminate
+// wait rather than a 400 ms value pushed in through setTimings(), which does
+// not exist across the boundary and is not being reintroduced: a bound that
+// only holds for a budget no release ever uses is not the shipped bound.
+//   "accurate cleanup status"  wasLastStopConfirmed(), and the stop completion
+//       it is derived from. backend-r2 section 6 forbids reporting an
+//       unconfirmed stop as a success, so the journey asserts the value rather
+//       than the absence of a warning.
+
+#include <QtTest>
+
+#include <QDir>
+#include <QElapsedTimer>
+
+#include <memory>
+
+#include "support/fake_core.h"
+#include "support/loopback_server.h"
+#include "support/preference_isolation.h"
+#include "support/scoped_environment.h"
+#include "workflows/composition_root_audit.h"
+#include "workflows/workflow_support.h"
+
+using testsupport::FakeCore;
+using testsupport::LoopbackServer;
+using testsupport::ScopedEnvironment;
+
+namespace wf = workflows;
+namespace cb = core::backend;
+
+namespace {
+
+// The compressed restore grace window. Only the SHIPPED value is asserted as a
+// value (tests/app/runtime/routing_controller_test.cpp); this is what lets the
+// behaviour behind it be driven inside a journey.
+constexpr int kCompressedGraceMs = 40;
+
+void scriptController(LoopbackServer &server) {
+    using Reply = LoopbackServer::Reply;
+    server.route("GET", "/version", Reply::json(R"({"version":"workflow-core-1.19.31"})"));
+    server.route("GET", "/configs", Reply::json(R"({"mode":"rule","tun":{"enable":false}})"));
+    server.route("GET", "/proxies",
+                 Reply::json(R"({"proxies":{"GLOBAL":{"type":"Selector","now":"DIRECT","all":["DIRECT"]}}})"));
+    server.route("GET", "/rules", Reply::json(R"({"rules":[{"type":"MATCH","payload":"","proxy":"DIRECT"}]})"));
+}
+
+}  // namespace
+
+class RecoveryTest : public QObject {
+    Q_OBJECT
+
+  private slots:
+
+    void init() {
+        environment_ = std::make_unique<ScopedEnvironment>(QStringLiteral("recovery"));
+        const QString failure = testsupport::preferenceIsolationFailure(*environment_);
+        QVERIFY2(failure.isEmpty(), qPrintable(failure));
+    }
+
+    void cleanup() {
+        if (!enginePath_.isEmpty()) {
+            const int alive = wf::liveProcessesOf(enginePath_);
+            QVERIFY2(alive <= 0,
+                     qPrintable(QStringLiteral("%1 process(es) from %2 outlived the test")
+                                    .arg(alive)
+                                    .arg(enginePath_)));
+        }
+        const QString escape = testsupport::preferenceEscapeFailure(*environment_);
+        QVERIFY2(escape.isEmpty(), qPrintable(escape));
+        environment_.reset();
+        enginePath_.clear();
+    }
+
+    // --- the graph this journey assembles is the one the application ships ---
+    //
+    // wf::AssembledApp is a REBUILD of src/main.cpp's object graph, so every
+    // assertion in this suite is about a copy of the composition root. This case
+    // keeps the copy honest: it compares the wiring of the two files and fails
+    // the whole suite when they disagree. Until it existed, deleting the
+    // warningRaised -> QMessageBox connection from src/main.cpp - the one thing
+    // standing between an unacknowledged warning and a quit that never completes
+    // - left all five workflow suites green.
+
+    void theHarnessStillMirrorsTheCompositionRoot() {
+        const QString drift = wf::audit::compositionRootDrift();
+        QVERIFY2(drift.isEmpty(), qPrintable(drift));
+    }
+
+    // --- the journey: a crash, a restart, a switch, a quit -------------------
+
+    void aCrashedChildIsReportedTheRestartSucceedsAndTheLatestProfileWins() {
+        LoopbackServer controller;
+        QVERIFY(controller.listen(QString()));
+        scriptController(controller);
+        wf::ControllerRelay relay;
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
+
+        const QString engineDir = engineDirectory();
+        // Re-created rather than re-scripted for the restart below: FakeCore's
+        // run directives are cumulative, and re-installing over the same
+        // directory and name gives the SAME binary path with a clean script, so
+        // the journey restarts the same engine rather than switching engines
+        // half way through.
+        auto engine = std::make_unique<FakeCore>(engineDir);
+        QVERIFY2(engine->isValid(), qPrintable(engine->errorString()));
+        enginePath_ = engine->binaryPath();
+        // Runs, is probed, becomes ready, and then dies when the journey says
+        // so. The crash is released, never waited for.
+        QVERIFY(engine->validationSucceeds()
+                    .printsLine(QStringLiteral("[INFO] up"))
+                    .waitsFor(QStringLiteral("die"))
+                    .crashes()
+                    .commit());
+
+        auto proxyLog = std::make_shared<wf::ProxyOperations>();
+        auto osProxy = std::make_shared<wf::ProxyConfig>();
+        wf::AssembledApp app(proxyLog, osProxy,
+                             app::runtime::RestoreDelays{0, kCompressedGraceMs});
+        QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
+        app.bootstrap(engine->binaryPath());
+
+        const QString alpha = createProfile(app, QStringLiteral("alpha"));
+        const QString bravo = createProfile(app, QStringLiteral("bravo"));
+        QVERIFY(!alpha.isEmpty());
+        QVERIFY(!bravo.isEmpty());
+        app.profiles->selectProfile(alpha);
+        QCOMPARE(app.profiles->currentUid(), alpha);
+
+        QString launched;
+        QObject::connect(app.runtimeCoordinator.get(),
+                         &app::runtime::RuntimeCoordinator::coreStartRequested,
+                         app.runtimeCoordinator.get(),
+                         [&launched](const QString &path) { launched = path; });
+
+        // ---- run a core ---------------------------------------------------
+        QVERIFY(app.runtimeCoordinator->requestAutostart());
+        QVERIFY2(wf::waitFor([&app] { return app.backend->state() == cb::CoreState::Running; }),
+                 qPrintable(report(app, controller)));
+        QVERIFY2(wf::readTextFile(launched).contains("alpha"),
+                 "the running core was not launched from the selected profile");
+        QCOMPARE(wf::liveProcessesOf(engine->binaryPath()), 1);
+
+        // ---- the child crashes --------------------------------------------
+        const int crashedGeneration = static_cast<int>(cb::number(app.backend->generation()));
+        QVERIFY(engine->release(QStringLiteral("die")));
+        QVERIFY2(wf::waitFor([&app] {
+                     return app.backend->state() == cb::CoreState::Failed ||
+                            app.backend->state() == cb::CoreState::Stopped;
+                 }),
+                 qPrintable(report(app, controller)));
+        QVERIFY(app.backend->drain());
+        QVERIFY2(!app.events.coreFailures.empty(), "a crashed child produced no failure");
+        QCOMPARE(app.events.coreFailures.back().error.code, cb::ErrorCode::CoreExited);
+        QVERIFY2(!app.events.coreFailures.back().error.message.isEmpty(),
+                 "the reported failure carried no message");
+        QVERIFY2(wf::awaitNoLiveProcess(engine->binaryPath()), "the crashed child was not reaped");
+        // A crash invalidates outstanding work, which is what makes a stale
+        // reply from before it impossible to accept.
+        QVERIFY(static_cast<int>(cb::number(app.backend->generation())) > crashedGeneration);
+        // The reload gate refuses to restart a core that is genuinely down; a
+        // restart is an explicit user action, not an automatic retry.
+        app.runtimeCoordinator->scheduleReload();
+        QVERIFY2(!app.runtimeCoordinator->isReloadScheduled(),
+                 "a dead core scheduled a reload of its own accord");
+
+        // ---- attempt the restart (the toolbar's Start Core) ----------------
+        engine = std::make_unique<FakeCore>(engineDir);
+        QVERIFY2(engine->isValid(), qPrintable(engine->errorString()));
+        QCOMPARE(engine->binaryPath(), enginePath_);
+        QVERIFY(engine->validationSucceeds()
+                    .printsLine(QStringLiteral("[INFO] up again"))
+                    .runsForever()
+                    .commit());
+        launched.clear();
+        app.profiles->requestRuntimeConfig();
+        QVERIFY2(wf::waitFor([&app] { return app.backend->state() == cb::CoreState::Running; }),
+                 qPrintable(report(app, controller)));
+        QVERIFY(wf::readTextFile(launched).contains("alpha"));
+
+        // ---- switch profile, twice, inside the debounce window -------------
+        // The second selection arrives before the first has been acted on. One
+        // reload must happen and it must use the LATEST request - that is what
+        // the 100 ms coalescing window is for, and asserting it here is the
+        // difference between "a reload happened" and "the right one did".
+        launched.clear();
+        app.profiles->selectProfile(bravo);
+        QVERIFY(app.runtimeCoordinator->isReloadScheduled());
+        app.profiles->selectProfile(alpha);
+        QVERIFY(app.runtimeCoordinator->isReloadScheduled());
+        QCOMPARE(app.profiles->currentUid(), alpha);
+
+        QVERIFY2(wf::waitFor([&launched] { return !launched.isEmpty(); }),
+                 qPrintable(report(app, controller)));
+        QVERIFY2(wf::waitFor([&app] { return app.backend->state() == cb::CoreState::Running; }),
+                 qPrintable(report(app, controller)));
+        const QByteArray live = wf::readTextFile(launched);
+        QVERIFY2(live.contains("alpha"),
+                 "the core converged on an earlier request, not the latest one");
+        QVERIFY2(!live.contains("bravo"),
+                 "the superseded profile is the one that was launched");
+        QCOMPARE(wf::liveProcessesOf(engine->binaryPath()), 1);
+
+        // ---- quit ----------------------------------------------------------
+        QVERIFY2(app.quit(), qPrintable(QStringLiteral("the quit never completed: %1 | %2")
+                                            .arg(app.blockingReason(), report(app, controller))));
+        QVERIFY(app.shutdown->isCoreStopped());
+        QVERIFY2(app.shutdown->wasLastStopConfirmed(),
+                 "the quit reported an unconfirmed stop as a success");
+        QVERIFY2(app.shutdownWarnings.isEmpty(),
+                 qPrintable(app.shutdownWarnings.join(QLatin1Char('\n'))));
+        QVERIFY2(wf::awaitNoLiveProcess(engine->binaryPath()), "a child outlived the quit");
+        QVERIFY(snapshots().isEmpty());
+        // Nothing in this journey enabled the system proxy, so nothing but a
+        // restore of what the application owns may have been attempted.
+        QCOMPARE(proxyLog->count(wf::ProxyAction::Disable), 0);
+        QCOMPARE(proxyLog->count(wf::ProxyAction::Enable), 0);
+    }
+
+    // --- a controller that goes away is NOT a core that died -----------------
+
+    void aDroppedControllerIsReportedWithoutTearingDownTheRunningCore() {
+        LoopbackServer controller;
+        QVERIFY(controller.listen(QString()));
+        scriptController(controller);
+        wf::ControllerRelay relay;
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
+
+        FakeCore engine(engineDirectory());
+        QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
+        enginePath_ = engine.binaryPath();
+        QVERIFY(engine.validationSucceeds()
+                    .printsLine(QStringLiteral("[INFO] up"))
+                    .runsForever()
+                    .commit());
+
+        auto proxyLog = std::make_shared<wf::ProxyOperations>();
+        auto osProxy = std::make_shared<wf::ProxyConfig>();
+        wf::AssembledApp app(proxyLog, osProxy,
+                             app::runtime::RestoreDelays{0, kCompressedGraceMs});
+        QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
+        app.bootstrap(engine.binaryPath());
+        const QString alpha = createProfile(app, QStringLiteral("alpha"));
+        app.profiles->selectProfile(alpha);
+
+        QVERIFY(app.runtimeCoordinator->requestAutostart());
+        QVERIFY2(wf::waitFor([&app] { return app.backend->state() == cb::CoreState::Running; }),
+                 qPrintable(report(app, controller)));
+        QVERIFY(wf::waitFor([&app] { return app.backend->isConnected(); }));
+        QCOMPARE(app.routing->restoreCount(), 0);
+
+        // The controller stops answering. The CHILD is untouched.
+        relay.close();
+        controller.close();
+        app.backend->refreshVersion();
+        QVERIFY2(wf::waitFor([&app] { return !app.backend->isConnected(); }),
+                 "a controller that stopped answering was still reported as connected");
+        QVERIFY(app.backend->drain());
+        QVERIFY2(!app.events.failures.empty(), "the transport failure was never reported");
+        QVERIFY2(!app.events.connected, "the observer was told the controller was still connected");
+        // Not a crash: no failure of the managed core, and the core is still up.
+        QVERIFY2(app.events.coreFailures.empty(),
+                 "a dropped controller was reported as a failure of the managed core");
+        QCOMPARE(app.backend->state(), cb::CoreState::Running);
+        QCOMPARE(wf::liveProcessesOf(engine.binaryPath()), 1);
+
+        // The grace window expires without the controller coming back, so the
+        // proxy the application owns - and nothing else - is restored.
+        QVERIFY(wf::drainPast(kCompressedGraceMs * 4));
+        QCOMPARE(app.routing->restoreCount(), 1);
+        QCOMPARE(proxyLog->count(wf::ProxyAction::Restore), 1);
+        QCOMPARE(proxyLog->count(wf::ProxyAction::Disable), 0);
+
+        QVERIFY2(app.quit(), qPrintable(QStringLiteral("the quit never completed: %1")
+                                            .arg(app.blockingReason())));
+        QVERIFY(app.shutdown->wasLastStopConfirmed());
+        QVERIFY2(wf::awaitNoLiveProcess(engine.binaryPath()),
+                 "the core outlived a quit taken with its controller already gone");
+    }
+
+    // --- the shutdown bound --------------------------------------------------
+
+    void aCoreThatRefusesToTerminateIsKilledAndTheQuitStillCompletes() {
+        if (!FakeCore::terminationContract().terminateIsCooperative) {
+            QSKIP("This platform's terminate() cannot be refused by the child, so a core that "
+                  "ignores it is not expressible and the escalation cannot be driven.");
+        }
+
+        LoopbackServer controller;
+        QVERIFY(controller.listen(QString()));
+        scriptController(controller);
+        wf::ControllerRelay relay;
+        const QString portFailure = claimPort(relay, controller.port());
+        QVERIFY2(portFailure.isEmpty(), qPrintable(portFailure));
+
+        FakeCore engine(engineDirectory());
+        QVERIFY2(engine.isValid(), qPrintable(engine.errorString()));
+        enginePath_ = engine.binaryPath();
+        QVERIFY(engine.validationSucceeds()
+                    .ignoresTerminate()
+                    .printsLine(QStringLiteral("[INFO] stubborn"))
+                    .runsForever()
+                    .commit());
+
+        auto proxyLog = std::make_shared<wf::ProxyOperations>();
+        auto osProxy = std::make_shared<wf::ProxyConfig>();
+        wf::AssembledApp app(proxyLog, osProxy);
+        QVERIFY2(app.moduleLoaded(), qPrintable(app.moduleError));
+        app.bootstrap(engine.binaryPath());
+        // The budget the backend PUBLISHES, waited out rather than shrunk. The
+        // 400 ms this case used to push in through setTimings() is gone with the
+        // knob: backend-r2 section 4 states the escalation, capabilities.h
+        // states the value, and the shipped value is what a user's quit
+        // actually costs when a core refuses to go.
+        const cb::BackendTimings published = app.backend->timings();
+        QCOMPARE(published.terminateWaitMs, cb::kContractTimings.terminateWaitMs);
+        QVERIFY2(published.terminateWaitMs > 0,
+                 "a zero termination wait would make the bound below vacuous");
+
+        const QString alpha = createProfile(app, QStringLiteral("alpha"));
+        app.profiles->selectProfile(alpha);
+        QVERIFY(app.runtimeCoordinator->requestAutostart());
+        QVERIFY2(wf::waitFor([&app] { return app.backend->state() == cb::CoreState::Running; }),
+                 qPrintable(report(app, controller)));
+        QCOMPARE(wf::liveProcessesOf(engine.binaryPath()), 1);
+
+        // READINESS IS NOT REFUSAL. Running is decided by the controller
+        // answering, and that controller is a fixture in THIS process: it is
+        // ready before the child has run a single line. The child installs its
+        // SIGTERM refusal first and prints "[INFO] stubborn" immediately after
+        // (tests/fixtures/fake_core_main.cpp orders it that way), so the marker
+        // is the one observable that says the refusal is armed. Without this
+        // wait the quit below can reach a child that would still have exited
+        // politely, and the bound is then measured against nothing.
+        QVERIFY2(wf::waitFor([&app] {
+                     for (const QString &line : app.events.logLines)
+                         if (line.contains(QStringLiteral("stubborn"))) return true;
+                     return false;
+                 }),
+                 qPrintable(QStringLiteral("the child never announced its refusal, so the "
+                                           "termination bound would measure a polite exit: %1")
+                                .arg(report(app, controller))));
+
+        QElapsedTimer elapsed;
+        elapsed.start();
+        // The quit's own deadline is sized from the published wait, so a
+        // shutdown that misses the bound fails on the assertion below with the
+        // measurement in hand rather than on an unexplained expiry here.
+        QVERIFY2(app.quit(wf::deadlineFor(published.terminateWaitMs)),
+                 qPrintable(QStringLiteral("a stubborn child wedged the quit: %1 | %2")
+                                .arg(app.blockingReason(), report(app, controller))));
+        const qint64 took = elapsed.elapsed();
+
+        QVERIFY2(wf::awaitNoLiveProcess(engine.binaryPath()),
+                 "a child that refused to terminate was never killed");
+        QVERIFY2(app.shutdown->wasLastStopConfirmed(),
+                 "the escalation ended the child but the stop was not reported as confirmed");
+        QVERIFY2(app.shutdownWarnings.isEmpty(),
+                 qPrintable(app.shutdownWarnings.join(QLatin1Char('\n'))));
+        // The bound: the escalation cannot have been instant (the child refused
+        // the polite request) and it must not have exceeded the published wait
+        // by more than the event loop's own slack.
+        QVERIFY2(took >= published.terminateWaitMs,
+                 qPrintable(QStringLiteral("the quit finished in %1 ms, inside the %2 ms "
+                                           "termination wait: the child cannot have refused "
+                                           "anything, so nothing was proven")
+                                .arg(took)
+                                .arg(published.terminateWaitMs)));
+        QVERIFY2(took < static_cast<qint64>(published.terminateWaitMs) + 8000,
+                 qPrintable(QStringLiteral("the quit took %1 ms against a %2 ms published "
+                                           "termination wait: the shutdown is not bounded")
+                                .arg(took)
+                                .arg(published.terminateWaitMs)));
+        QVERIFY(snapshots().isEmpty());
+    }
+
+  private:
+    QString engineDirectory() {
+        const QString marker = environment_->filePath(QStringLiteral("engine/.keep"));
+        const QString dir = QFileInfo(marker).absolutePath();
+        QDir().mkpath(dir);
+        return dir;
+    }
+
+    QString createProfile(wf::AssembledApp &app, const QString &marker) {
+        const QStringList before = uids(app);
+        if (!app.profiles->createLocalProfile(marker, QString::fromUtf8(
+                                                          wf::directOnlyProfile(0, marker))))
+            return {};
+        for (const QString &uid : uids(app))
+            if (!before.contains(uid)) return uid;
+        return {};
+    }
+
+    static QStringList uids(wf::AssembledApp &app) {
+        QStringList out;
+        for (const auto &profile : app.profiles->profiles()) out << profile.uid;
+        return out;
+    }
+
+    static QString report(wf::AssembledApp &app, LoopbackServer &controller) {
+        return QStringLiteral("state=%1 connected=%2 | events: %3 | store: %4 | %5")
+            .arg(static_cast<int>(app.backend->state()))
+            .arg(app.backend->isConnected())
+            .arg(app.events.transcript(), app.storeErrors.join(QLatin1Char(' ')),
+                 controller.pendingReport());
+    }
+
+    /// Takes a controller port the OS says is free, holds it in `relay`, and
+    /// makes core::ProfileStore generate that port into every configuration
+    /// this case produces. Empty on success.
+    ///
+    /// The result is asserted, never skipped. QtTest exits 0 for a run in which
+    /// every case skipped and CTest reads that exit as a pass, so the three
+    /// cases below used to report success in a tenth of a second whenever
+    /// something held the old fixed port.
+    QString claimPort(wf::ControllerRelay &relay, quint16 upstream) {
+        return wf::claimControllerPort(relay, upstream, *environment_);
+    }
+
+    QStringList snapshots() const {
+        return QDir(environment_->dataDir())
+            .entryList({QStringLiteral(".runtime-*")}, QDir::Files | QDir::Hidden);
+    }
+
+    std::unique_ptr<ScopedEnvironment> environment_;
+    QString enginePath_;
+};
+
+QTEST_GUILESS_MAIN(RecoveryTest)
+#include "recovery_test.moc"

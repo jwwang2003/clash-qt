@@ -1,0 +1,86 @@
+{
+  "_about": "Variant of the ALLOWED case in which synth_platform is declared as a consumer rather than a module, so the library synth_impl now depends on a target that is not a module at all. A library must not depend on an application, UI or test target: that inverts the layering, and the plain forbidden-edge rule cannot say so because it only compares modules against modules. The baselined edge is dropped so the rule is reached instead of the ledger. Expected: MODULE-DEPENDS-ON-NON-MODULE.",
+  "ignore_external": [
+    "Qt6::Platform"
+  ],
+  "forbidden_external": [
+    "Qt6::Widgets",
+    "Qt6::Quick",
+    "Qt6::Graphs"
+  ],
+  "modules": {
+    "synth_types": {
+      "deps": [],
+      "external": [
+        "Qt6::Core"
+      ],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_yaml": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_config": {
+      "_note": "Qt6::Qml is allowed -- Qml is not Quick, and core runs profile scripts through QJSEngine. Qt6::Network is listed only because Qt6::Qml re-exports it.",
+      "deps": [
+        "synth_types",
+        "synth_yaml"
+      ],
+      "external": [
+        "Qt6::Qml"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Qml",
+        "Qt6::QmlIntegration",
+        "Qt6::Network"
+      ]
+    },
+    "synth_telemetry": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [],
+      "transitive_external": [
+        "Qt6::Core"
+      ]
+    },
+    "synth_impl": {
+      "deps": [
+        "synth_types"
+      ],
+      "external": [
+        "Qt6::Network"
+      ],
+      "transitive_external": [
+        "Qt6::Core",
+        "Qt6::Gui",
+        "Qt6::Network"
+      ]
+    }
+  },
+  "consumers": {
+    "synth_app": {
+      "deps": [
+        "synth_impl",
+        "synth_config",
+        "synth_telemetry"
+      ]
+    },
+    "synth_platform": {
+      "_note": "Deliberately mis-declared: a consumer, not a module.",
+      "deps": [
+        "synth_types"
+      ]
+    }
+  },
+  "include_rules": [],
+  "exceptions": []
+}

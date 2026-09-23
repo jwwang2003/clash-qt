@@ -1,0 +1,10 @@
+{
+  "_about": "Probe self-test. synth_good must compile standalone; synth_bad must not.",
+  "modules": {
+    "synth_good": { "deps": [], "external": [], "public_headers": ["good/good.h"] },
+    "synth_bad": { "deps": [], "external": [], "public_headers": ["bad/bad.h"] }
+  },
+  "consumers": {},
+  "include_rules": [],
+  "exceptions": []
+}

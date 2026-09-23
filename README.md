@@ -12,27 +12,39 @@ an additional native Qt reference.
 
 ## Build and test
 
-Requires Qt 6.9+ with Widgets, Network, WebSockets, Qml, Quick, Graphs and Concurrent,
-CMake 3.21+, a C++20 compiler and yaml-cpp.
+Requires Qt 6.9+ with Widgets, Network, WebSockets, Qml, Quick, Graphs and
+Concurrent, CMake 3.21+, a C++20 compiler, yaml-cpp and Go (to build the proxy
+engine from source).
 
 ```sh
-brew install qt yaml-cpp cmake ninja
-cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
-cmake --build build
-ctest --test-dir build --output-on-failure
+brew install qt yaml-cpp cmake ninja go
+make doctor     # check the toolchain before building anything
+make build      # the application and every runtime dependency
+make test       # the portable feature, architecture and UI suites
+make run        # launch what you just built
 ```
 
-On macOS, run `build/clash-qt.app/Contents/MacOS/clash-qt` or open the app bundle.
-The original `./build/clash-qt` command is maintained as a link to that executable;
-rebuilding replaces any stale pre-bundle binary at that path.
-On Windows/Linux, run the `clash-qt` executable in the build directory.
-Use `-DBUILD_TESTING=OFF` when configuring a build without Qt Test.
-`cmake --install build --prefix /your/install/prefix` installs the bundle or
-executable; Linux installs a desktop entry and icon alongside it. On macOS and
-Windows, installation also runs Qt’s runtime deployment tool. Linux uses system
-runtime dependencies. The mihomo executable is still supplied separately.
-The macOS bundle is a development artifact; mihomo distribution, release signing
-and installers still need a release pipeline.
+`make` on its own prints the full list of commands, which is also what `make
+help` does.
+
+To install what you built, rather than just run it from the build tree:
+
+```sh
+make package    # a self-contained bundle in build/dev/stage
+make install    # into /Applications, replacing the copy it supersedes
+make installed  # what is on this machine: app, data and privileged helper
+```
+
+Staging is not installing: `make package` leaves a bundle inside the build tree
+beside the developer build, which is how a machine ends up offering several
+copies of the application. [docs/installing.md](docs/installing.md) covers
+installing, upgrading, and removing each part — including the root-owned
+privileged helper, which survives deleting the application. The engine is compiled from the `3rdparty/mihomo` submodule at
+a pinned revision and recorded in a provenance file beside the binary; it is
+never downloaded at build time and never taken from `PATH`. See
+[docs/build.md](docs/build.md) for the presets, the individual targets and how to
+build without Qt Test, and [docs/packaging.md](docs/packaging.md) for producing a
+signed bundle.
 
 ### Display refresh rate
 
@@ -47,7 +59,7 @@ To measure the graph on a native macOS display using synthetic traffic:
 
 ```sh
 QT_QPA_PLATFORM=cocoa QSG_INFO=1 CLASH_QT_MEASURE_FRAMES=1 \
-  ./build/data-pages-tests trafficNativeFrameTiming
+  ./build/dev/tests/traffic-frame-pacing-tests trafficNativeFrameTiming
 ```
 
 Keep the test window visible. The output reports the render loop, graphics API,
@@ -65,7 +77,7 @@ baseline coordinates avoid the issue; recorded rates and readouts remain exact.
 
 ```sh
 QT_QPA_PLATFORM=cocoa CLASH_QT_VERIFY_GRAPH_FRAMES=1 \
-  ./build/data-pages-tests trafficNativeFillStaysBelowOutline
+  ./build/dev/tests/traffic-graph-frames-tests trafficNativeFillStaysBelowOutline
 ```
 
 ## Running
@@ -110,7 +122,7 @@ For an isolated test session:
 
 ```sh
 CLASH_QT_CONTROLLER=127.0.0.1:29097 \
-  build/clash-qt.app/Contents/MacOS/clash-qt \
+  build/dev/clash-qt.app/Contents/MacOS/clash-qt \
   --data-dir /tmp/clash-qt-test --no-autostart
 ```
 
@@ -152,10 +164,54 @@ need native validation before claiming support equivalent to Verge Rev.
 
 ## Layout
 
-- `src/core/`: controller client, processes, profiles, enhancements and backups.
-- `src/platform/`: browser launching, system proxy, autostart and global hotkeys.
-- `src/ui/`: native pages, shared theme, main window and tray.
-- `tests/`: local HTTP, filesystem, process and widget regressions.
+- `src/core/`: the portable centre, with no dependency on the application or the
+  UI. `component/` is the object model modules are built on, `backend/` is the
+  published contract the application codes against, `mihomo/` implements it over
+  the proxy engine, and `config/`, `profiles/`, `backups/` and `telemetry/` each
+  own one responsibility.
+- `src/integrations/`: the glue that carries the contract across the module
+  boundary, including marshalling between the process and the loaded module.
+- `src/app/`: composition and coordination — the context the root assembles,
+  plus `runtime/`, `lifecycle/`, `backup/` and `composition/`.
+- `src/platform/`: OS adapters — `browser/`, `proxy/`, `service/` and `system/`.
+- `src/services/macos/`: the standalone privileged helper executable.
+- `src/ui/`: `shell/` (main window, tray, toolbar), `pages/<feature>/` (each page
+  beside its own implementation), `widgets/`, `theme/` and `resources/`.
+- `tests/`: one directory per lane — `contracts/`, `workflows/`, `architecture/`,
+  `app/`, `core/`, `platform/`, `ui/` and `benchmarks/`, with `support/` and
+  `fixtures/` shared between them.
 
-Each module owns its `sources.cmake`. Public core headers form the UI contract;
-prefer extending them to changing existing signal signatures.
+The dependency direction is one-way: core knows nothing of the application, and
+the application knows the backend only through its published headers. That rule
+is enforced by a check, not by convention — see
+[docs/architecture.md](docs/architecture.md) for the boundaries and
+[docs/module-api.md](docs/module-api.md) for the contract itself.
+[docs/development.md](docs/development.md) covers working in the tree and
+[docs/testing.md](docs/testing.md) covers what each test lane proves.
+
+## Licence
+
+clash-qt is licensed under the **GNU General Public License, version 3**. The
+full text is in [LICENSE](LICENSE).
+
+    Copyright (C) 2026 JUN WEI WANG
+
+    This program is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version. It is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+    Public License for more details.
+
+### Bundled components
+
+The packaged application redistributes the [mihomo](https://github.com/MetaCubeX/mihomo)
+proxy engine, which is also GPL-3.0. It is shipped as a separate executable and
+run as its own process; it is not linked into this application. Its licence text
+ships beside it in the package, and `mihomo-provenance.json` records the exact
+upstream revision each build was produced from, so the corresponding source for
+any shipped binary is identifiable rather than merely asserted.
+
+Qt is used under the LGPL-3.0. The application links Qt dynamically and does not
+modify it, which is what that licence requires of a distributor.
