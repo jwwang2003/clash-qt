@@ -104,7 +104,13 @@ repository's `build` directory. There is no scriptable equivalent — `mdutil`
 disables indexing per volume, not per directory — so this is a one-time manual
 step, and it is the only thing that stops the entries appearing at all.
 
-Without it, the cleanup is:
+`make install` removes the staged bundle once it has been installed, because it
+is a byte-for-byte copy of what now lives in Applications and leaving it behind
+means two identical applications on the machine. What remains is the development
+build under `build/`, which `make run` and the test suite need. If you are not
+developing, `make clean` removes it and leaves exactly one application.
+
+Without the Privacy-list entry, the cleanup is:
 
 ```sh
 make clean                      # removes the bundles themselves

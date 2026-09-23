@@ -120,8 +120,14 @@ package: build core
 # Staging is not installing. `package` leaves a bundle inside the build tree,
 # where it is one of several copies the machine can see; `install` moves one of
 # them into an Applications directory and removes the copy it replaces.
+# The staged bundle is removed once it has been installed. It is a byte-for-byte
+# copy of what now lives in APPDIR, and leaving it behind means the machine holds
+# two identical applications and offers both in Launchpad and Spotlight. `make
+# package` regenerates it whenever it is wanted on its own.
 install: package
-	@scripts/install.sh --from $(BUILD_DIR)/stage/clash-qt.app --to $(APPDIR)
+	@scripts/install.sh --from $(BUILD_DIR)/stage/clash-qt.app --to $(APPDIR) \
+	  && rm -rf "$(BUILD_DIR)/stage" \
+	  && echo "install: staged copy removed; the installed application is in $(APPDIR)"
 
 # Read-only by default: prints what is installed and changes nothing, because
 # the application is only one of the things an install leaves behind.
