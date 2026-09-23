@@ -78,6 +78,25 @@ application can fail to verify even though it was signed correctly when built.
 The script reports the signature state after installing, so you find out then
 rather than the first time Gatekeeper refuses to open it.
 
+## Why build artefacts used to show up as installed applications
+
+A built `.app` and a staged `.app` are complete applications as far as macOS is
+concerned, so Spotlight indexed them and LaunchServices registered them. They
+appeared in Spotlight, in Launchpad and in "Open With" beside real software,
+several at a time — and they outlived the directories they came from, because
+deleting a folder does not unregister what was inside it. Registrations for four
+long-deleted build directories were still being offered.
+
+Configuring is enough to cause it. CMake writes the bundle's `Info.plist` during
+configure, and a directory holding an `Info.plist` and an empty `MacOS/` is
+already an application to Launchpad: a four-kilobyte one that cannot launch.
+
+The build tree now carries a `.metadata_never_index` marker, written before any
+target is declared, so nothing under it is indexed or registered. If you have
+older entries left over from before this, `scripts/uninstall.sh --app` clears
+registrations whose files no longer exist, and `make installed` lists them under
+*Known to macOS* with anything missing marked `<- registered but GONE`.
+
 ## What an installation actually consists of
 
 Four separate things, in three places with three different lifetimes. This is

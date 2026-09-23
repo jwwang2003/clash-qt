@@ -19,6 +19,34 @@ endif()
 
 project(clash-qt VERSION 0.1.0 LANGUAGES CXX)
 
+# Keep the build tree out of Spotlight and Launchpad.
+#
+# A built .app and a staged .app are complete applications as far as macOS is
+# concerned, so it indexes them and registers them with LaunchServices. They
+# then appear in Spotlight, in Launchpad and in "Open With" alongside installed
+# software, several at a time, and they outlive the directories they came from:
+# LaunchServices kept registrations here for four build directories that had
+# been deleted, because unregistering is not something deleting a folder does.
+#
+# This marker tells Spotlight not to index the directory that contains it, which
+# stops both the indexing and the registration that follows from it. It is
+# written at the top of the build tree, so every preset underneath is covered.
+#
+# Written HERE, before any target is declared, because configuring alone is
+# enough to produce the problem: CMake writes the bundle's Info.plist during
+# configure, and a directory with an Info.plist and an empty MacOS/ is already
+# an application as far as Launchpad is concerned -- a four-kilobyte one that
+# cannot launch. The marker has to exist before that skeleton does.
+if(APPLE)
+    get_filename_component(clash_qt_build_root "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
+    foreach(dir "${CMAKE_BINARY_DIR}" "${clash_qt_build_root}")
+        if(NOT EXISTS "${dir}/.metadata_never_index")
+            file(TOUCH "${dir}/.metadata_never_index")
+        endif()
+    endforeach()
+endif()
+
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

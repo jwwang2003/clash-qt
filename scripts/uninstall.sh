@@ -43,6 +43,16 @@ done
 HELPER_DIR="/Library/PrivilegedHelperTools/org.clash-qt.service"
 DAEMON="/Library/LaunchDaemons/org.clash-qt.service.plist"
 DATA="$HOME/Library/Application Support/clash-qt"
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
+# What macOS believes exists, which is not the same as what does. Deleting a
+# build directory does not unregister the application inside it, so Launchpad,
+# Spotlight and "Open With" keep offering entries whose files are long gone.
+registrations() {
+    [ -x "$LSREGISTER" ] || return 0
+    "$LSREGISTER" -dump 2>/dev/null |
+        grep -oE '/[^ ]*clash-qt\.app' | sort -u
+}
 
 # Spotlight is how a stray copy actually reaches the user -- it is what offers
 # three identical entries in search and in Open With -- so it is what we ask.
@@ -96,6 +106,18 @@ if [ -n "$prefs" ]; then
 fi
 
 echo
+echo "  Known to macOS (Launchpad, Spotlight, Open With)"
+regs="$(registrations)"
+if [ -z "$regs" ]; then
+    echo "    nothing registered"
+else
+    echo "$regs" | while IFS= read -r r; do
+        if [ -d "$r" ]; then echo "    $r"
+        else echo "    $r   <- registered but GONE"; fi
+    done
+fi
+
+echo
 echo "  Privileged helper (root-owned)"
 if [ -d "$HELPER_DIR" ] || [ -f "$DAEMON" ]; then
     [ -d "$HELPER_DIR" ] && echo "    $HELPER_DIR"
@@ -110,7 +132,7 @@ fi
 if [ "$any" -eq 0 ]; then
     echo
     echo "Nothing was changed. To remove something:"
-    echo "  scripts/uninstall.sh --app      # application bundles"
+    echo "  scripts/uninstall.sh --app      # bundles, and stale registrations"
     echo "  scripts/uninstall.sh --data     # profiles, backups, preferences (permanent)"
     echo "  scripts/uninstall.sh --service  # the privileged helper (asks for sudo)"
     echo "  scripts/uninstall.sh --all"
@@ -168,6 +190,13 @@ if [ "$do_app" -eq 1 ]; then
             esac
         done
     fi
+fi
+
+if [ "$do_app" -eq 1 ] && [ -x "$LSREGISTER" ]; then
+    registrations | while IFS= read -r r; do
+        [ -d "$r" ] && continue
+        "$LSREGISTER" -u "$r" 2>/dev/null && echo "  unregistered $r (no longer exists)"
+    done
 fi
 
 if [ "$do_data" -eq 1 ]; then
